@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,12 +20,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
 import java.io.Closeable
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -176,19 +178,22 @@ private fun ProbeScreen(
                 ) {
                     StatusCard(
                         modifier = Modifier.weight(1f),
-                        title = "ECARX Car",
+                        title = "Подключение к автомобилю",
+                        description = "Вход в ECARX API",
                         status = state.carStatus,
                         detail = state.carDetail,
                     )
                     StatusCard(
                         modifier = Modifier.weight(1f),
-                        title = "Diagnostics",
+                        title = "Сервис диагностики",
+                        description = "Доступ к диагностике",
                         status = state.diagnosticsStatus,
                         detail = state.diagnosticsDetail,
                     )
                     StatusCard(
                         modifier = Modifier.weight(1f),
-                        title = "DTC Manager",
+                        title = "Коды неисправностей",
+                        description = "Read-only чтение DTC",
                         status = state.dtcManagerStatus,
                         detail = state.dtcManagerDetail,
                     )
@@ -196,7 +201,7 @@ private fun ProbeScreen(
             }
 
             item {
-                SectionTitle("DTC count: ${state.dtcs.size}")
+                SectionTitle("Диагностические записи: ${state.dtcs.size}")
             }
 
             if (state.dtcs.isEmpty()) {
@@ -208,8 +213,8 @@ private fun ProbeScreen(
                     )
                 }
             } else {
-                itemsIndexed(state.dtcs) { index, dtc ->
-                    DtcCard(index = index, dtc = dtc)
+                item {
+                    DtcTable(state.dtcs)
                 }
             }
 
@@ -238,7 +243,7 @@ private fun Header(onRetry: () -> Unit, onClearLog: () -> Unit) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "ECARX AdaptAPI · read-only · Android 9 compatible",
+                text = "ECARX AdaptAPI · только чтение",
                 color = Color(0xFF9FAAB4),
                 fontSize = 16.sp,
             )
@@ -260,6 +265,7 @@ private fun Header(onRetry: () -> Unit, onClearLog: () -> Unit) {
 private fun StatusCard(
     modifier: Modifier,
     title: String,
+    description: String,
     status: ProbeStatus,
     detail: String,
 ) {
@@ -268,7 +274,8 @@ private fun StatusCard(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1B232A)),
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, color = Color(0xFFB8C2CC), fontSize = 16.sp)
+            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(description, color = Color(0xFF8FA0AE), fontSize = 13.sp)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = status.label,
@@ -279,7 +286,7 @@ private fun StatusCard(
             if (detail.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = detail,
+                    text = detail.displayText,
                     color = Color(0xFFD4DBE1),
                     fontSize = 13.sp,
                     maxLines = 3,
@@ -290,34 +297,100 @@ private fun StatusCard(
 }
 
 @Composable
-private fun DtcCard(index: Int, dtc: DtcRecord) {
+private fun DtcTable(dtcs: List<DtcRecord>) {
+    val noCodesReturned = dtcs.all { it.code.isBlank() }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF171D22)),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                text = "#${index + 1}  ${dtc.code.ifBlank { "<empty code>" }}",
-                color = Color(0xFFFFD166),
-                fontSize = 21.sp,
-                fontWeight = FontWeight.Bold,
-            )
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            if (noCodesReturned) {
+                Text(
+                    text = "ECARX вернул записи без кодов неисправностей. Это не означает, что в автомобиле подтверждено ${dtcs.size} ошибок.",
+                    color = Color(0xFFFFD166),
+                    fontSize = 15.sp,
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
+            DtcRow("№", "Код DTC", "ID", "ECU", "Статус*", "Время*", isHeader = true)
+            HorizontalDivider(color = Color(0xFF34404A))
+
+            dtcs.forEachIndexed { index, dtc ->
+                DtcRow(
+                    number = (index + 1).toString(),
+                    code = dtc.code.ifBlank { "не передан" },
+                    id = dtc.id.ifBlank { "—" },
+                    ecu = dtc.ecuType.toString(),
+                    status = dtc.status.toString(),
+                    time = dtc.tickTime.toString(),
+                )
+                if (index != dtcs.lastIndex) {
+                    HorizontalDivider(color = Color(0xFF252E35))
+                }
+            }
+
             Spacer(Modifier.height(8.dp))
-            DtcField("DTC ID", dtc.id)
-            DtcField("ECU type", dtc.ecuType.toString())
-            DtcField("Status (raw)", dtc.status.toString())
-            DtcField("Tick time (raw)", dtc.tickTime.toString())
+            Text(
+                text = "* Значения показаны без неподтверждённой расшифровки vendor mapping.",
+                color = Color(0xFF8FA0AE),
+                fontSize = 12.sp,
+            )
         }
     }
 }
 
 @Composable
-private fun DtcField(label: String, value: String) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, modifier = Modifier.width(180.dp), color = Color(0xFF8FA0AE), fontSize = 16.sp)
-        SelectionContainer {
-            Text(value.ifBlank { "<empty>" }, fontSize = 16.sp)
-        }
+private fun DtcRow(
+    number: String,
+    code: String,
+    id: String,
+    ecu: String,
+    status: String,
+    time: String,
+    isHeader: Boolean = false,
+) {
+    val color = if (isHeader) Color(0xFF8FA0AE) else Color(0xFFF0F4F7)
+    val fontWeight = if (isHeader) FontWeight.SemiBold else FontWeight.Normal
+    val fontSize = if (isHeader) 13.sp else 15.sp
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TableCell(number, 0.45f, color, fontWeight, fontSize)
+        TableCell(
+            code,
+            1.5f,
+            if (!isHeader && code == "не передан") Color(0xFFFFD166) else color,
+            fontWeight,
+            fontSize,
+        )
+        TableCell(id, 0.7f, color, fontWeight, fontSize)
+        TableCell(ecu, 0.7f, color, fontWeight, fontSize)
+        TableCell(status, 0.8f, color, fontWeight, fontSize)
+        TableCell(time, 1.6f, color, fontWeight, fontSize)
+    }
+}
+
+@Composable
+private fun RowScope.TableCell(
+    value: String,
+    cellWeight: Float,
+    color: Color,
+    fontWeight: FontWeight,
+    fontSize: TextUnit,
+) {
+    SelectionContainer(modifier = Modifier.weight(cellWeight)) {
+        Text(
+            text = value,
+            color = color,
+            fontWeight = fontWeight,
+            fontSize = fontSize,
+            maxLines = 1,
+        )
     }
 }
 
@@ -348,10 +421,10 @@ private fun SectionTitle(text: String) {
 
 private val ProbeStatus.label: String
     get() = when (this) {
-        ProbeStatus.NOT_CHECKED -> "NOT CHECKED"
-        ProbeStatus.CHECKING -> "CHECKING"
-        ProbeStatus.AVAILABLE -> "AVAILABLE"
-        ProbeStatus.ERROR -> "ERROR"
+        ProbeStatus.NOT_CHECKED -> "НЕ ПРОВЕРЕНО"
+        ProbeStatus.CHECKING -> "ПРОВЕРКА"
+        ProbeStatus.AVAILABLE -> "ДОСТУПЕН"
+        ProbeStatus.ERROR -> "ОШИБКА"
     }
 
 private val ProbeStatus.color: Color
@@ -360,4 +433,11 @@ private val ProbeStatus.color: Color
         ProbeStatus.CHECKING -> Color(0xFFFFD166)
         ProbeStatus.AVAILABLE -> Color(0xFF58D68D)
         ProbeStatus.ERROR -> Color(0xFFFF6B6B)
+    }
+
+private val String.displayText: String
+    get() = when (this) {
+        "CONNECTED" -> "Связь установлена"
+        "AVAILABLE" -> "Сервис отвечает"
+        else -> this
     }

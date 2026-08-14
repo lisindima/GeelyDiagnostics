@@ -14,8 +14,7 @@
         android:theme="@style/Theme.CityrayDiagnosticsProbe">
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="landscape">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -65,6 +65,12 @@ class EcarxDiagnosticsClient(
         sink.onDtcManagerStatus(ProbeStatus.CHECKING)
 
         sink.onLog("Probe started on Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+        val metrics = appContext.resources.displayMetrics
+        val orientation = appContext.resources.configuration.orientation
+        sink.onLog(
+            "Display: ${metrics.widthPixels}x${metrics.heightPixels}px, " +
+                "density=${metrics.density}, orientation=$orientation",
+        )
         logPermission("com.geely.settings.permission.LDSDK_MESSAGE")
         logPermission("com.geely.settings.permission.QDAS_MESSAGE")
         logPermission("geely.oneos.permission.SERVICE")

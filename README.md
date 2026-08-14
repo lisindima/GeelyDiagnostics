@@ -2,7 +2,21 @@
 
 Минимальный read-only probe для проверки штатного ECARX AdaptAPI на головном устройстве Geely Cityray / Boyue Cool.
 
-## Текущий эксперимент
+## Результат первого теста на ГУ
+
+Доступ к штатному API подтверждён на реальном устройстве с Android 11 / API 30:
+
+- `Car.create()` вернул `CarImpl`;
+- `getDiagnosticManager()` и `getDtcManager()` доступны;
+- `getDtcInfos()` вернул 8 записей;
+- `IDtcInfoWatcher` успешно зарегистрирован;
+  но доступу к диагностике это не помешало.
+
+Во всех восьми записях DTC-код пуст, ID/ECU имеют значения 1–8 и tick time
+совпадает. Поэтому приложение не называет их восемью подтверждёнными ошибками:
+это сырые vendor-записи без достаточной расшифровки.
+
+## Реализованный эксперимент
 
 Приложение выполняет только следующую цепочку:
 
@@ -28,6 +42,7 @@ Car.create(context)
 
 - Kotlin + Jetpack Compose;
 - `minSdk 26` — совместимо с Android 9 (API 28);
+- `compileSdk/targetSdk 35`, Build Tools 36.0.0;
 - JDK из состава Android Studio (Embedded JDK/JBR); Windows-путь из переносимой копии удалён.
 
 
@@ -37,10 +52,10 @@ Car.create(context)
 .\gradlew.bat :app:assembleDebug
 ```
 
-Готовый проверенный APK также лежит в корне проекта:
+Актуальный APK также лежит в корне проекта:
 
 ```text
-CityrayDiagnosticsProbe-v0.1.0-debug.apk
+CityrayDiagnosticsProbe-v0.2.0-debug.apk
 ```
 
 ## Первый тест на ГУ
