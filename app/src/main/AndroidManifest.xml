@@ -11,9 +11,9 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.CityrayDiagnosticsProbe">
+        android:theme="@style/Theme.CityrayDiagnostics">
         <activity
-            android:name=".MainActivity"
+            android:name="com.cityray.diagnostics.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

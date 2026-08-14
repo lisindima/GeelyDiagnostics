@@ -1,4 +1,4 @@
-package com.cityray.diagnosticsprobe
+package com.cityray.diagnostics
 
 import android.os.Bundle
 import android.os.Looper
@@ -47,19 +47,19 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class MainActivity : ComponentActivity(), ProbeSink {
+class MainActivity : ComponentActivity(), DiagnosticsSink {
 
-    private var uiState by mutableStateOf(ProbeUiState())
+    private var uiState by mutableStateOf(DiagnosticsUiState())
     private var client: Closeable? = null
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ProbeTheme {
-                ProbeScreen(
+            DiagnosticsTheme {
+                DiagnosticsScreen(
                     state = uiState,
-                    onRetry = ::startProbe,
+                    onRetry = ::startDiagnostics,
                     onClearLog = {
                         uiState = uiState.copy(logLines = emptyList())
                     },
@@ -67,31 +67,31 @@ class MainActivity : ComponentActivity(), ProbeSink {
             }
         }
 
-        startProbe()
+        startDiagnostics()
     }
 
-    private fun startProbe() {
+    private fun startDiagnostics() {
         client?.close()
         client = null
         uiState = uiState.copy(
-            carStatus = ProbeStatus.CHECKING,
+            carStatus = DiagnosticsStatus.CHECKING,
             carDetail = "",
-            diagnosticsStatus = ProbeStatus.CHECKING,
+            diagnosticsStatus = DiagnosticsStatus.CHECKING,
             diagnosticsDetail = "",
-            dtcManagerStatus = ProbeStatus.CHECKING,
+            dtcManagerStatus = DiagnosticsStatus.CHECKING,
             dtcManagerDetail = "",
             dtcs = emptyList(),
         )
-        onLog("=== New read-only probe run ===")
+        onLog("=== New read-only diagnostics run ===")
 
         try {
             client = EcarxDiagnosticsClient(applicationContext, this).also { it.start() }
         } catch (error: Throwable) {
             // Also catches class verification/linkage errors if ECARX is absent.
-            onCarStatus(ProbeStatus.ERROR, describe(error))
-            onDiagnosticsStatus(ProbeStatus.ERROR, "ECARX API unavailable")
-            onDtcManagerStatus(ProbeStatus.ERROR, "ECARX API unavailable")
-            onLog("Probe initialization failed: ${describe(error)}", error)
+            onCarStatus(DiagnosticsStatus.ERROR, describe(error))
+            onDiagnosticsStatus(DiagnosticsStatus.ERROR, "ECARX API unavailable")
+            onDtcManagerStatus(DiagnosticsStatus.ERROR, "ECARX API unavailable")
+            onLog("Diagnostics initialization failed: ${describe(error)}", error)
         }
     }
 
@@ -101,15 +101,15 @@ class MainActivity : ComponentActivity(), ProbeSink {
         super.onDestroy()
     }
 
-    override fun onCarStatus(status: ProbeStatus, detail: String) = onMain {
+    override fun onCarStatus(status: DiagnosticsStatus, detail: String) = onMain {
         uiState = uiState.copy(carStatus = status, carDetail = detail)
     }
 
-    override fun onDiagnosticsStatus(status: ProbeStatus, detail: String) = onMain {
+    override fun onDiagnosticsStatus(status: DiagnosticsStatus, detail: String) = onMain {
         uiState = uiState.copy(diagnosticsStatus = status, diagnosticsDetail = detail)
     }
 
-    override fun onDtcManagerStatus(status: ProbeStatus, detail: String) = onMain {
+    override fun onDtcManagerStatus(status: DiagnosticsStatus, detail: String) = onMain {
         uiState = uiState.copy(dtcManagerStatus = status, dtcManagerDetail = detail)
     }
 
@@ -134,28 +134,18 @@ class MainActivity : ComponentActivity(), ProbeSink {
 
     companion object {
         private const val MAX_LOG_LINES = 300
-        private const val LOG_TAG = "CityrayDiagProbe"
+        private const val LOG_TAG = "CityrayDiagnostics"
     }
 }
 
-private val ProbeColors = darkColorScheme(
-    primary = Color(0xFF58D68D),
-    onPrimary = Color(0xFF062612),
-    background = Color(0xFF101418),
-    surface = Color(0xFF171D22),
-    onBackground = Color(0xFFF0F4F7),
-    onSurface = Color(0xFFF0F4F7),
-    error = Color(0xFFFF6B6B),
-)
-
 @Composable
-private fun ProbeTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = ProbeColors, content = content)
+private fun DiagnosticsTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = darkColorScheme(), content = content)
 }
 
 @Composable
-private fun ProbeScreen(
-    state: ProbeUiState,
+private fun DiagnosticsScreen(
+    state: DiagnosticsUiState,
     onRetry: () -> Unit,
     onClearLog: () -> Unit,
 ) {
@@ -201,14 +191,14 @@ private fun ProbeScreen(
             }
 
             item {
-                SectionTitle("Диагностические записи: ${state.dtcs.size}")
+                SectionTitle("Диагностические блоки: ${state.dtcs.size}")
             }
 
             if (state.dtcs.isEmpty()) {
                 item {
                     Text(
-                        text = "Записей пока нет. Ноль ошибок и ошибка чтения различаются по статусу DTC Manager и журналу ниже.",
-                        color = Color(0xFFB8C2CC),
+                        text = "Данные по блокам пока не получены. Результат чтения смотрите по статусу сервиса и журналу ниже.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 17.sp,
                     )
                 }
@@ -238,13 +228,13 @@ private fun Header(onRetry: () -> Unit, onClearLog: () -> Unit) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Cityray Diagnostics Probe",
+                text = "Cityray Diagnostics",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = "ECARX AdaptAPI · только чтение",
-                color = Color(0xFF9FAAB4),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 16.sp,
             )
         }
@@ -254,7 +244,10 @@ private fun Header(onRetry: () -> Unit, onClearLog: () -> Unit) {
         Spacer(Modifier.width(10.dp))
         Button(
             onClick = onClearLog,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF34404A)),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
         ) {
             Text("Очистить лог", fontSize = 17.sp)
         }
@@ -266,16 +259,21 @@ private fun StatusCard(
     modifier: Modifier,
     title: String,
     description: String,
-    status: ProbeStatus,
+    status: DiagnosticsStatus,
     detail: String,
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B232A)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(description, color = Color(0xFF8FA0AE), fontSize = 13.sp)
+            Text(
+                title,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = status.label,
@@ -287,7 +285,7 @@ private fun StatusCard(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = detail.displayText,
-                    color = Color(0xFFD4DBE1),
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.sp,
                     maxLines = 3,
                 )
@@ -301,20 +299,20 @@ private fun DtcTable(dtcs: List<DtcRecord>) {
     val noCodesReturned = dtcs.all { it.code.isBlank() }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF171D22)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             if (noCodesReturned) {
                 Text(
-                    text = "ECARX вернул записи без кодов неисправностей. Это не означает, что в автомобиле подтверждено ${dtcs.size} ошибок.",
-                    color = Color(0xFFFFD166),
+                    text = "Получены данные по ${dtcs.size} блокам, но ни одного DTC-кода не передано. Вероятно, активных кодов ошибок нет; точная семантика vendor API не документирована.",
+                    color = Color.Yellow,
                     fontSize = 15.sp,
                 )
                 Spacer(Modifier.height(12.dp))
             }
 
-            DtcRow("№", "Код DTC", "ID", "ECU", "Статус*", "Время*", isHeader = true)
-            HorizontalDivider(color = Color(0xFF34404A))
+            DtcRow("№", "Код ошибки", "ID блока", "ECU type", "Статус*", "Время*", isHeader = true)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
             dtcs.forEachIndexed { index, dtc ->
                 DtcRow(
@@ -326,14 +324,14 @@ private fun DtcTable(dtcs: List<DtcRecord>) {
                     time = dtc.tickTime.toString(),
                 )
                 if (index != dtcs.lastIndex) {
-                    HorizontalDivider(color = Color(0xFF252E35))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
 
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "* Значения показаны без неподтверждённой расшифровки vendor mapping.",
-                color = Color(0xFF8FA0AE),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
             )
         }
@@ -350,7 +348,11 @@ private fun DtcRow(
     time: String,
     isHeader: Boolean = false,
 ) {
-    val color = if (isHeader) Color(0xFF8FA0AE) else Color(0xFFF0F4F7)
+    val color = if (isHeader) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
     val fontWeight = if (isHeader) FontWeight.SemiBold else FontWeight.Normal
     val fontSize = if (isHeader) 13.sp else 15.sp
 
@@ -364,7 +366,7 @@ private fun DtcRow(
         TableCell(
             code,
             1.5f,
-            if (!isHeader && code == "не передан") Color(0xFFFFD166) else color,
+            if (!isHeader && code == "не передан") Color.Yellow else color,
             fontWeight,
             fontSize,
         )
@@ -399,13 +401,13 @@ private fun LogPanel(lines: List<String>) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF090C0F), RoundedCornerShape(10.dp))
+            .background(Color.Black, RoundedCornerShape(10.dp))
             .padding(14.dp),
     ) {
         SelectionContainer {
             Text(
                 text = if (lines.isEmpty()) "Журнал пуст" else lines.joinToString("\n"),
-                color = Color(0xFFB7F7CA),
+                color = Color.Green,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
@@ -419,20 +421,20 @@ private fun SectionTitle(text: String) {
     Text(text = text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
 }
 
-private val ProbeStatus.label: String
+private val DiagnosticsStatus.label: String
     get() = when (this) {
-        ProbeStatus.NOT_CHECKED -> "НЕ ПРОВЕРЕНО"
-        ProbeStatus.CHECKING -> "ПРОВЕРКА"
-        ProbeStatus.AVAILABLE -> "ДОСТУПЕН"
-        ProbeStatus.ERROR -> "ОШИБКА"
+        DiagnosticsStatus.NOT_CHECKED -> "НЕ ПРОВЕРЕНО"
+        DiagnosticsStatus.CHECKING -> "ПРОВЕРКА"
+        DiagnosticsStatus.AVAILABLE -> "ДОСТУПЕН"
+        DiagnosticsStatus.ERROR -> "ОШИБКА"
     }
 
-private val ProbeStatus.color: Color
+private val DiagnosticsStatus.color: Color
     get() = when (this) {
-        ProbeStatus.NOT_CHECKED -> Color(0xFF8FA0AE)
-        ProbeStatus.CHECKING -> Color(0xFFFFD166)
-        ProbeStatus.AVAILABLE -> Color(0xFF58D68D)
-        ProbeStatus.ERROR -> Color(0xFFFF6B6B)
+        DiagnosticsStatus.NOT_CHECKED -> Color.Gray
+        DiagnosticsStatus.CHECKING -> Color.Yellow
+        DiagnosticsStatus.AVAILABLE -> Color.Green
+        DiagnosticsStatus.ERROR -> Color.Red
     }
 
 private val String.displayText: String

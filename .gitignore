@@ -4,5 +4,5 @@
 /**/build/
 *.iml
 .DS_Store
-probe-results/
+diagnostics-results/
 /references/GInputBridge/

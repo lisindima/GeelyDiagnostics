@@ -2,11 +2,11 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-apk_path="${1:-$project_dir/CityrayDiagnosticsProbe-v0.2.0-debug.apk}"
-package_name="com.cityray.diagnosticsprobe"
+apk_path="${1:-$project_dir/CityrayDiagnostics-v0.2.1-debug.apk}"
+package_name="com.cityray.diagnostics"
 activity_name="$package_name/.MainActivity"
 timestamp="$(date +%Y%m%d-%H%M%S)"
-result_dir="$project_dir/probe-results/$timestamp"
+result_dir="$project_dir/diagnostics-results/$timestamp"
 
 if ! command -v adb >/dev/null 2>&1; then
     echo "Ошибка: adb не найден. Установите Android SDK Platform Tools." >&2
@@ -42,7 +42,7 @@ echo "Если нужно, нажмите «Повторить» после по
 read -r -p "Нажмите Enter, чтобы сохранить screenshot и logcat... "
 
 adb -s "$serial" exec-out screencap -p >"$result_dir/screenshot.png"
-adb -s "$serial" logcat -d -v threadtime -s CityrayDiagProbe:I '*:S' >"$result_dir/logcat.txt"
+adb -s "$serial" logcat -d -v threadtime -s CityrayDiagnostics:I '*:S' >"$result_dir/logcat.txt"
 {
     echo "serial=$serial"
     echo "captured_at=$(date '+%Y-%m-%dT%H:%M:%S%z')"

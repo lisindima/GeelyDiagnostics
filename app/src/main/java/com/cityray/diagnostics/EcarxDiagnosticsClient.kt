@@ -1,4 +1,4 @@
-package com.cityray.diagnosticsprobe
+package com.cityray.diagnostics
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -25,7 +25,7 @@ import java.io.Closeable
  */
 class EcarxDiagnosticsClient(
     context: Context,
-    private val sink: ProbeSink,
+    private val sink: DiagnosticsSink,
 ) : Closeable {
 
     private val appContext = context.applicationContext
@@ -39,14 +39,14 @@ class EcarxDiagnosticsClient(
         override fun onConnected() {
             if (closed) return
             sink.onLog("IConnectable.onConnected()")
-            sink.onCarStatus(ProbeStatus.AVAILABLE, "CONNECTED")
-            probeDiagnostics("connection callback")
+            sink.onCarStatus(DiagnosticsStatus.AVAILABLE, "CONNECTED")
+            readDiagnostics("connection callback")
         }
 
         override fun onDisConnected() {
             if (closed) return
             sink.onLog("IConnectable.onDisConnected()")
-            sink.onCarStatus(ProbeStatus.ERROR, "DISCONNECTED")
+            sink.onCarStatus(DiagnosticsStatus.ERROR, "DISCONNECTED")
         }
     }
 
@@ -60,11 +60,11 @@ class EcarxDiagnosticsClient(
     }
 
     fun start() {
-        sink.onCarStatus(ProbeStatus.CHECKING, "Car.create()")
-        sink.onDiagnosticsStatus(ProbeStatus.CHECKING)
-        sink.onDtcManagerStatus(ProbeStatus.CHECKING)
+        sink.onCarStatus(DiagnosticsStatus.CHECKING, "Car.create()")
+        sink.onDiagnosticsStatus(DiagnosticsStatus.CHECKING)
+        sink.onDtcManagerStatus(DiagnosticsStatus.CHECKING)
 
-        sink.onLog("Probe started on Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+        sink.onLog("Diagnostics started on Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         val metrics = appContext.resources.displayMetrics
         val orientation = appContext.resources.configuration.orientation
         sink.onLog(
@@ -89,7 +89,7 @@ class EcarxDiagnosticsClient(
         }
 
         car = createdCar
-        sink.onCarStatus(ProbeStatus.AVAILABLE, "CREATED")
+        sink.onCarStatus(DiagnosticsStatus.AVAILABLE, "CREATED")
         sink.onLog("Car.create(): OK (${createdCar.javaClass.name})")
 
         if (createdCar is IConnectable) {
@@ -106,27 +106,27 @@ class EcarxDiagnosticsClient(
 
         // GInputBridge also subscribes after Car.create(), without calling connect().
         // This immediate attempt records whether managers are already available.
-        probeDiagnostics("initial attempt")
+        readDiagnostics("initial attempt")
     }
 
-    private fun probeDiagnostics(trigger: String) {
+    private fun readDiagnostics(trigger: String) {
         if (closed) return
-        sink.onLog("Diagnostics probe: $trigger")
-        sink.onDiagnosticsStatus(ProbeStatus.CHECKING, "getDiagnosticManager()")
-        sink.onDtcManagerStatus(ProbeStatus.CHECKING, "getDtcManager()")
+        sink.onLog("Diagnostics read: $trigger")
+        sink.onDiagnosticsStatus(DiagnosticsStatus.CHECKING, "getDiagnosticManager()")
+        sink.onDtcManagerStatus(DiagnosticsStatus.CHECKING, "getDtcManager()")
 
         val diagnostics: IDiagnostics = try {
             car?.getDiagnosticManager()
                 ?: throw IllegalStateException("getDiagnosticManager() returned null")
         } catch (error: Throwable) {
             val detail = "getDiagnosticManager(): ${describe(error)}"
-            sink.onDiagnosticsStatus(ProbeStatus.ERROR, detail)
-            sink.onDtcManagerStatus(ProbeStatus.ERROR, "Diagnostics unavailable")
+            sink.onDiagnosticsStatus(DiagnosticsStatus.ERROR, detail)
+            sink.onDtcManagerStatus(DiagnosticsStatus.ERROR, "Diagnostics unavailable")
             sink.onLog(detail, error)
             return
         }
 
-        sink.onDiagnosticsStatus(ProbeStatus.AVAILABLE, "AVAILABLE")
+        sink.onDiagnosticsStatus(DiagnosticsStatus.AVAILABLE, "AVAILABLE")
         sink.onLog("getDiagnosticManager(): OK (${diagnostics.javaClass.name})")
 
         val manager: IDtcManager = try {
@@ -134,13 +134,13 @@ class EcarxDiagnosticsClient(
                 ?: throw IllegalStateException("getDtcManager() returned null")
         } catch (error: Throwable) {
             val detail = "getDtcManager(): ${describe(error)}"
-            sink.onDtcManagerStatus(ProbeStatus.ERROR, detail)
+            sink.onDtcManagerStatus(DiagnosticsStatus.ERROR, detail)
             sink.onLog(detail, error)
             return
         }
 
         dtcManager = manager
-        sink.onDtcManagerStatus(ProbeStatus.AVAILABLE, "AVAILABLE")
+        sink.onDtcManagerStatus(DiagnosticsStatus.AVAILABLE, "AVAILABLE")
         sink.onLog("getDtcManager(): OK (${manager.javaClass.name})")
 
         try {
@@ -150,7 +150,7 @@ class EcarxDiagnosticsClient(
             sink.onDtcsChanged(readDtcRecords(infos))
         } catch (error: Throwable) {
             val detail = "getDtcInfos(): ${describe(error)}"
-            sink.onDtcManagerStatus(ProbeStatus.ERROR, detail)
+            sink.onDtcManagerStatus(DiagnosticsStatus.ERROR, detail)
             sink.onLog(detail, error)
             return
         }
@@ -189,9 +189,9 @@ class EcarxDiagnosticsClient(
 
     private fun failCar(operation: String, error: Throwable?) {
         val detail = if (error == null) operation else "$operation: ${describe(error)}"
-        sink.onCarStatus(ProbeStatus.ERROR, detail)
-        sink.onDiagnosticsStatus(ProbeStatus.ERROR, "ECARX Car unavailable")
-        sink.onDtcManagerStatus(ProbeStatus.ERROR, "ECARX Car unavailable")
+        sink.onCarStatus(DiagnosticsStatus.ERROR, detail)
+        sink.onDiagnosticsStatus(DiagnosticsStatus.ERROR, "ECARX Car unavailable")
+        sink.onDtcManagerStatus(DiagnosticsStatus.ERROR, "ECARX Car unavailable")
         sink.onLog(detail, error)
     }
 

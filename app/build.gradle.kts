@@ -5,16 +5,16 @@ plugins {
 }
 
 android {
-    namespace = "com.cityray.diagnosticsprobe"
+    namespace = "com.cityray.diagnostics"
     compileSdk = 35
     buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "com.cityray.diagnosticsprobe"
+        applicationId = "com.cityray.diagnostics"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0-probe"
+        versionCode = 3
+        versionName = "0.2.1"
     }
 
     buildTypes {
