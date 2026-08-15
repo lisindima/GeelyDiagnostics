@@ -71,7 +71,7 @@ Car.create(context)
 Актуальный APK также лежит в корне проекта:
 
 ```text
-CityrayDiagnostics-v0.3.0-debug.apk
+CityrayDiagnostics-v0.3.1-debug.apk
 ```
 
 ## Первый тест на ГУ
