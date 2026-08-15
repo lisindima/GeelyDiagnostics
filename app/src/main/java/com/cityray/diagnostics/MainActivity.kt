@@ -63,22 +63,13 @@ class MainActivity : ComponentActivity(), DiagnosticsSink {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val systemDensity = LocalDensity.current
-            val readableDensity = Density(
-                density = systemDensity.density,
-                fontScale = maxOf(systemDensity.fontScale, MIN_HEAD_UNIT_FONT_SCALE),
+            DiagnosticsApp(
+                state = uiState,
+                onRetry = ::startDiagnostics,
+                onClearLog = {
+                    uiState = uiState.copy(logLines = emptyList())
+                },
             )
-            CompositionLocalProvider(LocalDensity provides readableDensity) {
-                DiagnosticsTheme {
-                    DiagnosticsScreen(
-                        state = uiState,
-                        onRetry = ::startDiagnostics,
-                        onClearLog = {
-                            uiState = uiState.copy(logLines = emptyList())
-                        },
-                    )
-                }
-            }
         }
 
         startDiagnostics()
@@ -149,6 +140,28 @@ class MainActivity : ComponentActivity(), DiagnosticsSink {
     companion object {
         private const val MAX_LOG_LINES = 300
         private const val LOG_TAG = "CityrayDiagnostics"
+    }
+}
+
+@Composable
+internal fun DiagnosticsApp(
+    state: DiagnosticsUiState,
+    onRetry: () -> Unit,
+    onClearLog: () -> Unit,
+) {
+    val systemDensity = LocalDensity.current
+    val readableDensity = Density(
+        density = systemDensity.density,
+        fontScale = maxOf(systemDensity.fontScale, MIN_HEAD_UNIT_FONT_SCALE),
+    )
+    CompositionLocalProvider(LocalDensity provides readableDensity) {
+        DiagnosticsTheme {
+            DiagnosticsScreen(
+                state = state,
+                onRetry = onRetry,
+                onClearLog = onClearLog,
+            )
+        }
     }
 }
 

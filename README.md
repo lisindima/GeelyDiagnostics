@@ -61,6 +61,13 @@ Car.create(context)
 .\gradlew.bat :app:assembleDebug
 ```
 
+### Compose Preview экрана ГУ
+
+Откройте в Android Studio файл
+`app/src/debug/java/com/cityray/diagnostics/DiagnosticsPreview.kt` и включите
+режим **Design** или **Split**. Preview использует профиль `1440x1920`,
+`density=1.0`, масштаб текста приложения и пример с двумя DTC в одном ECU.
+
 Актуальный APK также лежит в корне проекта:
 
 ```text
