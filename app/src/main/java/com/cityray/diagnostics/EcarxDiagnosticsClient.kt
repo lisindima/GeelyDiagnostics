@@ -66,10 +66,11 @@ class EcarxDiagnosticsClient(
 
         sink.onLog("Diagnostics started on Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         val metrics = appContext.resources.displayMetrics
-        val orientation = appContext.resources.configuration.orientation
+        val configuration = appContext.resources.configuration
         sink.onLog(
             "Display: ${metrics.widthPixels}x${metrics.heightPixels}px, " +
-                "density=${metrics.density}, orientation=$orientation",
+                "density=${metrics.density}, fontScale=${configuration.fontScale}, " +
+                "orientation=${configuration.orientation}",
         )
         logPermission("com.geely.settings.permission.LDSDK_MESSAGE")
         logPermission("com.geely.settings.permission.QDAS_MESSAGE")

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-apk_path="${1:-$project_dir/CityrayDiagnostics-v0.2.1-debug.apk}"
+apk_path="${1:-$project_dir/CityrayDiagnostics-v0.3.0-debug.apk}"
 package_name="com.cityray.diagnostics"
 activity_name="$package_name/.MainActivity"
 timestamp="$(date +%Y%m%d-%H%M%S)"

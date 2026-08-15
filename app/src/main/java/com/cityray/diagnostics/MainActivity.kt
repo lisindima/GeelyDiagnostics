@@ -31,21 +31,28 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.TextUnit
 import java.io.Closeable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private const val MIN_REASONABLE_EPOCH_MILLIS = 946684800000L // 2000-01-01 UTC
+private const val MAX_REASONABLE_EPOCH_MILLIS = 4102444800000L // 2100-01-01 UTC
+private const val MIN_HEAD_UNIT_FONT_SCALE = 1.5f
 
 class MainActivity : ComponentActivity(), DiagnosticsSink {
 
@@ -56,14 +63,21 @@ class MainActivity : ComponentActivity(), DiagnosticsSink {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            DiagnosticsTheme {
-                DiagnosticsScreen(
-                    state = uiState,
-                    onRetry = ::startDiagnostics,
-                    onClearLog = {
-                        uiState = uiState.copy(logLines = emptyList())
-                    },
-                )
+            val systemDensity = LocalDensity.current
+            val readableDensity = Density(
+                density = systemDensity.density,
+                fontScale = maxOf(systemDensity.fontScale, MIN_HEAD_UNIT_FONT_SCALE),
+            )
+            CompositionLocalProvider(LocalDensity provides readableDensity) {
+                DiagnosticsTheme {
+                    DiagnosticsScreen(
+                        state = uiState,
+                        onRetry = ::startDiagnostics,
+                        onClearLog = {
+                            uiState = uiState.copy(logLines = emptyList())
+                        },
+                    )
+                }
             }
         }
 
@@ -149,6 +163,9 @@ private fun DiagnosticsScreen(
     onRetry: () -> Unit,
     onClearLog: () -> Unit,
 ) {
+    val ecuCount = state.dtcs.map(DtcRecord::ecuType).distinct().size
+    val dtcCodeCount = state.dtcs.count { it.code.isNotBlank() }
+
     Surface(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
@@ -191,7 +208,7 @@ private fun DiagnosticsScreen(
             }
 
             item {
-                SectionTitle("Диагностические блоки: ${state.dtcs.size}")
+                SectionTitle("Блоки: $ecuCount · Коды ошибок: $dtcCodeCount")
             }
 
             if (state.dtcs.isEmpty()) {
@@ -296,6 +313,7 @@ private fun StatusCard(
 
 @Composable
 private fun DtcTable(dtcs: List<DtcRecord>) {
+    val recordsByEcu = dtcs.groupBy(DtcRecord::ecuType).toSortedMap()
     val noCodesReturned = dtcs.all { it.code.isBlank() }
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -304,33 +322,47 @@ private fun DtcTable(dtcs: List<DtcRecord>) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             if (noCodesReturned) {
                 Text(
-                    text = "Получены данные по ${dtcs.size} блокам, но ни одного DTC-кода не передано. Вероятно, активных кодов ошибок нет; точная семантика vendor API не документирована.",
+                    text = "Получены данные по ${recordsByEcu.size} блокам, но ни одного DTC-кода не передано. Вероятно, активных кодов ошибок нет; точная семантика vendor API не документирована.",
                     color = Color.Yellow,
                     fontSize = 15.sp,
                 )
                 Spacer(Modifier.height(12.dp))
             }
 
-            DtcRow("№", "Код ошибки", "ID блока", "ECU type", "Статус*", "Время*", isHeader = true)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-
-            dtcs.forEachIndexed { index, dtc ->
-                DtcRow(
-                    number = (index + 1).toString(),
-                    code = dtc.code.ifBlank { "не передан" },
-                    id = dtc.id.ifBlank { "—" },
-                    ecu = dtc.ecuType.toString(),
-                    status = dtc.status.toString(),
-                    time = dtc.tickTime.toString(),
+            recordsByEcu.entries.forEachIndexed { ecuIndex, (ecuType, records) ->
+                val codeCount = records.count { it.code.isNotBlank() }
+                DtcBlockHeader(ecuType = ecuType, codeCount = codeCount)
+                DtcRecordRow(
+                    code = "Код ошибки",
+                    id = "DTC ID",
+                    status = "Статус*",
+                    time = "Время ГУ*",
+                    isHeader = true,
                 )
-                if (index != dtcs.lastIndex) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                records.forEachIndexed { recordIndex, record ->
+                    DtcRecordRow(
+                        code = record.code.ifBlank { "не передан" },
+                        id = record.id.ifBlank { "—" },
+                        status = record.status.toString(),
+                        time = formatTickTime(record.tickTime),
+                    )
+                    if (recordIndex != records.lastIndex) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+
+                if (ecuIndex != recordsByEcu.size - 1) {
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(4.dp))
                 }
             }
 
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "* Значения показаны без неподтверждённой расшифровки vendor mapping.",
+                text = "* Статус показан raw. Время ГУ преобразовано из tickTime как Unix milliseconds; нестандартные значения останутся raw.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
             )
@@ -339,11 +371,32 @@ private fun DtcTable(dtcs: List<DtcRecord>) {
 }
 
 @Composable
-private fun DtcRow(
-    number: String,
+private fun DtcBlockHeader(ecuType: Int, codeCount: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "ECU type $ecuType",
+            modifier = Modifier.weight(1f),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = if (codeCount == 0) "Коды не переданы" else "Кодов ошибок: $codeCount",
+            color = if (codeCount == 0) Color.Yellow else Color.Red,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun DtcRecordRow(
     code: String,
     id: String,
-    ecu: String,
     status: String,
     time: String,
     isHeader: Boolean = false,
@@ -362,19 +415,25 @@ private fun DtcRow(
             .padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TableCell(number, 0.45f, color, fontWeight, fontSize)
         TableCell(
             code,
-            1.5f,
+            1.45f,
             if (!isHeader && code == "не передан") Color.Yellow else color,
             fontWeight,
             fontSize,
         )
-        TableCell(id, 0.7f, color, fontWeight, fontSize)
-        TableCell(ecu, 0.7f, color, fontWeight, fontSize)
-        TableCell(status, 0.8f, color, fontWeight, fontSize)
-        TableCell(time, 1.6f, color, fontWeight, fontSize)
+        TableCell(id, 0.75f, color, fontWeight, fontSize)
+        TableCell(status, 0.75f, color, fontWeight, fontSize)
+        TableCell(time, 1.55f, color, fontWeight, fontSize)
     }
+}
+
+private fun formatTickTime(tickTime: Long): String {
+    if (tickTime !in MIN_REASONABLE_EPOCH_MILLIS..MAX_REASONABLE_EPOCH_MILLIS) {
+        return "$tickTime (raw)"
+    }
+    return SimpleDateFormat("dd.MM.yyyy HH:mm:ss.SSS", Locale.getDefault())
+        .format(Date(tickTime))
 }
 
 @Composable
