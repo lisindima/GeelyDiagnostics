@@ -328,57 +328,68 @@ private fun StatusCard(
 private fun DtcTable(dtcs: List<DtcRecord>) {
     val recordsByEcu = dtcs.groupBy(DtcRecord::ecuType).toSortedMap()
     val noCodesReturned = dtcs.all { it.code.isBlank() }
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            if (noCodesReturned) {
+        if (noCodesReturned) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
+            ) {
                 Text(
                     text = "Получены данные по ${recordsByEcu.size} блокам, но ни одного DTC-кода не передано. Вероятно, активных кодов ошибок нет; точная семантика vendor API не документирована.",
                     color = Color.Yellow,
                     fontSize = 15.sp,
+                    modifier = Modifier.padding(16.dp),
                 )
-                Spacer(Modifier.height(12.dp))
             }
+        }
 
-            recordsByEcu.entries.forEachIndexed { ecuIndex, (ecuType, records) ->
-                val codeCount = records.count { it.code.isNotBlank() }
-                DtcBlockHeader(ecuType = ecuType, codeCount = codeCount)
-                DtcRecordRow(
-                    code = "Код ошибки",
-                    id = "DTC ID",
-                    status = "Статус*",
-                    time = "Время ГУ*",
-                    isHeader = true,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+        recordsByEcu.forEach { (ecuType, records) ->
+            DtcBlockCard(ecuType = ecuType, records = records)
+        }
 
-                records.forEachIndexed { recordIndex, record ->
-                    DtcRecordRow(
-                        code = record.code.ifBlank { "не передан" },
-                        id = record.id.ifBlank { "—" },
-                        status = record.status.toString(),
-                        time = formatTickTime(record.tickTime),
-                    )
-                    if (recordIndex != records.lastIndex) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    }
-                }
+        Text(
+            text = "* Статус показан raw. Время ГУ преобразовано из tickTime как Unix milliseconds; нестандартные значения останутся raw.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+        )
+    }
+}
 
-                if (ecuIndex != recordsByEcu.size - 1) {
-                    Spacer(Modifier.height(10.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                    Spacer(Modifier.height(4.dp))
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "* Статус показан raw. Время ГУ преобразовано из tickTime как Unix milliseconds; нестандартные значения останутся raw.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
+@Composable
+private fun DtcBlockCard(ecuType: Int, records: List<DtcRecord>) {
+    val codeCount = records.count { it.code.isNotBlank() }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            DtcBlockHeader(ecuType = ecuType, codeCount = codeCount)
+            DtcRecordRow(
+                code = "Код ошибки",
+                id = "DTC ID",
+                status = "Статус*",
+                time = "Время ГУ*",
+                isHeader = true,
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+            records.forEachIndexed { index, record ->
+                DtcRecordRow(
+                    code = record.code.ifBlank { "не передан" },
+                    id = record.id.ifBlank { "—" },
+                    status = record.status.toString(),
+                    time = formatTickTime(record.tickTime),
+                )
+                if (index != records.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
         }
     }
 }
