@@ -78,11 +78,9 @@ Java 17.
 ./gradlew :app:assembleDebug
 ```
 
-Готовый APK:
-
-```text
-GeelyDiagnostics-v0.4.2-debug.apk
-```
+Готовый APK публикуется отдельно от исходников в
+[GitHub Releases](https://github.com/lisindima/GeelyDiagnostics/releases).
+Для версии `v0.4.2` имя файла — `GeelyDiagnostics-v0.4.2-debug.apk`.
 
 SHA-256: `B12383BE20F8C2DF9AFA9307A98D7BC6A1F54CC320A8F2C634415B6A4B57AF5E`.
 
@@ -94,5 +92,7 @@ SHA-256: `B12383BE20F8C2DF9AFA9307A98D7BC6A1F54CC320A8F2C634415B6A4B57AF5E`.
 ./scripts/collect_diagnostics_result.sh
 ```
 
-Скрипт требует ровно одно подключённое и авторизованное ADB-устройство. Результат
-сохраняется в `diagnostics-results/<дата-время>/`.
+Скрипт по умолчанию использует APK из `app/build/outputs/apk/debug/app-debug.apk`
+и требует ровно одно подключённое и авторизованное ADB-устройство. Путь к
+скачанному APK из Releases можно передать первым аргументом. Результат сохраняется
+в `diagnostics-results/<дата-время>/`.

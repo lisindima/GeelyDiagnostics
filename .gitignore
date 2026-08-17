@@ -3,6 +3,7 @@
 /.idea/
 /local.properties
 /**/build/
+*.apk
 *.iml
 .DS_Store
 diagnostics-results/

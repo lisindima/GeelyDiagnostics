@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-apk_path="${1:-$project_dir/GeelyDiagnostics-v0.4.2-debug.apk}"
+apk_path="${1:-$project_dir/app/build/outputs/apk/debug/app-debug.apk}"
 package_name="com.geelydiagnostics.app"
 activity_name="$package_name/.MainActivity"
 timestamp="$(date +%Y%m%d-%H%M%S)"
