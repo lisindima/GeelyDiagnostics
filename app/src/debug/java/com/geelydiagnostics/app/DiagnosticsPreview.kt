@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app
 
+import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 
@@ -54,6 +55,28 @@ private fun FunctionsPreview() = PreviewApp(AppTab.FUNCTIONS)
 )
 @Composable
 private fun LogPreview() = PreviewApp(AppTab.LOG)
+
+@Preview(
+    name = "ГУ · Светлая тема",
+    group = "Темы",
+    device = "spec:width=1440px,height=1920px,dpi=160",
+    locale = "ru",
+    uiMode = Configuration.UI_MODE_NIGHT_NO,
+    showSystemUi = false,
+)
+@Composable
+private fun LightThemePreview() = PreviewApp(AppTab.DIAGNOSTICS)
+
+@Preview(
+    name = "ГУ · Тёмная тема",
+    group = "Темы",
+    device = "spec:width=1440px,height=1920px,dpi=160",
+    locale = "ru",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showSystemUi = false,
+)
+@Composable
+private fun DarkThemePreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
 @Composable
 private fun PreviewApp(tab: AppTab) {
