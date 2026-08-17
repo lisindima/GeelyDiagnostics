@@ -7,4 +7,7 @@
 *.iml
 .DS_Store
 diagnostics-results/
-/references/GInputBridge/
+/CONTEXT_FOR_CODEX.md
+/MAC_SETUP.md
+/docs/
+/references/
