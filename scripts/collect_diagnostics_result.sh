@@ -2,8 +2,8 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-apk_path="${1:-$project_dir/CityrayDiagnostics-v0.3.1-debug.apk}"
-package_name="com.cityray.diagnostics"
+apk_path="${1:-$project_dir/GeelyDiagnostics-v0.4.0-debug.apk}"
+package_name="com.geelydiagnostics.app"
 activity_name="$package_name/.MainActivity"
 timestamp="$(date +%Y%m%d-%H%M%S)"
 result_dir="$project_dir/diagnostics-results/$timestamp"
@@ -38,11 +38,11 @@ adb -s "$serial" shell am start -W -n "$activity_name" >"$result_dir/start.txt"
 
 echo
 echo "Дождитесь завершения проверки на экране ГУ."
-echo "Если нужно, нажмите «Повторить» после полной загрузки системы."
+echo "Если нужно, нажмите «Обновить» после полной загрузки системы."
 read -r -p "Нажмите Enter, чтобы сохранить screenshot и logcat... "
 
 adb -s "$serial" exec-out screencap -p >"$result_dir/screenshot.png"
-adb -s "$serial" logcat -d -v threadtime -s CityrayDiagnostics:I '*:S' >"$result_dir/logcat.txt"
+adb -s "$serial" logcat -d -v threadtime -s GeelyDiagnostics:I '*:S' >"$result_dir/logcat.txt"
 {
     echo "serial=$serial"
     echo "captured_at=$(date '+%Y-%m-%dT%H:%M:%S%z')"

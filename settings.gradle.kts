@@ -14,7 +14,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CityrayDiagnostics"
+rootProject.name = "GeelyDiagnostics"
 include(":app")
 include(":adaptapi")
 include(":ecarx_car")

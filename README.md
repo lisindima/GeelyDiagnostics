@@ -1,103 +1,72 @@
-# Cityray Diagnostics
+# Geely Diagnostics
 
-Read-only диагностика через штатный ECARX AdaptAPI на головном устройстве Geely Cityray / Boyue Cool.
+Read-only приложение на Kotlin и Jetpack Compose для автомобилей Geely, чья
+штатная головная система предоставляет ECARX AdaptAPI.
 
-## Результат первого теста на ГУ
+## Возможности
 
-Доступ к штатному API подтверждён на реальном устройстве с Android 11 / API 30:
+Приложение содержит четыре вкладки:
 
-- `Car.create()` вернул `CarImpl`;
-- `getDiagnosticManager()` и `getDtcManager()` доступны;
-- `getDtcInfos()` вернул 8 записей;
-- `IDtcInfoWatcher` успешно зарегистрирован;
-  но доступу к диагностике это не помешало.
+- **Диагностика** — DTC, сгруппированные по ECU; несколько ошибок одного блока
+  показываются отдельными строками;
+- **Сенсоры** — динамический список поддерживаемых `ISensor` и live raw-значения;
+- **Автомобиль** — поддерживаемые сведения `ICarInfo` о типе автомобиля,
+  комплектации и установленном оборудовании;
+- **Функции** — функции `IVehicle`, поддержку которых подтвердила конкретная
+  машина, их текущие raw-значения, зоны и допустимые значения.
 
-Во всех восьми записях DTC-код пуст, ID/ECU имеют значения 1–8 и tick time
-совпадает. Вероятнее всего, это восемь диагностических блоков без активных кодов
-ошибок, а не восемь ошибок. Точная семантика не утверждается без vendor mapping.
+Каталоги строятся по публичным константам той версии AdaptAPI, которая реально
+установлена на ГУ. Перед чтением каждого элемента вызывается соответствующий
+`is…Supported`. Поэтому наличие константы в API не принимается за доказательство
+поддержки конкретным автомобилем.
 
-Интерфейс группирует записи по `ecuType`, поэтому один блок может показать
-несколько DTC-кодов. Количество блоков и количество непустых кодов считаются
-отдельно. `tickTime`, похожий на Unix milliseconds, отображается как локальное
-время ГУ с миллисекундами; нестандартное значение остаётся raw.
+## Гарантия Read Only
 
-На проверенной ГУ Android сообщает окно `1440x1920 px` при `density=1.0`.
-Приложение использует минимальный `fontScale=1.5`, чтобы текст читался с места
-водителя; при большем системном масштабе сохраняется системное значение.
+ECARX-клиент приложения использует только:
 
-## Реализованный эксперимент
+- `Car.create()` и getters менеджеров;
+- `getDtcInfos()` и DTC watcher;
+- `isSensorSupported()`, sensor getters и sensor listener;
+- `isCarInfoSupported()` и `getCarInfo*()`;
+- `isFunctionSupported()`, `getFunctionValue()`,
+  `getSupportedFunctionValue()` и `getSupportedFunctionZones()`.
 
-Приложение выполняет только следующую цепочку:
+В app-коде отсутствуют `setFunctionValue`, `setCustomizeFunctionValue`,
+`setMonitorEnable`, DTC clearing, `IShCommand`, CAN/shell-команды и
+низкоуровневые записи vehicle properties. Кнопка **«Очистить лог»** удаляет
+только текст журнала из UI.
+
+## Compose Preview
+
+Откройте
+`app/src/debug/java/com/geelydiagnostics/app/DiagnosticsPreview.kt` и включите
+Design или Split. В файле есть четыре preview для ГУ `1440×1920`, по одному на
+каждую вкладку.
+
+## Сборка
+
+Проект использует `minSdk 26`, `compileSdk/targetSdk 35`, Build Tools 36.0.0 и
+Java 17.
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+Готовый APK:
 
 ```text
-Car.create(context)
-  -> ICar.getDiagnosticManager()
-  -> IDiagnostics.getDtcManager()
-  -> IDtcManager.getDtcInfos()
+GeelyDiagnostics-v0.4.0-debug.apk
 ```
 
-Также оно регистрирует только два наблюдателя:
+SHA-256: `76AFB1864D1CB50B727C791C1B6B63AFA117287451E4C5B3463382B3F81C7092`.
 
-- `IConnectable.IConnectWatcher`, если возвращённый `ICar` реализует `IConnectable`;
-- `IDtcManager.IDtcInfoWatcher` для обновления списка DTC.
+Пакет: `com.geelydiagnostics.app`. Logcat tag: `GeelyDiagnostics`.
 
-Запись vehicle properties, очистка DTC, CAN-команды, диагностические shell-команды, `IShCommand`, `IDiagnosticMonitor.setMonitorEnable()` и низкоуровневый `ecarx.car` в первом APK не используются.
-
-Кнопка **«Очистить лог»** очищает только текст на экране и не взаимодействует с автомобилем.
-
-## Открытие в Android Studio
-
-Откройте корневую папку проекта. Он использует:
-
-- Kotlin + Jetpack Compose;
-- `minSdk 26` — совместимо с Android 9 (API 28);
-- `compileSdk/targetSdk 35`, Build Tools 36.0.0;
-- JDK из состава Android Studio (Embedded JDK/JBR); Windows-путь из переносимой копии удалён.
-
-
-Собрать debug APK:
-
-```powershell
-.\gradlew.bat :app:assembleDebug
-```
-
-### Compose Preview экрана ГУ
-
-Откройте в Android Studio файл
-`app/src/debug/java/com/cityray/diagnostics/DiagnosticsPreview.kt` и включите
-режим **Design** или **Split**. Preview использует профиль `1440x1920`,
-`density=1.0`, масштаб текста приложения и пример с двумя DTC в одном ECU.
-
-Актуальный APK также лежит в корне проекта:
-
-```text
-CityrayDiagnostics-v0.3.1-debug.apk
-```
-
-## Первый тест на ГУ
-
-1. Поставить автомобиль на парковку и включить ГУ.
-2. Установить APK обычным способом или через `adb install -r`.
-3. Запустить **Cityray Diagnostics**.
-4. Дождаться `IConnectable.onConnected()` либо нажать **«Повторить»** после полной загрузки ГУ.
-5. Сохранить скриншот экрана и logcat с тегом `CityrayDiagnostics`.
-
-На Mac установку и сбор этих двух файлов можно выполнить готовым скриптом:
+Для установки и сбора screenshot/logcat можно использовать:
 
 ```bash
 ./scripts/collect_diagnostics_result.sh
 ```
 
 Скрипт требует ровно одно подключённое и авторизованное ADB-устройство. Результат
-будет сохранён в `diagnostics-results/<дата-время>/`. При необходимости путь к другому
-APK можно передать первым аргументом.
-
-Интерпретация результата:
-
-- три статуса `AVAILABLE`, `DTC count: 0` — API доступен, список успешно прочитан и пуст;
-- `SecurityException` — vendor service проверяет permission/UID/signature;
-- `ClassNotFoundException` или `NoClassDefFoundError` — ECARX API не виден classloader обычного APK;
-- `Car.create() returned null` — класс найден, но объект не создан; стоит повторить после полной загрузки ГУ;
-- `getDiagnosticManager() returned null` — Car доступен, но diagnostics manager отсутствует в данной реализации/конфигурации;
-
-Значения `ECU type`, `status` и `tick time` намеренно показываются как raw: их семантика не была придумана без подтверждённого vendor mapping.
+сохраняется в `diagnostics-results/<дата-время>/`.

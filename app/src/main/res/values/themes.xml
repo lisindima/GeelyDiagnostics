@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.CityrayDiagnostics" parent="android:style/Theme.Material.NoActionBar">
+    <style name="Theme.GeelyDiagnostics" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">#101418</item>
