@@ -45,6 +45,16 @@ private fun VehiclePreview() = PreviewApp(AppTab.VEHICLE)
 @Composable
 private fun FunctionsPreview() = PreviewApp(AppTab.FUNCTIONS)
 
+@Preview(
+    name = "ГУ · Лог",
+    group = "1440×1920",
+    device = "spec:width=1440px,height=1920px,dpi=160",
+    locale = "ru",
+    showSystemUi = false,
+)
+@Composable
+private fun LogPreview() = PreviewApp(AppTab.LOG)
+
 @Composable
 private fun PreviewApp(tab: AppTab) {
     GeelyDiagnosticsApp(
