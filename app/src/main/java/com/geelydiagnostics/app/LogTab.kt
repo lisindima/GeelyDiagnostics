@@ -39,7 +39,7 @@ internal object LogTab {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Журнал ECARX · строк: ${lines.size}",
+                        text = "Журнал ECARX + VHAL · строк: ${lines.size}",
                         modifier = Modifier.weight(1f),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
