@@ -280,6 +280,8 @@ class EcarxReadOnlyClient(
                 value = value,
                 valueKind = if (spec.continuous) "float" else "event/int",
                 support = support,
+                updatedAtMillis = System.currentTimeMillis(),
+                expectedUpdateIntervalMillis = if (spec.continuous) STALE_AFTER_MILLIS else null,
             )
         } catch (error: Throwable) {
             SensorRecord(
@@ -290,6 +292,7 @@ class EcarxReadOnlyClient(
                 valueKind = if (spec.continuous) "float" else "event/int",
                 support = ApiSupportStatus.ERROR,
                 error = describe(error),
+                updatedAtMillis = System.currentTimeMillis(),
             )
         }
     }
@@ -333,6 +336,7 @@ class EcarxReadOnlyClient(
                     title = spec.title,
                     value = formatCarInfoValue(spec, rawValue),
                     support = support,
+                    updatedAtMillis = System.currentTimeMillis(),
                 )
             } catch (error: Throwable) {
                 VehicleInfoRecord(
@@ -342,6 +346,7 @@ class EcarxReadOnlyClient(
                     value = ApiValue.unavailable,
                     support = ApiSupportStatus.ERROR,
                     error = describe(error),
+                    updatedAtMillis = System.currentTimeMillis(),
                 )
             }
         }
@@ -401,6 +406,7 @@ class EcarxReadOnlyClient(
                     zones = zones,
                     support = support,
                     error = readErrors.joinToString("; "),
+                    updatedAtMillis = System.currentTimeMillis(),
                 )
             } catch (error: Throwable) {
                 VehicleFunctionRecord(
@@ -409,6 +415,7 @@ class EcarxReadOnlyClient(
                     title = spec.title,
                     support = ApiSupportStatus.ERROR,
                     error = describe(error),
+                    updatedAtMillis = System.currentTimeMillis(),
                 )
             }
         }
@@ -590,6 +597,7 @@ class EcarxReadOnlyClient(
         private const val INFO_TYPE_MASK = 0xF00000
         private const val SENSOR_TYPE_FLOAT = 0x100000
         private const val MIN_FUNCTION_ID = 0x20000000
+        private const val STALE_AFTER_MILLIS = 15_000L
 
         private val CONFIG_VALUES = mapOf(
             ICarInfo.CONFIG_INFO_VALUE_NOT_CONFIG to "Не установлено",

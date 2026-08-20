@@ -69,13 +69,18 @@ internal class VhalReadOnlyClient(
             val autoCount = callbackCount + pollingCount
             val autoMode = if (pollingCount > 0) "polling" else "callback"
             val mappedCount = records.count { it.sourceProfile != null }
+            val mappingDetail = if (profile == VhalProfile.RAW) {
+                "RAW без расшифровки"
+            } else {
+                "$mappedCount расшифровано ${profile.key}"
+            }
             sink.onVhalStatus(
                 ReadStatus.AVAILABLE,
-                "${records.size} значений · $mappedCount расшифровано ${profile.key} · auto: $autoCount ($autoMode)",
+                "${records.size} значений · $mappingDetail · auto: $autoCount ($autoMode)",
             )
             sink.onLog(
                 "VHAL: ${records.size} values from ${configs.size} configs; " +
-                    "$mappedCount mapped by ${profile.key}; $autoCount auto updates via $autoMode",
+                    "$mappingDetail; $autoCount auto updates via $autoMode",
             )
         } catch (error: Throwable) {
             if (closed) return
@@ -135,12 +140,26 @@ internal class VhalReadOnlyClient(
             spec,
             null,
             "Свойство присутствует в VHAL, но не помечено доступным для чтения",
+            config.expectedUpdateIntervalMillis(),
         )
     } else try {
         val returned = getProperty(vehicleClass, service, config.propertyId, areaId)
-        recordFor(config.propertyId, areaId, spec, extractRaw(returned, spec?.valueType))
+        recordFor(
+            config.propertyId,
+            areaId,
+            spec,
+            extractRaw(returned, spec?.valueType),
+            expectedUpdateIntervalMillis = config.expectedUpdateIntervalMillis(),
+        )
     } catch (error: Throwable) {
-        recordFor(config.propertyId, areaId, spec, null, describe(error))
+        recordFor(
+            config.propertyId,
+            areaId,
+            spec,
+            null,
+            describe(error),
+            config.expectedUpdateIntervalMillis(),
+        )
     }
 
     private fun getProperty(vehicleClass: Class<*>, service: Any, propertyId: Int, areaId: Int): Any {
@@ -173,6 +192,7 @@ internal class VhalReadOnlyClient(
         spec: VhalSignalSpec?,
         raw: VhalRawValue?,
         error: String = "",
+        expectedUpdateIntervalMillis: Long? = null,
     ) = SensorRecord(
         id = propertyId,
         areaId = areaId,
@@ -189,6 +209,8 @@ internal class VhalReadOnlyClient(
         source = VehicleDataSource.VHAL,
         sourceProfile = spec?.profile?.key,
         profilePropertyId = spec?.propertyId,
+        updatedAtMillis = System.currentTimeMillis(),
+        expectedUpdateIntervalMillis = expectedUpdateIntervalMillis,
     )
 
     /** CarPropertyManager owns the Binder callback, keeping this reflection-only and read-only. */
@@ -513,6 +535,9 @@ internal class VhalReadOnlyClient(
 
         fun isReadableAndDynamic(): Boolean = isReadable() && changeMode != CHANGE_MODE_STATIC
 
+        fun expectedUpdateIntervalMillis(): Long? =
+            if (changeMode == CHANGE_MODE_CONTINUOUS) STALE_AFTER_MILLIS else null
+
         fun subscriptionRate(): Float {
             if (changeMode != CHANGE_MODE_CONTINUOUS) return SENSOR_RATE_ONCHANGE
             val lower = max(minSampleRate, SENSOR_RATE_ONCHANGE)
@@ -543,6 +568,7 @@ internal class VhalReadOnlyClient(
         private const val SENSOR_RATE_ONCHANGE = 0f
         private const val LIVE_RATE_HZ = 5f
         private const val POLL_INTERVAL_SECONDS = 2L
+        private const val STALE_AFTER_MILLIS = 15_000L
         private const val MAX_LOG_VALUE_LENGTH = 240
         private const val CALLBACK_TIMEOUT_SECONDS = 2L
 

@@ -31,44 +31,49 @@ import java.util.Locale
 
 internal object SensorsTab {
 
-    private enum class SourceFilter(val title: String) {
-        ALL("Все"),
-        ECARX("ECARX"),
-        VHAL("VHAL"),
-    }
-
     @Composable
     fun Content(
         state: AppUiState,
         onVhalProfileSelected: (VhalProfile) -> Unit,
+        onFavoriteToggle: (String) -> Unit,
     ) {
         var expandedSensorKey by rememberSaveable { mutableStateOf<String?>(null) }
-        var selectedFilterIndex by rememberSaveable { mutableIntStateOf(SourceFilter.ALL.ordinal) }
-        val selectedFilter = SourceFilter.entries[selectedFilterIndex]
+        var query by rememberSaveable { mutableStateOf("") }
+        var selectedSourceIndex by rememberSaveable { mutableIntStateOf(SensorSourceFilter.ALL.ordinal) }
+        var selectedValueFilterIndex by rememberSaveable { mutableIntStateOf(SensorValueFilter.ALL.ordinal) }
+        val selectedSource = SensorSourceFilter.entries[selectedSourceIndex]
+        val selectedValueFilter = SensorValueFilter.entries[selectedValueFilterIndex]
+        val nowMillis by rememberCurrentTimeMillis()
         val supported = state.sensors.filter { it.support.isVisibleAsSupported }
-        val groups = when (selectedFilter) {
-            SourceFilter.ALL -> listOf(
-                "ECARX" to supported.filter { it.source == VehicleDataSource.ECARX },
+        val filtered = filterSensors(
+            records = state.sensors,
+            sourceFilter = selectedSource,
+            valueFilter = selectedValueFilter,
+            query = query,
+            favoriteKeys = state.favoriteKeys,
+        )
+        val groups = when (selectedSource) {
+            SensorSourceFilter.ALL -> listOf(
+                "ECARX" to filtered.filter { it.source == VehicleDataSource.ECARX },
                 "VHAL · все свойства · декодер ${state.selectedVhalProfile.key}" to
-                    supported.filter { it.source == VehicleDataSource.VHAL },
+                    filtered.filter { it.source == VehicleDataSource.VHAL },
             )
-            SourceFilter.ECARX -> listOf(
-                "ECARX" to supported.filter { it.source == VehicleDataSource.ECARX },
+            SensorSourceFilter.ECARX -> listOf(
+                "ECARX" to filtered,
             )
-            SourceFilter.VHAL -> listOf(
+            SensorSourceFilter.VHAL -> listOf(
                 "VHAL · все свойства · декодер ${state.selectedVhalProfile.key}" to
-                    supported.filter { it.source == VehicleDataSource.VHAL },
+                    filtered,
             )
-        }.map { (title, values) -> title to values.sortedBy(SensorRecord::title) }
-            .filter { (_, values) -> values.isNotEmpty() }
+        }.filter { (_, values) -> values.isNotEmpty() }
 
         Column(Modifier.fillMaxSize()) {
             ProfileSelector(state.selectedVhalProfile, onVhalProfileSelected)
-            PrimaryTabRow(selectedTabIndex = selectedFilterIndex) {
-                SourceFilter.entries.forEachIndexed { index, filter ->
+            PrimaryTabRow(selectedTabIndex = selectedSourceIndex) {
+                SensorSourceFilter.entries.forEachIndexed { index, filter ->
                     Tab(
-                        selected = selectedFilterIndex == index,
-                        onClick = { selectedFilterIndex = index },
+                        selected = selectedSourceIndex == index,
+                        onClick = { selectedSourceIndex = index },
                         text = {
                             Text(filter.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         },
@@ -80,6 +85,13 @@ internal object SensorsTab {
                 supportedCount = supported.size,
                 displayedCount = groups.sumOf { (_, sensors) -> sensors.size },
                 groups = groups,
+                query = query,
+                onQueryChange = { query = it },
+                selectedValueFilterIndex = selectedValueFilterIndex,
+                onValueFilterSelected = { selectedValueFilterIndex = it },
+                favoriteKeys = state.favoriteKeys,
+                nowMillis = nowMillis,
+                onFavoriteToggle = onFavoriteToggle,
                 onSensorSelected = { expandedSensorKey = it.selectionKey },
             )
         }
@@ -91,9 +103,11 @@ internal object SensorsTab {
                 value = sensor.value,
                 sourceLabel = sensor.sourceLabel,
                 modeLabel = "АВТООБНОВЛЕНИЕ",
+                isFavorite = sensor.favoriteKey in state.favoriteKeys,
+                onFavoriteToggle = { onFavoriteToggle(sensor.favoriteKey) },
                 onDismiss = { expandedSensorKey = null },
             ) {
-                SensorDetails(sensor)
+                SensorDetails(sensor, nowMillis)
             }
         }
     }
@@ -122,7 +136,11 @@ internal object SensorsTab {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Используется только для расшифровки; raw-свойства не скрываются",
+                    text = if (selected == VhalProfile.RAW) {
+                        "Без расшифровки: все свойства показаны как RAW"
+                    } else {
+                        "Используется только для расшифровки; raw-свойства не скрываются"
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
@@ -152,6 +170,13 @@ internal object SensorsTab {
         supportedCount: Int,
         displayedCount: Int,
         groups: List<Pair<String, List<SensorRecord>>>,
+        query: String,
+        onQueryChange: (String) -> Unit,
+        selectedValueFilterIndex: Int,
+        onValueFilterSelected: (Int) -> Unit,
+        favoriteKeys: Set<String>,
+        nowMillis: Long,
+        onFavoriteToggle: (String) -> Unit,
         onSensorSelected: (SensorRecord) -> Unit,
     ) {
         val combinedStatus = combineReadStatus(state.sensorStatus, state.vhalStatus)
@@ -175,19 +200,39 @@ internal object SensorsTab {
                 )
             }
             item {
+                CatalogSearchField(
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    placeholder = "Название, API name, ID или значение",
+                )
+            }
+            item {
+                CatalogFilterRow(
+                    labels = SensorValueFilter.entries.map(SensorValueFilter::title),
+                    selectedIndex = selectedValueFilterIndex,
+                    onSelected = onValueFilterSelected,
+                )
+            }
+            item {
                 SectionTitle(
                     "Показано: $displayedCount · Поддерживается: $supportedCount · Проверено: ${state.sensors.size}",
                 )
             }
             if (groups.isEmpty()) {
-                item { EmptyMessage("Поддерживаемые сенсоры пока не найдены.") }
+                item { EmptyMessage("По выбранному фильтру значения не найдены.") }
             } else {
                 groups.forEach { (groupTitle, sensors) ->
                     item { SectionTitle(groupTitle) }
                     sensors.chunked(2).forEach { row ->
                         item {
                             TwoColumnRow(row) { sensor ->
-                                SensorCard(sensor, onClick = { onSensorSelected(sensor) })
+                                SensorCard(
+                                    sensor = sensor,
+                                    nowMillis = nowMillis,
+                                    isFavorite = sensor.favoriteKey in favoriteKeys,
+                                    onFavoriteToggle = { onFavoriteToggle(sensor.favoriteKey) },
+                                    onClick = { onSensorSelected(sensor) },
+                                )
                             }
                         }
                     }
@@ -197,22 +242,36 @@ internal object SensorsTab {
     }
 
     @Composable
-    private fun SensorCard(sensor: SensorRecord, onClick: () -> Unit) {
+    private fun SensorCard(
+        sensor: SensorRecord,
+        nowMillis: Long,
+        isFavorite: Boolean,
+        onFavoriteToggle: () -> Unit,
+        onClick: () -> Unit,
+    ) {
         DataCard(
             title = sensor.title,
             apiName = sensor.apiName,
             id = sensor.id,
             value = sensor.value,
             sourceLabel = sensor.sourceLabel,
+            isFavorite = isFavorite,
+            onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            SensorDetails(sensor)
+            SensorDetails(sensor, nowMillis)
         }
     }
 
     @Composable
-    private fun SensorDetails(sensor: SensorRecord) {
+    private fun SensorDetails(sensor: SensorRecord, nowMillis: Long) {
         ValueLine("Тип", sensor.valueKind)
+        ValueLine(
+            "Обновлено",
+            formatUpdateTime(sensor.updatedAtMillis, nowMillis) +
+                if (sensor.isStale(nowMillis)) " · УСТАРЕЛО" else "",
+        )
+        if (sensor.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
         if (sensor.source == VehicleDataSource.VHAL) {
             ValueLine(
                 "Расшифровка",

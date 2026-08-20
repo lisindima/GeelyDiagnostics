@@ -11,6 +11,7 @@ enum class VhalProfile(
     val key: String,
     val vehicle: String,
 ) {
+    RAW("RAW", "Без профиля · только исходные значения"),
     G426("G426", "Boyue Cool / Cityray"),
     G636("G636", "Boyue L, экспорт"),
     FX11("FX11", "Boyue L"),
@@ -64,7 +65,9 @@ internal sealed interface VhalTransformStep {
 internal object VhalProfileRegistry {
     private val cache = mutableMapOf<VhalProfile, List<VhalSignalSpec>>()
 
-    fun signals(profile: VhalProfile): List<VhalSignalSpec> = synchronized(cache) {
+    fun signals(profile: VhalProfile): List<VhalSignalSpec> = if (profile == VhalProfile.RAW) {
+        emptyList()
+    } else synchronized(cache) {
         cache.getOrPut(profile) { parseProfile(profile) }
     }
 

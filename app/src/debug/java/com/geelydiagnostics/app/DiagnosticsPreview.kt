@@ -53,9 +53,12 @@ private fun FullscreenSensorPreview() {
                 value = ApiValue(display = "41.7 л", raw = "41700"),
                 sourceLabel = "VHAL · маппинг G426",
                 modeLabel = "АВТООБНОВЛЕНИЕ",
+                isFavorite = true,
+                onFavoriteToggle = {},
                 onDismiss = {},
             ) {
                 ValueLine("Тип", "int")
+                ValueLine("Обновлено", "17:26:16 · только что")
                 ValueLine("Расшифровка", "профиль G426")
                 ValueLine("VHAL ID", "0x2170901E")
                 ValueLine("Поле профиля", "10012")
@@ -121,7 +124,9 @@ private fun PreviewApp(tab: AppTab) {
     GeelyDiagnosticsApp(
         state = previewState(),
         onRefresh = {},
+        onExport = {},
         onVhalProfileSelected = {},
+        onFavoriteToggle = {},
         onClearLog = {},
         initialTab = tab,
     )
@@ -142,6 +147,7 @@ private fun previewState() = AppUiState(
     carInfoDetail = "18 из 34",
     functionStatus = ReadStatus.AVAILABLE,
     functionDetail = "37 из 272",
+    selectedVhalProfile = VhalProfile.G426,
     dtcs = listOf(
         sampleDtc(ecuType = 1, id = "1-1", code = "P0016", status = 1),
         sampleDtc(ecuType = 1, id = "1-2", code = "P0300", status = 1),
@@ -196,6 +202,8 @@ private fun previewState() = AppUiState(
         "17:26:14.512  VHAL initial id=0x2170901E mapping=G426 display=41.7 л raw=41700",
         "17:26:16.034  VHAL live id=0x21400400 mapping=G426 display=D raw=3",
     ),
+    favoriteKeys = setOf("sensor:ECARX:1048832:0", "sensor:VHAL:561025054:0"),
+    scanStartedAtMillis = System.currentTimeMillis(),
 )
 
 private fun sampleDtc(
@@ -217,10 +225,19 @@ private fun sensor(id: Int, apiName: String, title: String, value: String, kind:
         },
         kind,
         ApiSupportStatus.ACTIVE,
+        updatedAtMillis = System.currentTimeMillis(),
+        expectedUpdateIntervalMillis = if (kind == "float") 15_000L else null,
     )
 
 private fun info(id: Int, apiName: String, title: String, value: String, raw: String = value) =
-    VehicleInfoRecord(id, apiName, title, ApiValue(value, raw), ApiSupportStatus.ACTIVE)
+    VehicleInfoRecord(
+        id,
+        apiName,
+        title,
+        ApiValue(value, raw),
+        ApiSupportStatus.ACTIVE,
+        updatedAtMillis = System.currentTimeMillis(),
+    )
 
 private fun vhalSensor(
     id: Int,
@@ -240,6 +257,8 @@ private fun vhalSensor(
     source = VehicleDataSource.VHAL,
     sourceProfile = VhalProfile.G426.key,
     profilePropertyId = propertyId,
+    updatedAtMillis = System.currentTimeMillis(),
+    expectedUpdateIntervalMillis = 15_000L,
 )
 
 private fun rawVhalSensor(id: Int, raw: String, kind: String) = SensorRecord(
@@ -250,6 +269,7 @@ private fun rawVhalSensor(id: Int, raw: String, kind: String) = SensorRecord(
     valueKind = kind,
     support = ApiSupportStatus.ACTIVE,
     source = VehicleDataSource.VHAL,
+    updatedAtMillis = System.currentTimeMillis(),
 )
 
 private fun function(
@@ -269,4 +289,5 @@ private fun function(
     ),
     supportedValues = supportedValues,
     support = ApiSupportStatus.ACTIVE,
+    updatedAtMillis = System.currentTimeMillis(),
 )

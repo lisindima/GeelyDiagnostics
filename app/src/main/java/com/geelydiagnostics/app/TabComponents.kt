@@ -12,16 +12,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,8 +43,10 @@ internal fun <T> CatalogScreen(
     subtitle: String,
     totalCount: Int,
     supportedCount: Int,
+    displayedCount: Int,
     emptyText: String,
     rows: List<List<T>>,
+    controls: @Composable () -> Unit,
     rowContent: @Composable (List<T>) -> Unit,
 ) {
     LazyColumn(
@@ -54,7 +63,12 @@ internal fun <T> CatalogScreen(
                 detail = detail,
             )
         }
-        item { SectionTitle("Поддерживается: $supportedCount · Проверено: $totalCount") }
+        item { controls() }
+        item {
+            SectionTitle(
+                "Показано: $displayedCount · Поддерживается: $supportedCount · Проверено: $totalCount",
+            )
+        }
         if (rows.isEmpty()) {
             item { EmptyMessage(emptyText) }
         } else {
@@ -84,6 +98,8 @@ internal fun DataCard(
     id: Int,
     value: ApiValue,
     sourceLabel: String,
+    isFavorite: Boolean,
+    onFavoriteToggle: () -> Unit,
     onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
@@ -103,13 +119,31 @@ internal fun DataCard(
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                Text(
-                    text = sourceLabel,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = sourceLabel,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    IconButton(
+                        onClick = onFavoriteToggle,
+                        modifier = Modifier.semantics {
+                            contentDescription = if (isFavorite) {
+                                "Удалить из избранного"
+                            } else {
+                                "Добавить в избранное"
+                            }
+                        },
+                    ) {
+                        Text(
+                            text = if (isFavorite) "★" else "☆",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 24.sp,
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(8.dp))
             SelectionContainer {
@@ -143,6 +177,39 @@ internal fun DataCard(
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun CatalogSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        label = { Text("Поиск") },
+        placeholder = { Text(placeholder) },
+    )
+}
+
+@Composable
+internal fun CatalogFilterRow(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelected: (Int) -> Unit,
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        itemsIndexed(labels) { index, label ->
+            FilterChip(
+                selected = selectedIndex == index,
+                onClick = { onSelected(index) },
+                label = { Text(label) },
             )
         }
     }

@@ -44,7 +44,9 @@ internal enum class AppTab(val title: String) {
 internal fun GeelyDiagnosticsApp(
     state: AppUiState,
     onRefresh: () -> Unit,
+    onExport: () -> Unit,
     onVhalProfileSelected: (VhalProfile) -> Unit,
+    onFavoriteToggle: (String) -> Unit,
     onClearLog: () -> Unit,
     initialTab: AppTab = AppTab.DIAGNOSTICS,
 ) {
@@ -63,7 +65,7 @@ internal fun GeelyDiagnosticsApp(
                         .fillMaxSize()
                         .padding(horizontal = 24.dp),
                 ) {
-                    AppHeader(onRefresh = onRefresh)
+                    AppHeader(onRefresh = onRefresh, onExport = onExport)
                     PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
                         AppTab.entries.forEachIndexed { index, tab ->
                             Tab(
@@ -81,9 +83,13 @@ internal fun GeelyDiagnosticsApp(
                     }
                     when (AppTab.entries[selectedTabIndex]) {
                         AppTab.DIAGNOSTICS -> DiagnosticsTab.Content(state)
-                        AppTab.SENSORS -> SensorsTab.Content(state, onVhalProfileSelected)
-                        AppTab.VEHICLE -> VehicleTab.Content(state)
-                        AppTab.FUNCTIONS -> FunctionsTab.Content(state)
+                        AppTab.SENSORS -> SensorsTab.Content(
+                            state,
+                            onVhalProfileSelected,
+                            onFavoriteToggle,
+                        )
+                        AppTab.VEHICLE -> VehicleTab.Content(state, onFavoriteToggle)
+                        AppTab.FUNCTIONS -> FunctionsTab.Content(state, onFavoriteToggle)
                         AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
                     }
                 }
@@ -93,7 +99,7 @@ internal fun GeelyDiagnosticsApp(
 }
 
 @Composable
-private fun AppHeader(onRefresh: () -> Unit) {
+private fun AppHeader(onRefresh: () -> Unit, onExport: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -111,6 +117,10 @@ private fun AppHeader(onRefresh: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 16.sp,
             )
+        }
+        Spacer(Modifier.width(10.dp))
+        Button(onClick = onExport) {
+            Text("Экспорт", fontSize = 17.sp)
         }
         Spacer(Modifier.width(10.dp))
         Button(onClick = onRefresh) {

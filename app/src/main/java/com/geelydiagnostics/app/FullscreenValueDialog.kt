@@ -14,12 +14,15 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +40,8 @@ internal fun FullscreenValueDialog(
     value: ApiValue,
     sourceLabel: String,
     modeLabel: String,
+    isFavorite: Boolean = false,
+    onFavoriteToggle: () -> Unit = {},
     onDismiss: () -> Unit,
     details: @Composable () -> Unit,
 ) {
@@ -55,6 +60,8 @@ internal fun FullscreenValueDialog(
             value = value,
             sourceLabel = sourceLabel,
             modeLabel = modeLabel,
+            isFavorite = isFavorite,
+            onFavoriteToggle = onFavoriteToggle,
             onDismiss = onDismiss,
             details = details,
         )
@@ -70,6 +77,8 @@ internal fun FullscreenValueScreen(
     value: ApiValue,
     sourceLabel: String,
     modeLabel: String,
+    isFavorite: Boolean = false,
+    onFavoriteToggle: () -> Unit = {},
     onDismiss: () -> Unit,
     details: @Composable () -> Unit,
 ) {
@@ -104,6 +113,23 @@ internal fun FullscreenValueScreen(
                             )
                         }
                         Spacer(Modifier.width(20.dp))
+                        IconButton(
+                            onClick = onFavoriteToggle,
+                            modifier = Modifier.semantics {
+                                contentDescription = if (isFavorite) {
+                                    "Удалить из избранного"
+                                } else {
+                                    "Добавить в избранное"
+                                }
+                            },
+                        ) {
+                            Text(
+                                text = if (isFavorite) "★" else "☆",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 30.sp,
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
                         Button(onClick = onDismiss) {
                             Text("Закрыть", fontSize = 19.sp)
                         }

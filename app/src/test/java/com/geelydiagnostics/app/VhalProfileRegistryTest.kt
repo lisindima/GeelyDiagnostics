@@ -8,6 +8,12 @@ import org.junit.Test
 class VhalProfileRegistryTest {
 
     @Test
+    fun rawProfileNeverAppliesAMapping() {
+        assertTrue(VhalProfileRegistry.signals(VhalProfile.RAW).isEmpty())
+        assertEquals(VhalProfile.RAW, AppUiState().selectedVhalProfile)
+    }
+
+    @Test
     fun everyBundledProfileCanBeParsed() {
         val expectedCounts = mapOf(
             VhalProfile.FS11_A2 to 69,

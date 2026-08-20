@@ -50,6 +50,9 @@ data class SensorRecord(
     val sourceProfile: String? = null,
     val profilePropertyId: Int? = null,
     val areaId: Int = 0,
+    val updatedAtMillis: Long? = null,
+    val expectedUpdateIntervalMillis: Long? = null,
+    val changedSinceScan: Boolean = false,
 )
 
 data class VehicleInfoRecord(
@@ -60,6 +63,7 @@ data class VehicleInfoRecord(
     val support: ApiSupportStatus,
     val error: String = "",
     val source: VehicleDataSource = VehicleDataSource.ECARX,
+    val updatedAtMillis: Long? = null,
 )
 
 data class VehicleFunctionRecord(
@@ -72,6 +76,7 @@ data class VehicleFunctionRecord(
     val support: ApiSupportStatus,
     val error: String = "",
     val source: VehicleDataSource = VehicleDataSource.ECARX,
+    val updatedAtMillis: Long? = null,
 )
 
 data class AppUiState(
@@ -85,7 +90,7 @@ data class AppUiState(
     val sensorDetail: String = "",
     val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val vhalDetail: String = "",
-    val selectedVhalProfile: VhalProfile = VhalProfile.G426,
+    val selectedVhalProfile: VhalProfile = VhalProfile.RAW,
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carInfoDetail: String = "",
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
@@ -95,7 +100,18 @@ data class AppUiState(
     val vehicleInfo: List<VehicleInfoRecord> = emptyList(),
     val functions: List<VehicleFunctionRecord> = emptyList(),
     val logLines: List<String> = emptyList(),
+    val favoriteKeys: Set<String> = emptySet(),
+    val scanStartedAtMillis: Long? = null,
 )
+
+internal val SensorRecord.favoriteKey: String
+    get() = "sensor:${source.name}:$id:$areaId"
+
+internal val VehicleInfoRecord.favoriteKey: String
+    get() = "vehicle:${source.name}:$id"
+
+internal val VehicleFunctionRecord.favoriteKey: String
+    get() = "function:${source.name}:$id"
 
 interface ReadOnlySink {
     fun onCarStatus(status: ReadStatus, detail: String = "")
