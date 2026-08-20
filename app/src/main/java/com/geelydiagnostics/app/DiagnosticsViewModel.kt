@@ -28,41 +28,12 @@ internal class DiagnosticsViewModel(application: Application) :
     private val clients = mutableListOf<Closeable>()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
-    private var backgroundedAtMillis: Long? = null
-    private var retryAttempt = 0
-    private var retryScheduled = false
-    private var retryLimitLogged = false
-
-    private val retryRunnable = Runnable {
-        retryScheduled = false
-        if (retryAttempt >= RECONNECT_DELAYS_MILLIS.size) {
-            onLog("Automatic reconnect limit reached; use Refresh to try again")
-            return@Runnable
-        }
-        retryAttempt++
-        onLog("Automatic reconnect attempt $retryAttempt")
-        startReadOnlyScan(resetRetryCounter = false)
-    }
 
     init {
         startReadOnlyScan()
     }
 
     fun refresh() = startReadOnlyScan()
-
-    fun onForeground() {
-        val backgroundDuration = backgroundedAtMillis?.let { System.currentTimeMillis() - it }
-        backgroundedAtMillis = null
-        val sourceFailed = uiState.carStatus == ReadStatus.ERROR || uiState.vhalStatus == ReadStatus.ERROR
-        if (sourceFailed || (backgroundDuration != null && backgroundDuration >= FOREGROUND_RESCAN_AFTER_MILLIS)) {
-            onLog("App returned to foreground; reconnecting read-only sources")
-            startReadOnlyScan()
-        }
-    }
-
-    fun onBackground() {
-        backgroundedAtMillis = System.currentTimeMillis()
-    }
 
     fun selectVhalProfile(profile: VhalProfile) {
         if (profile == uiState.selectedVhalProfile) return
@@ -79,12 +50,7 @@ internal class DiagnosticsViewModel(application: Application) :
         uiState = uiState.copy(favoriteKeys = favorites)
     }
 
-    private fun startReadOnlyScan(resetRetryCounter: Boolean = true) {
-        cancelScheduledRetry()
-        if (resetRetryCounter) {
-            retryAttempt = 0
-            retryLimitLogged = false
-        }
+    private fun startReadOnlyScan() {
         closeClients()
         uiState = AppUiState(
             carStatus = ReadStatus.CHECKING,
@@ -121,26 +87,6 @@ internal class DiagnosticsViewModel(application: Application) :
         }
     }
 
-    private fun scheduleReconnect(source: String) {
-        if (retryScheduled) return
-        if (retryAttempt >= RECONNECT_DELAYS_MILLIS.size) {
-            if (!retryLimitLogged) {
-                retryLimitLogged = true
-                onLog("Automatic reconnect limit reached; use Refresh to try again")
-            }
-            return
-        }
-        val delay = RECONNECT_DELAYS_MILLIS[retryAttempt]
-        retryScheduled = true
-        onLog("$source unavailable; reconnect scheduled in ${delay / 1_000}s")
-        mainHandler.postDelayed(retryRunnable, delay)
-    }
-
-    private fun cancelScheduledRetry() {
-        mainHandler.removeCallbacks(retryRunnable)
-        retryScheduled = false
-    }
-
     private fun closeClients() {
         clients.forEach { client -> runCatching { client.close() } }
         clients.clear()
@@ -148,7 +94,6 @@ internal class DiagnosticsViewModel(application: Application) :
 
     override fun onCarStatus(status: ReadStatus, detail: String) = onMain {
         uiState = uiState.copy(carStatus = status, carDetail = detail)
-        if (status == ReadStatus.ERROR) scheduleReconnect("ECARX") else maybeFinishReconnect()
     }
 
     override fun onDiagnosticsStatus(status: ReadStatus, detail: String) = onMain {
@@ -165,7 +110,6 @@ internal class DiagnosticsViewModel(application: Application) :
 
     override fun onVhalStatus(status: ReadStatus, detail: String) = onMain {
         uiState = uiState.copy(vhalStatus = status, vhalDetail = detail)
-        if (status == ReadStatus.ERROR) scheduleReconnect("VHAL") else maybeFinishReconnect()
     }
 
     override fun onCarInfoStatus(status: ReadStatus, detail: String) = onMain {
@@ -239,14 +183,6 @@ internal class DiagnosticsViewModel(application: Application) :
         uiState = uiState.copy(logLines = emptyList())
     }
 
-    private fun maybeFinishReconnect() {
-        if (uiState.carStatus == ReadStatus.AVAILABLE && uiState.vhalStatus == ReadStatus.AVAILABLE) {
-            cancelScheduledRetry()
-            retryAttempt = 0
-            retryLimitLogged = false
-        }
-    }
-
     private fun onMain(action: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) action() else mainHandler.post { action() }
     }
@@ -258,7 +194,6 @@ internal class DiagnosticsViewModel(application: Application) :
         error.javaClass.name + (error.message?.let { ": $it" } ?: "")
 
     override fun onCleared() {
-        cancelScheduledRetry()
         closeClients()
         super.onCleared()
     }
@@ -269,9 +204,6 @@ internal class DiagnosticsViewModel(application: Application) :
         private const val PREFERENCES = "geely_diagnostics"
         private const val KEY_VHAL_PROFILE = "vhal_profile"
         private const val KEY_FAVORITES = "favorite_keys"
-        private const val FOREGROUND_RESCAN_AFTER_MILLIS = 15_000L
-        private val RECONNECT_DELAYS_MILLIS = longArrayOf(5_000L, 10_000L, 20_000L, 30_000L, 60_000L)
-
         private fun loadVhalProfile(application: Application): VhalProfile {
             val saved = application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
                 .getString(KEY_VHAL_PROFILE, null)

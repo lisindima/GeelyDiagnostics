@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,14 +83,41 @@ internal fun GeelyDiagnosticsApp(
                         }
                     }
                     when (AppTab.entries[selectedTabIndex]) {
-                        AppTab.DIAGNOSTICS -> DiagnosticsTab.Content(state)
+                        AppTab.DIAGNOSTICS -> {
+                            val tabState = remember(
+                                state.carStatus,
+                                state.carDetail,
+                                state.diagnosticsStatus,
+                                state.diagnosticsDetail,
+                                state.dtcManagerStatus,
+                                state.dtcManagerDetail,
+                                state.dtcs,
+                            ) { state }
+                            DiagnosticsTab.Content(tabState)
+                        }
                         AppTab.SENSORS -> SensorsTab.Content(
                             state,
                             onVhalProfileSelected,
                             onFavoriteToggle,
                         )
-                        AppTab.VEHICLE -> VehicleTab.Content(state, onFavoriteToggle)
-                        AppTab.FUNCTIONS -> FunctionsTab.Content(state, onFavoriteToggle)
+                        AppTab.VEHICLE -> {
+                            val tabState = remember(
+                                state.carInfoStatus,
+                                state.carInfoDetail,
+                                state.vehicleInfo,
+                                state.favoriteKeys,
+                            ) { state }
+                            VehicleTab.Content(tabState, onFavoriteToggle)
+                        }
+                        AppTab.FUNCTIONS -> {
+                            val tabState = remember(
+                                state.functionStatus,
+                                state.functionDetail,
+                                state.functions,
+                                state.favoriteKeys,
+                            ) { state }
+                            FunctionsTab.Content(tabState, onFavoriteToggle)
+                        }
                         AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
                     }
                 }

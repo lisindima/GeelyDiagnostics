@@ -49,7 +49,28 @@ internal class VhalReadOnlyClient(
 
             sink.onLog("VHAL: service ${service.javaClass.name}; decoder ${profile.key}")
             val configs = readConfigs(vehicleClass, service)
+            if (configs.isEmpty()) {
+                throw IllegalStateException("getAllPropConfigs() returned an empty catalog")
+            }
             val specs = VhalProfileRegistry.signals(profile).associateBy(VhalSignalSpec::readSignalId)
+            val pendingRecords = configs.flatMap { config ->
+                config.areaIds.map { areaId ->
+                    recordFor(
+                        propertyId = config.propertyId,
+                        areaId = areaId,
+                        spec = specs[config.propertyId],
+                        raw = null,
+                        error = "Значение ещё читается",
+                        expectedUpdateIntervalMillis = config.expectedUpdateIntervalMillis(),
+                    )
+                }
+            }
+            sink.onSensorsChanged(VehicleDataSource.VHAL, pendingRecords)
+            sink.onVhalStatus(
+                ReadStatus.CHECKING,
+                "Получено ${configs.size} свойств · чтение значений · декодер ${profile.key}",
+            )
+            sink.onLog("VHAL: ${configs.size} configs received; reading ${pendingRecords.size} values")
             val records = configs.flatMap { config ->
                 config.areaIds.map { areaId ->
                     readProperty(vehicleClass, service, config, areaId, specs[config.propertyId])
@@ -85,7 +106,6 @@ internal class VhalReadOnlyClient(
         } catch (error: Throwable) {
             if (closed) return
             sink.onVhalStatus(ReadStatus.ERROR, describe(error))
-            sink.onSensorsChanged(VehicleDataSource.VHAL, emptyList())
             sink.onLog("VHAL: ${describe(error)}", error)
         }
     }
@@ -102,9 +122,11 @@ internal class VhalReadOnlyClient(
         if (status != null && status != STATUS_OK) {
             throw IllegalStateException("getAllPropConfigs status=$status")
         }
-        val configs = result as? List<*>
+        val rawConfigs = result as? List<*>
             ?: throw IllegalStateException("getAllPropConfigs() did not return a list")
-        return configs.mapNotNull(::readConfig).sortedBy(PropertyConfig::propertyId)
+        val configs = rawConfigs.mapNotNull(::readConfig).sortedBy(PropertyConfig::propertyId)
+        sink.onLog("VHAL configs: ${rawConfigs.size} received, ${configs.size} parsed")
+        return configs
     }
 
     private fun readConfig(value: Any?): PropertyConfig? {

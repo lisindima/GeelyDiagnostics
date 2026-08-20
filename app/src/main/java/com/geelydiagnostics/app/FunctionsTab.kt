@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
@@ -18,7 +19,7 @@ internal object FunctionsTab {
         var query by rememberSaveable { mutableStateOf("") }
         var selectedFilterIndex by rememberSaveable { mutableIntStateOf(CatalogListFilter.ALL.ordinal) }
         val selectedFilter = CatalogListFilter.entries[selectedFilterIndex]
-        val nowMillis by rememberCurrentTimeMillis()
+        val nowMillis = remember(state.functions) { System.currentTimeMillis() }
         val supportedCount = state.functions.count { it.support.isVisibleAsSupported }
         val filtered = filterFunctions(state.functions, selectedFilter, query, state.favoriteKeys)
         CatalogScreen(

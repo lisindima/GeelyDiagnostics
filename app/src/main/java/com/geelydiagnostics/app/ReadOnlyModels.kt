@@ -1,5 +1,7 @@
 package com.geelydiagnostics.app
 
+import androidx.compose.runtime.Immutable
+
 enum class ReadStatus {
     NOT_CHECKED,
     CHECKING,
@@ -79,6 +81,7 @@ data class VehicleFunctionRecord(
     val updatedAtMillis: Long? = null,
 )
 
+@Immutable
 data class AppUiState(
     val carStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carDetail: String = "",

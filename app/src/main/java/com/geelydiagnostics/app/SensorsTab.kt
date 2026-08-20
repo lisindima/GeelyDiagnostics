@@ -66,6 +66,15 @@ internal object SensorsTab {
                     filtered,
             )
         }.filter { (_, values) -> values.isNotEmpty() }
+        val emptyText = when {
+            selectedSource == SensorSourceFilter.VHAL && state.vhalStatus == ReadStatus.ERROR ->
+                "VHAL недоступен: ${state.vhalDetail.ifBlank { "причина записана в журнале" }}"
+            selectedSource != SensorSourceFilter.ECARX &&
+                selectedValueFilter == SensorValueFilter.DECODED &&
+                state.selectedVhalProfile == VhalProfile.RAW ->
+                "В профиле RAW расшифровка отключена. Выберите фильтр RAW/Все значения или профиль автомобиля."
+            else -> "По выбранному фильтру значения не найдены."
+        }
 
         Column(Modifier.fillMaxSize()) {
             ProfileSelector(state.selectedVhalProfile, onVhalProfileSelected)
@@ -85,6 +94,7 @@ internal object SensorsTab {
                 supportedCount = supported.size,
                 displayedCount = groups.sumOf { (_, sensors) -> sensors.size },
                 groups = groups,
+                emptyText = emptyText,
                 query = query,
                 onQueryChange = { query = it },
                 selectedValueFilterIndex = selectedValueFilterIndex,
@@ -170,6 +180,7 @@ internal object SensorsTab {
         supportedCount: Int,
         displayedCount: Int,
         groups: List<Pair<String, List<SensorRecord>>>,
+        emptyText: String,
         query: String,
         onQueryChange: (String) -> Unit,
         selectedValueFilterIndex: Int,
@@ -184,6 +195,8 @@ internal object SensorsTab {
             "ECARX: ${state.sensorDetail.ifBlank { state.sensorStatus.labelForSource }}",
             "VHAL ${state.selectedVhalProfile.key}: ${state.vhalDetail.ifBlank { state.vhalStatus.labelForSource }}",
         ).joinToString(" · ")
+        val ecarxCount = state.sensors.count { it.source == VehicleDataSource.ECARX }
+        val vhalCount = state.sensors.count { it.source == VehicleDataSource.VHAL }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -215,11 +228,12 @@ internal object SensorsTab {
             }
             item {
                 SectionTitle(
-                    "Показано: $displayedCount · Поддерживается: $supportedCount · Проверено: ${state.sensors.size}",
+                    "Показано: $displayedCount · ECARX: $ecarxCount · VHAL: $vhalCount · " +
+                        "Поддерживается: $supportedCount",
                 )
             }
             if (groups.isEmpty()) {
-                item { EmptyMessage("По выбранному фильтру значения не найдены.") }
+                item { EmptyMessage(emptyText) }
             } else {
                 groups.forEach { (groupTitle, sensors) ->
                     item { SectionTitle(groupTitle) }
@@ -298,9 +312,9 @@ internal object SensorsTab {
         }
 
     private fun combineReadStatus(first: ReadStatus, second: ReadStatus): ReadStatus = when {
-        first == ReadStatus.AVAILABLE || second == ReadStatus.AVAILABLE -> ReadStatus.AVAILABLE
+        first == ReadStatus.ERROR || second == ReadStatus.ERROR -> ReadStatus.ERROR
         first == ReadStatus.CHECKING || second == ReadStatus.CHECKING -> ReadStatus.CHECKING
-        first == ReadStatus.ERROR && second == ReadStatus.ERROR -> ReadStatus.ERROR
+        first == ReadStatus.AVAILABLE || second == ReadStatus.AVAILABLE -> ReadStatus.AVAILABLE
         else -> ReadStatus.NOT_CHECKED
     }
 
