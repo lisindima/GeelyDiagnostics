@@ -193,6 +193,8 @@ private fun previewState() = AppUiState(
         "17:26:14.170  Car.create(): OK",
         "17:26:14.206  getDtcInfos(): 9 records",
         "17:26:14.420  Sensors: 21 supported of 102",
+        "17:26:14.512  VHAL initial id=0x2170901E mapping=G426 display=41.7 л raw=41700",
+        "17:26:16.034  VHAL live id=0x21400400 mapping=G426 display=D raw=3",
     ),
 )
 

@@ -30,6 +30,7 @@ internal class VhalReadOnlyClient(
     private var propertyManager: Any? = null
     private var propertyCallback: Any? = null
     private val subscribedIds = linkedSetOf<Int>()
+    private val lastLoggedRawByKey = mutableMapOf<PropertyKey, String>()
     private var recordsByKey = emptyMap<PropertyKey, SensorRecord>()
 
     fun start() {
@@ -56,6 +57,7 @@ internal class VhalReadOnlyClient(
             }
             if (closed) return
             recordsByKey = records.associateBy { PropertyKey(it.id, it.areaId) }
+            records.forEach(::logInitialValue)
             sink.onSensorsChanged(VehicleDataSource.VHAL, records)
 
             val callbackCount = subscribeToChanges(configs)
@@ -260,6 +262,7 @@ internal class VhalReadOnlyClient(
                 }
                 val decoded = if (spec != null) VhalProfileRegistry.decode(spec, raw) else ApiValue.raw(raw.text)
                 sink.onSensorValueChanged(VehicleDataSource.VHAL, propertyId, decoded, oldRecord.areaId)
+                logChangedValue(oldRecord, decoded, "live")
             }.onFailure { sink.onLog("VHAL live value skipped: ${describe(it)}") }
         }
     }
@@ -293,6 +296,9 @@ internal class VhalReadOnlyClient(
                                     value,
                                     areaId,
                                 )
+                                recordsByKey[PropertyKey(config.propertyId, areaId)]?.let { record ->
+                                    logChangedValue(record, value, "poll")
+                                }
                             }
                         }
                     }
@@ -304,6 +310,42 @@ internal class VhalReadOnlyClient(
         )
         return dynamic.sumOf { it.areaIds.size }
     }
+
+    private fun logInitialValue(record: SensorRecord) {
+        val key = PropertyKey(record.id, record.areaId)
+        lastLoggedRawByKey[key] = record.value.raw
+        val result = if (record.error.isBlank()) {
+            "display=${logText(record.value.display)} raw=${logText(record.value.raw)}"
+        } else {
+            "error=${logText(record.error)}"
+        }
+        sink.onLog("VHAL initial ${record.logIdentity()} $result")
+    }
+
+    private fun logChangedValue(record: SensorRecord, value: ApiValue, event: String) {
+        val key = PropertyKey(record.id, record.areaId)
+        if (lastLoggedRawByKey.put(key, value.raw) == value.raw) return
+        sink.onLog(
+            "VHAL $event ${record.logIdentity()} " +
+                "display=${logText(value.display)} raw=${logText(value.raw)}",
+        )
+    }
+
+    private fun SensorRecord.logIdentity(): String = buildString {
+        append("id=")
+        append(hexId(id))
+        if (areaId != 0) {
+            append(" area=")
+            append(hexId(areaId))
+        }
+        append(" mapping=")
+        append(sourceProfile ?: "RAW")
+    }
+
+    private fun logText(value: String): String = value
+        .replace('\n', ' ')
+        .replace('\r', ' ')
+        .take(MAX_LOG_VALUE_LENGTH)
 
     private fun rawFromCarProperty(value: Any?): VhalRawValue {
         if (value == null) return VhalRawValue("null")
@@ -501,6 +543,7 @@ internal class VhalReadOnlyClient(
         private const val SENSOR_RATE_ONCHANGE = 0f
         private const val LIVE_RATE_HZ = 5f
         private const val POLL_INTERVAL_SECONDS = 2L
+        private const val MAX_LOG_VALUE_LENGTH = 240
         private const val CALLBACK_TIMEOUT_SECONDS = 2L
 
         private const val PROPERTY_TYPE_MASK = 0x00ff0000
