@@ -6,6 +6,19 @@ Read-only приложение на Kotlin и Jetpack Compose для автом�
 > Неофициальный исследовательский проект. Он не связан с Geely или ECARX и не
 > заменяет сертифицированную автомобильную диагностику.
 
+## Интерфейс
+
+<table>
+  <tr>
+    <td><img src="readme-assets/sensors.png" alt="Каталог сенсоров" width="440"></td>
+    <td><img src="readme-assets/fullscreen-value.png" alt="Значение на весь экран" width="440"></td>
+  </tr>
+  <tr>
+    <td align="center">Единый каталог ECARX и VHAL</td>
+    <td align="center">Полноэкранный режим значения</td>
+  </tr>
+</table>
+
 ## Возможности
 
 Приложение содержит пять вкладок:
@@ -113,7 +126,7 @@ Java 17.
 
 Готовый APK публикуется отдельно от исходников в
 [GitHub Releases](https://github.com/lisindima/GeelyDiagnostics/releases).
-Для версии `v0.8.0` имя файла — `GeelyDiagnostics-v0.8.0-debug.apk`.
+Для версии `v0.9.0` имя файла — `GeelyDiagnostics-v0.9.0-debug.apk`.
 
 Пакет: `com.geelydiagnostics.app`. Logcat tag: `GeelyDiagnostics`.
 
