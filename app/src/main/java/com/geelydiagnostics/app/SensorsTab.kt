@@ -13,7 +13,7 @@ internal object SensorsTab {
             status = state.sensorStatus,
             detail = state.sensorDetail,
             title = "Live Data",
-            subtitle = "Показаны только сенсоры, поддержку которых подтвердила текущая ГУ. Значения raw, без неподтверждённых единиц измерения.",
+            subtitle = "Известные enum-значения расшифрованы по ECARX API; исходный raw всегда показан отдельно.",
             totalCount = state.sensors.size,
             supportedCount = supported.size,
             emptyText = "Поддерживаемые сенсоры пока не найдены.",
@@ -30,8 +30,8 @@ internal object SensorsTab {
             apiName = sensor.apiName,
             id = sensor.id,
             support = sensor.support,
+            value = sensor.value,
         ) {
-            ValueLine("Значение", sensor.value)
             ValueLine("Тип", sensor.valueKind)
             if (sensor.error.isNotBlank()) ValueLine("Ошибка", sensor.error)
         }

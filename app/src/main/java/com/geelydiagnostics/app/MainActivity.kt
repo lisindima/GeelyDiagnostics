@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity(), ReadOnlySink {
         uiState = uiState.copy(sensors = sensors)
     }
 
-    override fun onSensorValueChanged(id: Int, value: String) = onMain {
+    override fun onSensorValueChanged(id: Int, value: ApiValue) = onMain {
         uiState = uiState.copy(
             sensors = uiState.sensors.map { sensor ->
                 if (sensor.id == id) sensor.copy(value = value) else sensor

@@ -13,7 +13,7 @@ internal object FunctionsTab {
             status = state.functionStatus,
             detail = state.functionDetail,
             title = "Поддерживаемые функции",
-            subtitle = "Только проверка поддержки и чтение текущих raw-значений. Управление функциями в приложении отсутствует.",
+            subtitle = "Только чтение: известные значения расшифрованы, исходный raw сохранён. Управление функциями отсутствует.",
             totalCount = state.functions.size,
             supportedCount = supported.size,
             emptyText = "Поддерживаемые функции пока не найдены.",
@@ -30,8 +30,8 @@ internal object FunctionsTab {
             apiName = function.apiName,
             id = function.id,
             support = function.support,
+            value = function.value,
         ) {
-            ValueLine("Текущее raw", function.value.ifBlank { "не получено" })
             if (function.supportedValues.isNotBlank()) {
                 ValueLine("Допустимые raw", function.supportedValues)
             }

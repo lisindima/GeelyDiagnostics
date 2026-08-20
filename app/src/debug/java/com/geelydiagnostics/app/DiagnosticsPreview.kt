@@ -120,16 +120,16 @@ private fun previewState() = AppUiState(
         sensor(1050624, "SENSOR_TYPE_ENDURANCE_MILEAGE", "Запас хода", "481", "float"),
         sensor(1052416, "SENSOR_TYPE_ENGINE_COOLANT_TEMPERATURE", "Температура охлаждающей жидкости", "91", "float"),
         sensor(1051392, "SENSOR_TYPE_TEMPERATURE_AMBIENT", "Температура снаружи", "18.5", "float"),
-        sensor(2097664, "SENSOR_TYPE_GEAR", "Передача", "3", "event/int"),
+        sensor(2097664, "SENSOR_TYPE_GEAR", "Передача", "2097696", "event/int"),
     ),
     vehicleInfo = listOf(
-        info(1049088, "INT_INFO_VEHICLE_TYPES", "Тип силовой установки", "Бензин/ДВС · raw: 1049089"),
-        info(1049600, "INT_INFO_DRIVE_MODE", "Тип привода", "Передний привод · raw: 1049601"),
+        info(1049088, "INT_INFO_VEHICLE_TYPES", "Тип силовой установки", "Бензин/ДВС", "1049089"),
+        info(1049600, "INT_INFO_DRIVE_MODE", "Тип привода", "Передний привод", "1049601"),
         info(2097408, "FLT_INFO_FUEL_CAPACITY", "Объём топливного бака", "54"),
         info(3149824, "STRING_INFO_CAR_TIRE_CONFIG", "Конфигурация шин", "235/45 R19"),
-        info(8389888, "CONFIG_INFO_360CAM", "Камеры 360°", "Установлено · raw: 8388610"),
-        info(8391424, "CONFIG_INFO_RADAR", "Радары", "Установлено · raw: 8388610"),
-        info(8390912, "CONFIG_INFO_SUNROOF", "Люк", "Установлено · raw: 8388610"),
+        info(8389888, "CONFIG_INFO_360CAM", "Камеры 360°", "Установлено", "8388610"),
+        info(8391424, "CONFIG_INFO_RADAR", "Радары", "Установлено", "8388610"),
+        info(8390912, "CONFIG_INFO_SUNROOF", "Люк", "Установлено", "8388610"),
         info(1050624, "INT_INFO_SPEAKER_TOTAL_COUNT", "Количество динамиков", "8"),
     ),
     functions = listOf(
@@ -158,10 +158,17 @@ private fun sampleDtc(
 ) = DtcRecord(code, id, ecuType, status, SAMPLE_TICK_TIME)
 
 private fun sensor(id: Int, apiName: String, title: String, value: String, kind: String) =
-    SensorRecord(id, apiName, title, value, kind, ApiSupportStatus.ACTIVE)
+    SensorRecord(
+        id,
+        apiName,
+        title,
+        if (kind == "event/int") VendorValueDecoder.sensor(apiName, value.toInt()) else ApiValue.raw(value),
+        kind,
+        ApiSupportStatus.ACTIVE,
+    )
 
-private fun info(id: Int, apiName: String, title: String, value: String) =
-    VehicleInfoRecord(id, apiName, title, value, ApiSupportStatus.ACTIVE)
+private fun info(id: Int, apiName: String, title: String, value: String, raw: String = value) =
+    VehicleInfoRecord(id, apiName, title, ApiValue(value, raw), ApiSupportStatus.ACTIVE)
 
 private fun function(
     id: Int,
@@ -173,7 +180,11 @@ private fun function(
     id = id,
     apiName = apiName,
     title = title,
-    value = value,
+    value = VendorValueDecoder.function(
+        apiName,
+        value.toInt(),
+        supportedValues.split(',').mapNotNull { it.trim().toIntOrNull() }.toIntArray(),
+    ),
     supportedValues = supportedValues,
     support = ApiSupportStatus.ACTIVE,
 )

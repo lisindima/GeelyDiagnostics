@@ -23,11 +23,21 @@ data class DtcRecord(
     val tickTime: Long,
 )
 
+data class ApiValue(
+    val display: String,
+    val raw: String,
+) {
+    companion object {
+        fun raw(value: String): ApiValue = ApiValue(display = value, raw = value)
+        val unavailable = raw("—")
+    }
+}
+
 data class SensorRecord(
     val id: Int,
     val apiName: String,
     val title: String,
-    val value: String,
+    val value: ApiValue,
     val valueKind: String,
     val support: ApiSupportStatus,
     val error: String = "",
@@ -37,7 +47,7 @@ data class VehicleInfoRecord(
     val id: Int,
     val apiName: String,
     val title: String,
-    val value: String,
+    val value: ApiValue,
     val support: ApiSupportStatus,
     val error: String = "",
 )
@@ -46,7 +56,7 @@ data class VehicleFunctionRecord(
     val id: Int,
     val apiName: String,
     val title: String,
-    val value: String = "",
+    val value: ApiValue = ApiValue.unavailable,
     val supportedValues: String = "",
     val zones: String = "",
     val support: ApiSupportStatus,
@@ -82,7 +92,7 @@ interface ReadOnlySink {
     fun onFunctionStatus(status: ReadStatus, detail: String = "")
     fun onDtcsChanged(dtcs: List<DtcRecord>)
     fun onSensorsChanged(sensors: List<SensorRecord>)
-    fun onSensorValueChanged(id: Int, value: String)
+    fun onSensorValueChanged(id: Int, value: ApiValue)
     fun onSensorSupportChanged(id: Int, support: ApiSupportStatus)
     fun onVehicleInfoChanged(items: List<VehicleInfoRecord>)
     fun onFunctionsChanged(functions: List<VehicleFunctionRecord>)

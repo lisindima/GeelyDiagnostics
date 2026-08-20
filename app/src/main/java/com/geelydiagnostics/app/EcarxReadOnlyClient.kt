@@ -72,7 +72,11 @@ class EcarxReadOnlyClient(
 
     private val sensorListener = object : ISensor.ISensorListener {
         override fun onSensorEventChanged(type: Int, value: Int) {
-            if (!closed) sink.onSensorValueChanged(type, value.toString())
+            if (closed) return
+            val spec = sensorSpecsById[type]
+            val decoded = spec?.let { VendorValueDecoder.sensor(it.apiName, value) }
+                ?: ApiValue.raw(value.toString())
+            sink.onSensorValueChanged(type, decoded)
         }
 
         override fun onSensorSupportChanged(type: Int, status: FunctionStatus?) {
@@ -80,7 +84,7 @@ class EcarxReadOnlyClient(
         }
 
         override fun onSensorValueChanged(type: Int, value: Float) {
-            if (!closed) sink.onSensorValueChanged(type, formatFloat(value))
+            if (!closed) sink.onSensorValueChanged(type, ApiValue.raw(formatFloat(value)))
         }
     }
 
@@ -258,12 +262,12 @@ class EcarxReadOnlyClient(
             val support = manager.isSensorSupported(spec.id).toApiSupport()
             val value = if (support.isSupported) {
                 if (spec.continuous) {
-                    formatFloat(manager.getSensorLatestValue(spec.id))
+                    ApiValue.raw(formatFloat(manager.getSensorLatestValue(spec.id)))
                 } else {
-                    manager.getSensorEvent(spec.id).toString()
+                    VendorValueDecoder.sensor(spec.apiName, manager.getSensorEvent(spec.id))
                 }
             } else {
-                "—"
+                ApiValue.unavailable
             }
             SensorRecord(
                 id = spec.id,
@@ -278,7 +282,7 @@ class EcarxReadOnlyClient(
                 id = spec.id,
                 apiName = spec.apiName,
                 title = spec.title,
-                value = "—",
+                value = ApiValue.unavailable,
                 valueKind = if (spec.continuous) "float" else "event/int",
                 support = ApiSupportStatus.ERROR,
                 error = describe(error),
@@ -331,7 +335,7 @@ class EcarxReadOnlyClient(
                     id = spec.id,
                     apiName = spec.apiName,
                     title = spec.title,
-                    value = "—",
+                    value = ApiValue.unavailable,
                     support = ApiSupportStatus.ERROR,
                     error = describe(error),
                 )
@@ -364,16 +368,20 @@ class EcarxReadOnlyClient(
         val records = specs.map { spec ->
             try {
                 val support = manager.isFunctionSupported(spec.id).toApiSupport()
-                var value = ""
+                var rawValue: Int? = null
                 var supportedValues = ""
+                var supportedRawValues: IntArray? = null
                 var zones = ""
                 val readErrors = mutableListOf<String>()
                 if (support.isSupported) {
                     runCatching { manager.getFunctionValue(spec.id) }
-                        .onSuccess { value = it.toString() }
+                        .onSuccess { rawValue = it }
                         .onFailure { readErrors += "value: ${describe(it)}" }
                     runCatching { manager.getSupportedFunctionValue(spec.id) }
-                        .onSuccess { supportedValues = it?.joinToString().orEmpty() }
+                        .onSuccess {
+                            supportedRawValues = it
+                            supportedValues = it?.joinToString().orEmpty()
+                        }
                         .onFailure { readErrors += "values: ${describe(it)}" }
                     runCatching { manager.getSupportedFunctionZones(spec.id) }
                         .onSuccess { zones = it?.joinToString().orEmpty() }
@@ -383,7 +391,8 @@ class EcarxReadOnlyClient(
                     id = spec.id,
                     apiName = spec.apiName,
                     title = spec.title,
-                    value = value,
+                    value = rawValue?.let { VendorValueDecoder.function(spec.apiName, it, supportedRawValues) }
+                        ?: ApiValue.unavailable,
                     supportedValues = supportedValues,
                     zones = zones,
                     support = support,
@@ -478,17 +487,22 @@ class EcarxReadOnlyClient(
             .sortedBy(Pair<String, Int>::first)
             .toList()
 
-    private fun formatCarInfoValue(spec: CarInfoSpec, value: Any?): String {
-        if (value == null) return "—"
+    private fun formatCarInfoValue(spec: CarInfoSpec, value: Any?): ApiValue {
+        if (value == null) return ApiValue.unavailable
         if (value is IntArray) {
             val raw = value.joinToString()
-            if (spec.apiName == "INTS_INFO_FUEL_TYPES") {
-                return value.joinToString { FUEL_TYPES[it] ?: it.toString() } + " · raw: $raw"
+            val display = if (spec.apiName == "INTS_INFO_FUEL_TYPES") {
+                value.joinToString { FUEL_TYPES[it] ?: it.toString() }
+            } else {
+                raw
             }
-            return raw
+            return ApiValue(display = display, raw = raw)
         }
-        if (value is Float) return formatFloat(value)
-        if (value !is Int) return value.toString().ifBlank { "пусто" }
+        if (value is Float) return ApiValue.raw(formatFloat(value))
+        if (value !is Int) {
+            val raw = value.toString()
+            return ApiValue(display = raw.ifBlank { "пусто" }, raw = raw.ifBlank { "\"\"" })
+        }
 
         val decoded = when {
             spec.kind == CarInfoKind.CONFIG -> CONFIG_VALUES[value]
@@ -496,7 +510,7 @@ class EcarxReadOnlyClient(
             spec.apiName == "INT_INFO_DRIVE_MODE" -> DRIVE_TYPES[value]
             else -> null
         }
-        return if (decoded == null) value.toString() else "$decoded · raw: $value"
+        return ApiValue(display = decoded ?: value.toString(), raw = value.toString())
     }
 
     private fun logPermission(permission: String) {

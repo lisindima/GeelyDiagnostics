@@ -30,8 +30,8 @@ internal object VehicleTab {
             apiName = item.apiName,
             id = item.id,
             support = item.support,
+            value = item.value,
         ) {
-            ValueLine("Значение", item.value)
             if (item.error.isNotBlank()) ValueLine("Ошибка", item.error)
         }
     }

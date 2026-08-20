@@ -24,9 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 
 @Composable
 internal fun <T> CatalogScreen(
@@ -83,6 +83,7 @@ internal fun DataCard(
     apiName: String,
     id: Int,
     support: ApiSupportStatus,
+    value: ApiValue,
     content: @Composable () -> Unit,
 ) {
     Card(
@@ -92,12 +93,14 @@ internal fun DataCard(
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.Top) {
-                Text(
-                    text = title,
-                    modifier = Modifier.weight(1f),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                SelectionContainer(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = value.display,
+                        fontSize = 28.sp,
+                        lineHeight = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
                 Text(
                     text = support.label,
                     color = supportColor(support),
@@ -105,13 +108,28 @@ internal fun DataCard(
                     fontWeight = FontWeight.Bold,
                 )
             }
+            Spacer(Modifier.height(8.dp))
+            SelectionContainer {
+                Text(
+                    text = "raw  ${value.raw}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
             Text(
-                text = "$apiName · ID $id",
+                text = title.lowercase(Locale.getDefault()),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "${apiName.lowercase(Locale.ROOT)} · id $id",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 11.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(10.dp))
             content()
