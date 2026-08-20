@@ -84,9 +84,11 @@ internal fun DataCard(
     id: Int,
     value: ApiValue,
     sourceLabel: String,
+    onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
@@ -134,6 +136,14 @@ internal fun DataCard(
             )
             Spacer(Modifier.height(10.dp))
             content()
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "НА ВЕСЬ ЭКРАН ↗",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

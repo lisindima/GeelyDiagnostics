@@ -42,6 +42,7 @@ internal object SensorsTab {
         state: AppUiState,
         onVhalProfileSelected: (VhalProfile) -> Unit,
     ) {
+        var expandedSensorKey by rememberSaveable { mutableStateOf<String?>(null) }
         var selectedFilterIndex by rememberSaveable { mutableIntStateOf(SourceFilter.ALL.ordinal) }
         val selectedFilter = SourceFilter.entries[selectedFilterIndex]
         val supported = state.sensors.filter { it.support.isVisibleAsSupported }
@@ -79,7 +80,21 @@ internal object SensorsTab {
                 supportedCount = supported.size,
                 displayedCount = groups.sumOf { (_, sensors) -> sensors.size },
                 groups = groups,
+                onSensorSelected = { expandedSensorKey = it.selectionKey },
             )
+        }
+        state.sensors.firstOrNull { it.selectionKey == expandedSensorKey }?.let { sensor ->
+            FullscreenValueDialog(
+                title = sensor.title,
+                apiName = sensor.apiName,
+                idText = "id ${sensor.id}",
+                value = sensor.value,
+                sourceLabel = sensor.sourceLabel,
+                modeLabel = "АВТООБНОВЛЕНИЕ",
+                onDismiss = { expandedSensorKey = null },
+            ) {
+                SensorDetails(sensor)
+            }
         }
     }
 
@@ -137,6 +152,7 @@ internal object SensorsTab {
         supportedCount: Int,
         displayedCount: Int,
         groups: List<Pair<String, List<SensorRecord>>>,
+        onSensorSelected: (SensorRecord) -> Unit,
     ) {
         val combinedStatus = combineReadStatus(state.sensorStatus, state.vhalStatus)
         val combinedDetail = listOf(
@@ -169,7 +185,11 @@ internal object SensorsTab {
                 groups.forEach { (groupTitle, sensors) ->
                     item { SectionTitle(groupTitle) }
                     sensors.chunked(2).forEach { row ->
-                        item { TwoColumnRow(row) { sensor -> SensorCard(sensor) } }
+                        item {
+                            TwoColumnRow(row) { sensor ->
+                                SensorCard(sensor, onClick = { onSensorSelected(sensor) })
+                            }
+                        }
                     }
                 }
             }
@@ -177,35 +197,46 @@ internal object SensorsTab {
     }
 
     @Composable
-    private fun SensorCard(sensor: SensorRecord) {
-        val sourceLabel = when {
-            sensor.source == VehicleDataSource.VHAL && sensor.sourceProfile != null ->
-                "VHAL · маппинг ${sensor.sourceProfile}"
-            sensor.source == VehicleDataSource.VHAL -> "VHAL · RAW"
-            else -> sensor.source.label
-        }
+    private fun SensorCard(sensor: SensorRecord, onClick: () -> Unit) {
         DataCard(
             title = sensor.title,
             apiName = sensor.apiName,
             id = sensor.id,
             value = sensor.value,
-            sourceLabel = sourceLabel,
+            sourceLabel = sensor.sourceLabel,
+            onClick = onClick,
         ) {
-            ValueLine("Тип", sensor.valueKind)
-            if (sensor.source == VehicleDataSource.VHAL) {
-                ValueLine(
-                    "Расшифровка",
-                    sensor.sourceProfile?.let { "профиль $it" } ?: "нет — показан raw VHAL",
-                )
-                ValueLine("VHAL ID", String.format(Locale.US, "0x%08X", sensor.id))
-                if (sensor.areaId != 0) {
-                    ValueLine("Area ID", String.format(Locale.US, "0x%08X", sensor.areaId))
-                }
-            }
-            sensor.profilePropertyId?.let { ValueLine("Поле профиля", it.toString()) }
-            if (sensor.error.isNotBlank()) ValueLine("Ошибка", sensor.error)
+            SensorDetails(sensor)
         }
     }
+
+    @Composable
+    private fun SensorDetails(sensor: SensorRecord) {
+        ValueLine("Тип", sensor.valueKind)
+        if (sensor.source == VehicleDataSource.VHAL) {
+            ValueLine(
+                "Расшифровка",
+                sensor.sourceProfile?.let { "профиль $it" } ?: "нет — показан raw VHAL",
+            )
+            ValueLine("VHAL ID", String.format(Locale.US, "0x%08X", sensor.id))
+            if (sensor.areaId != 0) {
+                ValueLine("Area ID", String.format(Locale.US, "0x%08X", sensor.areaId))
+            }
+        }
+        sensor.profilePropertyId?.let { ValueLine("Поле профиля", it.toString()) }
+        if (sensor.error.isNotBlank()) ValueLine("Ошибка", sensor.error)
+    }
+
+    private val SensorRecord.selectionKey: String
+        get() = "${source.name}:$id:$areaId"
+
+    private val SensorRecord.sourceLabel: String
+        get() = when {
+            source == VehicleDataSource.VHAL && sourceProfile != null ->
+                "VHAL · маппинг $sourceProfile"
+            source == VehicleDataSource.VHAL -> "VHAL · RAW"
+            else -> source.label
+        }
 
     private fun combineReadStatus(first: ReadStatus, second: ReadStatus): ReadStatus = when {
         first == ReadStatus.AVAILABLE || second == ReadStatus.AVAILABLE -> ReadStatus.AVAILABLE
