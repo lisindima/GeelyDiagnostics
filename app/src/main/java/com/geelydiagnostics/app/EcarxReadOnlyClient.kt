@@ -76,15 +76,19 @@ class EcarxReadOnlyClient(
             val spec = sensorSpecsById[type]
             val decoded = spec?.let { VendorValueDecoder.sensor(it.apiName, value) }
                 ?: ApiValue.raw(value.toString())
-            sink.onSensorValueChanged(type, decoded)
+            sink.onSensorValueChanged(VehicleDataSource.ECARX, type, decoded)
         }
 
         override fun onSensorSupportChanged(type: Int, status: FunctionStatus?) {
-            if (!closed) sink.onSensorSupportChanged(type, status.toApiSupport())
+            if (!closed) sink.onSensorSupportChanged(VehicleDataSource.ECARX, type, status.toApiSupport())
         }
 
         override fun onSensorValueChanged(type: Int, value: Float) {
-            if (!closed) sink.onSensorValueChanged(type, ApiValue.raw(formatFloat(value)))
+            if (closed) return
+            val apiName = sensorSpecsById[type]?.apiName
+            val decoded = apiName?.let { VendorValueDecoder.sensor(it, value) }
+                ?: ApiValue.raw(formatFloat(value))
+            sink.onSensorValueChanged(VehicleDataSource.ECARX, type, decoded)
         }
     }
 
@@ -231,7 +235,7 @@ class EcarxReadOnlyClient(
         }
         sensorSpecsById = specs.associateBy(SensorSpec::id)
         val records = specs.map { spec -> readSensor(manager, spec) }
-        sink.onSensorsChanged(records)
+        sink.onSensorsChanged(VehicleDataSource.ECARX, records)
 
         if (!sensorListenerRegistered) {
             records.filter { it.support.isSupported }.forEach { record ->
@@ -262,7 +266,7 @@ class EcarxReadOnlyClient(
             val support = manager.isSensorSupported(spec.id).toApiSupport()
             val value = if (support.isSupported) {
                 if (spec.continuous) {
-                    ApiValue.raw(formatFloat(manager.getSensorLatestValue(spec.id)))
+                    VendorValueDecoder.sensor(spec.apiName, manager.getSensorLatestValue(spec.id))
                 } else {
                     VendorValueDecoder.sensor(spec.apiName, manager.getSensorEvent(spec.id))
                 }
@@ -436,7 +440,7 @@ class EcarxReadOnlyClient(
                 SensorSpec(
                     id = id,
                     apiName = name,
-                    title = SENSOR_TITLES[name] ?: prettyName(name, "SENSOR_TYPE_"),
+                    title = EcarxSensorMetadata.fields[name]?.title ?: prettyName(name, "SENSOR_TYPE_"),
                     continuous = id and INFO_TYPE_MASK == SENSOR_TYPE_FLOAT,
                 )
             }
@@ -456,7 +460,8 @@ class EcarxReadOnlyClient(
                 CarInfoSpec(
                     id = id,
                     apiName = name,
-                    title = CAR_INFO_TITLES[name] ?: prettyName(name, "CONFIG_INFO_", "FLT_INFO_", "INT_INFO_", "INTS_INFO_", "MAP_INFO_", "STRING_INFO_"),
+                    title = EcarxCarInfoMetadata.field(name)?.title
+                        ?: prettyName(name, "CONFIG_INFO_", "FLT_INFO_", "INT_INFO_", "INTS_INFO_", "MAP_INFO_", "STRING_INFO_"),
                     kind = kind,
                 )
             }
@@ -470,7 +475,7 @@ class EcarxReadOnlyClient(
                 FunctionSpec(
                     id = id,
                     apiName = name,
-                    title = FUNCTION_TITLES[name] ?: prettyName(name, "SETTING_FUNC_"),
+                    title = EcarxFunctionMetadata.fields[name]?.title ?: prettyName(name, "SETTING_FUNC_"),
                 )
             }
             .distinctBy(FunctionSpec::id)
@@ -490,27 +495,16 @@ class EcarxReadOnlyClient(
     private fun formatCarInfoValue(spec: CarInfoSpec, value: Any?): ApiValue {
         if (value == null) return ApiValue.unavailable
         if (value is IntArray) {
-            val raw = value.joinToString()
-            val display = if (spec.apiName == "INTS_INFO_FUEL_TYPES") {
-                value.joinToString { FUEL_TYPES[it] ?: it.toString() }
-            } else {
-                raw
-            }
-            return ApiValue(display = display, raw = raw)
+            return VendorValueDecoder.carInfo(spec.apiName, value)
         }
-        if (value is Float) return ApiValue.raw(formatFloat(value))
+        if (value is Float) return VendorValueDecoder.carInfo(spec.apiName, value)
         if (value !is Int) {
             val raw = value.toString()
             return ApiValue(display = raw.ifBlank { "пусто" }, raw = raw.ifBlank { "\"\"" })
         }
 
-        val decoded = when {
-            spec.kind == CarInfoKind.CONFIG -> CONFIG_VALUES[value]
-            spec.apiName == "INT_INFO_VEHICLE_TYPES" -> VEHICLE_TYPES[value]
-            spec.apiName == "INT_INFO_DRIVE_MODE" -> DRIVE_TYPES[value]
-            else -> null
-        }
-        return ApiValue(display = decoded ?: value.toString(), raw = value.toString())
+        val configLabel = if (spec.kind == CarInfoKind.CONFIG) CONFIG_VALUES[value] else null
+        return VendorValueDecoder.carInfo(spec.apiName, value, configLabel)
     }
 
     private fun logPermission(permission: String) {
@@ -597,77 +591,6 @@ class EcarxReadOnlyClient(
         private const val SENSOR_TYPE_FLOAT = 0x100000
         private const val MIN_FUNCTION_ID = 0x20000000
 
-        private val SENSOR_TITLES = mapOf(
-            "SENSOR_TYPE_CAR_SPEED" to "Скорость автомобиля",
-            "SENSOR_TYPE_CAR_SPEED_FROM_IPK" to "Скорость от приборной панели",
-            "SENSOR_TYPE_CAR_SPEED_ACCELERATION" to "Ускорение",
-            "SENSOR_TYPE_RPM" to "Обороты двигателя",
-            "SENSOR_TYPE_ODOMETER" to "Пробег",
-            "SENSOR_TYPE_FUEL_LEVEL" to "Уровень топлива",
-            "SENSOR_TYPE_ENDURANCE_MILEAGE" to "Запас хода",
-            "SENSOR_TYPE_ENDURANCE_MILEAGE_FUEL" to "Запас хода на топливе",
-            "SENSOR_TYPE_ENGINE_COOLANT_TEMPERATURE" to "Температура охлаждающей жидкости",
-            "SENSOR_TYPE_TEMPERATURE_AMBIENT" to "Температура снаружи",
-            "SENSOR_TYPE_TEMPERATURE_INDOOR" to "Температура в салоне",
-            "SENSOR_TYPE_ACCELERATOR_DEPTH" to "Положение педали газа",
-            "SENSOR_TYPE_BRAKE_DEPTH" to "Положение педали тормоза",
-            "SENSOR_TYPE_BRAKE_PRESSURE" to "Давление тормоза",
-            "SENSOR_TYPE_STEERING_WHEEL_ANGLE" to "Угол руля",
-            "SENSOR_TYPE_STEERING_WHEEL_ANGLE_SPEED" to "Скорость вращения руля",
-            "SENSOR_TYPE_BATTERY_CURRENT" to "Ток аккумулятора",
-            "SENSOR_TYPE_GEAR" to "Передача",
-            "SENSOR_TYPE_HANDBRAKE_STATE" to "Стояночный тормоз",
-            "SENSOR_TYPE_IGNITION_STATE" to "Зажигание",
-            "SENSOR_TYPE_ENGINE_STATE" to "Состояние двигателя",
-        )
-
-        private val CAR_INFO_TITLES = mapOf(
-            "INT_INFO_VEHICLE_TYPES" to "Тип силовой установки",
-            "INTS_INFO_FUEL_TYPES" to "Типы топлива",
-            "INT_INFO_DRIVE_MODE" to "Тип привода",
-            "FLT_INFO_FUEL_CAPACITY" to "Объём топливного бака",
-            "FLT_INFO_EV_BATTERY_CAPACITY" to "Ёмкость тяговой батареи",
-            "FLT_INFO_VEHICLE_WEIGHT" to "Масса автомобиля",
-            "FLT_INFO_MAX_LIMITED_SPEED" to "Максимальная ограниченная скорость",
-            "STRING_INFO_CAR_TIRE_CONFIG" to "Конфигурация шин",
-            "INT_INFO_CAR_COLOR" to "Цвет автомобиля",
-            "INT_INFO_YEAR_EDITION" to "Модельный год",
-            "INT_INFO_CRUISE_CONTROL_CC" to "Круиз-контроль",
-            "INT_INFO_DRIVER_ASSISTANCE_SYSTEM" to "Системы помощи водителю",
-            "INT_INFO_SPEAKER_TOTAL_COUNT" to "Количество динамиков",
-            "INT_INFO_MIC_TOTAL_COUNT" to "Количество микрофонов",
-            "CONFIG_INFO_360CAM" to "Камеры 360°",
-            "CONFIG_INFO_DVR" to "Видеорегистратор",
-            "CONFIG_INFO_DVR_INNERCAM" to "Внутренняя камера DVR",
-            "CONFIG_INFO_FACE_CAM" to "Камера распознавания лица",
-            "CONFIG_INFO_RADAR" to "Радары",
-            "CONFIG_INFO_REAR_CAM" to "Задняя камера",
-            "CONFIG_INFO_REARVIEW_CAM" to "Камера заднего вида",
-            "CONFIG_INFO_SUNROOF" to "Люк",
-            "CONFIG_INFO_TCAM" to "TCAM",
-            "CONFIG_INFO_WIFI" to "Wi-Fi",
-            "CONFIG_INFO_WPC" to "Беспроводная зарядка",
-        )
-
-        private val FUNCTION_TITLES = mapOf(
-            "SETTING_FUNC_ENGINE_STOP_START" to "Старт-стоп двигателя",
-            "SETTING_FUNC_AUTO_HOLD" to "Auto Hold",
-            "SETTING_FUNC_ELECTRONIC_PARKING" to "Электронный стояночный тормоз",
-            "SETTING_FUNC_CENTRAL_LOCK" to "Центральный замок",
-            "SETTING_FUNC_KEYLESS_UNLOCKING" to "Бесключевое отпирание",
-            "SETTING_FUNC_SPEED_LOCKING" to "Запирание на скорости",
-            "SETTING_FUNC_MIRROR_AUTO_FOLDING" to "Автоскладывание зеркал",
-            "SETTING_FUNC_LAMP_AUTOLIGHT" to "Автоматический свет",
-            "SETTING_FUNC_AUTONOMOUS_EMERGENCY_BRAKING" to "Автоматическое экстренное торможение",
-            "SETTING_FUNC_FORWARD_COLLISION_WARN" to "Предупреждение о фронтальном столкновении",
-            "SETTING_FUNC_LANE_KEEPING_AID" to "Удержание в полосе",
-            "SETTING_FUNC_PARK_ASSIST_SYS_ACTIVATED" to "Система помощи при парковке",
-            "SETTING_FUNC_STEERING_ASSISTANCE_LEVEL" to "Уровень усилителя руля",
-            "SETTING_FUNC_HUD_ACTIVE" to "Проекционный дисплей",
-            "SETTING_FUNC_PASSENGER_AIRBAG" to "Подушка безопасности пассажира",
-            "SETTING_FUNC_REMOTE_DIAGNOSTICS" to "Удалённая диагностика",
-        )
-
         private val CONFIG_VALUES = mapOf(
             ICarInfo.CONFIG_INFO_VALUE_NOT_CONFIG to "Не установлено",
             ICarInfo.CONFIG_INFO_VALUE_CONFIG to "Установлено",
@@ -676,39 +599,6 @@ class EcarxReadOnlyClient(
             ICarInfo.CONFIG_INFO_VALUE_UNKNOWN to "Неизвестно",
         )
 
-        private val VEHICLE_TYPES = mapOf(
-            ICarInfo.VEHICLE_TYPE_FUEL to "Бензин/ДВС",
-            ICarInfo.VEHICLE_TYPE_HEV to "HEV",
-            ICarInfo.VEHICLE_TYPE_PHEV to "PHEV",
-            ICarInfo.VEHICLE_TYPE_EREV to "EREV",
-            ICarInfo.VEHICLE_TYPE_FCEV to "FCEV",
-            ICarInfo.VEHICLE_TYPE_FCV to "FCV",
-            ICarInfo.VEHICLE_TYPE_MHEV to "MHEV",
-            ICarInfo.VEHICLE_TYPE_BEV to "BEV",
-            ICarInfo.VEHICLE_TYPE_UNKNOWN to "Неизвестно",
-        )
-
-        private val DRIVE_TYPES = mapOf(
-            ICarInfo.DRIVE_MODE_FRONT to "Передний привод",
-            ICarInfo.DRIVE_MODE_REAR to "Задний привод",
-            ICarInfo.DRIVE_MODE_AWD to "Полный привод",
-            ICarInfo.DRIVE_MODE_UNKNOWN to "Неизвестно",
-        )
-
-        private val FUEL_TYPES = mapOf(
-            ICarInfo.FUEL_TYPE_UNLEADED to "Неэтилированный бензин",
-            ICarInfo.FUEL_TYPE_LEADED to "Этилированный бензин",
-            ICarInfo.FUEL_TYPE_DIESEL_1 to "Дизель 1",
-            ICarInfo.FUEL_TYPE_DIESEL_2 to "Дизель 2",
-            ICarInfo.FUEL_TYPE_BIODIESEL to "Биодизель",
-            ICarInfo.FUEL_TYPE_E85 to "E85",
-            ICarInfo.FUEL_TYPE_LPG to "LPG",
-            ICarInfo.FUEL_TYPE_CNG to "CNG",
-            ICarInfo.FUEL_TYPE_LNG to "LNG",
-            ICarInfo.FUEL_TYPE_ELECTRIC to "Электричество",
-            ICarInfo.FUEL_TYPE_HYDROGEN to "Водород",
-            ICarInfo.FUEL_TYPE_UNKNOWN to "Неизвестно",
-        )
     }
 }
 

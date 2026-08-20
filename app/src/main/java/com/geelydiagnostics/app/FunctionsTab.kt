@@ -29,8 +29,8 @@ internal object FunctionsTab {
             title = function.title,
             apiName = function.apiName,
             id = function.id,
-            support = function.support,
             value = function.value,
+            sourceLabel = function.source.label,
         ) {
             if (function.supportedValues.isNotBlank()) {
                 ValueLine("Допустимые raw", function.supportedValues)

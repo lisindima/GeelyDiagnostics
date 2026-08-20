@@ -5,12 +5,42 @@ import java.util.Locale
 /** Converts confirmed ECARX enum values while always preserving the value returned by the API. */
 internal object VendorValueDecoder {
 
-    fun sensor(apiName: String, rawValue: Int): ApiValue =
-        decoded(apiName, rawValue, SENSOR_VALUES[apiName])
+    fun sensor(apiName: String, rawValue: Int): ApiValue {
+        val existing = SENSOR_VALUES[apiName]
+        if (existing?.containsKey(rawValue) == true) return decoded(apiName, rawValue, existing)
+        val metadata = EcarxSensorMetadata.fields[apiName]
+        metadata?.values?.get(rawValue)?.let { label ->
+            return ApiValue(display = label, raw = rawValue.toString())
+        }
+        val legacy = decoded(apiName, rawValue, existing)
+        return if (legacy.display != legacy.raw || metadata?.unit == null) {
+            legacy
+        } else {
+            legacy.copy(display = withUnit(legacy.display, metadata.unit))
+        }
+    }
+
+    fun sensor(apiName: String, rawValue: Float): ApiValue {
+        val metadata = EcarxSensorMetadata.fields[apiName]
+        val raw = formatNumber(rawValue.toDouble())
+        val normalized = rawValue * (metadata?.rawToDisplayScale ?: 1f)
+        return ApiValue(
+            display = withUnit(formatNumber(normalized.toDouble()), metadata?.unit),
+            raw = raw,
+        )
+    }
 
     fun function(apiName: String, rawValue: Int, supportedValues: IntArray?): ApiValue {
         val known = FUNCTION_VALUES[apiName]
         if (known?.containsKey(rawValue) == true) return decoded(apiName, rawValue, known)
+        EcarxFunctionMetadata.fields[apiName]?.values?.get(rawValue)?.let { label ->
+            return ApiValue(display = label, raw = rawValue.toString())
+        }
+        if (apiName in EcarxFunctionMetadata.commonValueKeys) {
+            COMMON_FUNCTION_VALUES[rawValue]?.let { label ->
+                return ApiValue(display = label, raw = rawValue.toString())
+            }
+        }
 
         val supported = supportedValues?.toSet().orEmpty()
         val booleanLabel = if (supported == setOf(0, 1)) {
@@ -23,6 +53,33 @@ internal object VendorValueDecoder {
             null
         }
         return ApiValue(display = booleanLabel ?: rawValue.toString(), raw = rawValue.toString())
+    }
+
+    fun carInfo(apiName: String, rawValue: Int, fallbackLabel: String? = null): ApiValue {
+        val metadata = EcarxCarInfoMetadata.field(apiName)
+        val label = metadata?.values?.get(rawValue) ?: fallbackLabel
+        val raw = rawValue.toString()
+        return ApiValue(
+            display = label ?: withUnit(raw, metadata?.unit),
+            raw = raw,
+        )
+    }
+
+    fun carInfo(apiName: String, rawValues: IntArray): ApiValue {
+        val metadata = EcarxCarInfoMetadata.field(apiName)
+        val raw = rawValues.joinToString()
+        val display = rawValues.joinToString { value ->
+            metadata?.values?.get(value) ?: value.toString()
+        }
+        return ApiValue(display = display, raw = raw)
+    }
+
+    fun carInfo(apiName: String, rawValue: Float): ApiValue {
+        val raw = formatNumber(rawValue.toDouble())
+        return ApiValue(
+            display = withUnit(raw, EcarxCarInfoMetadata.field(apiName)?.unit),
+            raw = raw,
+        )
     }
 
     private fun decoded(apiName: String, rawValue: Int, values: Map<Int, String>?): ApiValue {
@@ -380,6 +437,15 @@ internal object VendorValueDecoder {
         ),
     )
 
+    private val COMMON_FUNCTION_VALUES = mapOf(
+        0 to "Выключено",
+        1 to "Включено",
+        2 to "По умолчанию",
+        253 to "Ошибка",
+        254 to "Нет значения",
+        255 to "Неизвестно",
+    )
+
     private val EXACT_LABELS = mapOf(
         "SENSOR_GEAR_FIRST" to "1",
         "SENSOR_GEAR_SECOND" to "2",
@@ -480,4 +546,14 @@ internal object VendorValueDecoder {
         "RIGHTWARD" to "Вправо",
         "UNLCK" to "Разблокировано",
     )
+
+    private fun withUnit(value: String, unit: String?): String =
+        if (unit.isNullOrBlank()) value else "$value $unit"
+
+    private fun formatNumber(value: Double): String =
+        if (value.isFinite()) {
+            java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
+        } else {
+            value.toString()
+        }
 }

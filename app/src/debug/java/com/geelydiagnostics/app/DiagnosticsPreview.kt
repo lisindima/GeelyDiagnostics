@@ -83,6 +83,7 @@ private fun PreviewApp(tab: AppTab) {
     GeelyDiagnosticsApp(
         state = previewState(),
         onRefresh = {},
+        onVhalProfileSelected = {},
         onClearLog = {},
         initialTab = tab,
     )
@@ -97,6 +98,8 @@ private fun previewState() = AppUiState(
     dtcManagerDetail = "AVAILABLE",
     sensorStatus = ReadStatus.AVAILABLE,
     sensorDetail = "21 из 102; live-подписок: 21",
+    vhalStatus = ReadStatus.AVAILABLE,
+    vhalDetail = "84 значения · 48 расшифровано G426 · auto: 36 (callback)",
     carInfoStatus = ReadStatus.AVAILABLE,
     carInfoDetail = "18 из 34",
     functionStatus = ReadStatus.AVAILABLE,
@@ -121,6 +124,11 @@ private fun previewState() = AppUiState(
         sensor(1052416, "SENSOR_TYPE_ENGINE_COOLANT_TEMPERATURE", "Температура охлаждающей жидкости", "91", "float"),
         sensor(1051392, "SENSOR_TYPE_TEMPERATURE_AMBIENT", "Температура снаружи", "18.5", "float"),
         sensor(2097664, "SENSOR_TYPE_GEAR", "Передача", "2097696", "event/int"),
+        vhalSensor(557874334, 10003, "GearLvrIndcn", "Передача", "D", "3", "char"),
+        vhalSensor(561025054, 10012, "pafulvlindcdfulvlvalfromfutbl", "Оставшееся топливо", "41.7 л", "41700", "int"),
+        vhalSensor(561024410, 10013, "patirepressurefrontleft", "Давление в передней левой шине", "236 кПа", "2360", "float"),
+        vhalSensor(557850019, 10021, "CLUSTER_POWERFLOW_ENGSPDDISPD", "Обороты двигателя", "748 об/мин", "1496", "int"),
+        rawVhalSensor(557842947, "[1, 0, 42]", "int32[]"),
     ),
     vehicleInfo = listOf(
         info(1049088, "INT_INFO_VEHICLE_TYPES", "Тип силовой установки", "Бензин/ДВС", "1049089"),
@@ -162,13 +170,47 @@ private fun sensor(id: Int, apiName: String, title: String, value: String, kind:
         id,
         apiName,
         title,
-        if (kind == "event/int") VendorValueDecoder.sensor(apiName, value.toInt()) else ApiValue.raw(value),
+        if (kind == "event/int") {
+            VendorValueDecoder.sensor(apiName, value.toInt())
+        } else {
+            VendorValueDecoder.sensor(apiName, value.toFloat())
+        },
         kind,
         ApiSupportStatus.ACTIVE,
     )
 
 private fun info(id: Int, apiName: String, title: String, value: String, raw: String = value) =
     VehicleInfoRecord(id, apiName, title, ApiValue(value, raw), ApiSupportStatus.ACTIVE)
+
+private fun vhalSensor(
+    id: Int,
+    propertyId: Int,
+    apiName: String,
+    title: String,
+    value: String,
+    raw: String,
+    kind: String,
+) = SensorRecord(
+    id = id,
+    apiName = apiName,
+    title = title,
+    value = ApiValue(value, raw),
+    valueKind = kind,
+    support = ApiSupportStatus.ACTIVE,
+    source = VehicleDataSource.VHAL,
+    sourceProfile = VhalProfile.G426.key,
+    profilePropertyId = propertyId,
+)
+
+private fun rawVhalSensor(id: Int, raw: String, kind: String) = SensorRecord(
+    id = id,
+    apiName = "VHAL_0x${id.toUInt().toString(16).uppercase()}",
+    title = "VHAL property 0x${id.toUInt().toString(16).uppercase()}",
+    value = ApiValue.raw(raw),
+    valueKind = kind,
+    support = ApiSupportStatus.ACTIVE,
+    source = VehicleDataSource.VHAL,
+)
 
 private fun function(
     id: Int,

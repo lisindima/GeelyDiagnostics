@@ -13,8 +13,8 @@ android {
         applicationId = "com.geelydiagnostics.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.5.0"
+        versionCode = 11
+        versionName = "0.7.0"
     }
 
     buildTypes {
@@ -47,4 +47,5 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

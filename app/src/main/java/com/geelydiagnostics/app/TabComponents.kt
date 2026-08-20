@@ -82,8 +82,8 @@ internal fun DataCard(
     title: String,
     apiName: String,
     id: Int,
-    support: ApiSupportStatus,
     value: ApiValue,
+    sourceLabel: String,
     content: @Composable () -> Unit,
 ) {
     Card(
@@ -102,9 +102,10 @@ internal fun DataCard(
                     )
                 }
                 Text(
-                    text = support.label,
-                    color = supportColor(support),
-                    fontSize = 13.sp,
+                    text = sourceLabel,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -214,24 +215,6 @@ private fun statusColor(status: ReadStatus): Color = when (status) {
     ReadStatus.CHECKING -> MaterialTheme.colorScheme.tertiary
     ReadStatus.AVAILABLE -> MaterialTheme.colorScheme.primary
     ReadStatus.ERROR -> MaterialTheme.colorScheme.error
-}
-
-private val ApiSupportStatus.label: String
-    get() = when (this) {
-        ApiSupportStatus.ACTIVE -> "ACTIVE"
-        ApiSupportStatus.NOT_ACTIVE -> "NOT ACTIVE"
-        ApiSupportStatus.NOT_AVAILABLE -> "N/A"
-        ApiSupportStatus.ERROR -> "ERROR"
-        ApiSupportStatus.UNKNOWN -> "UNKNOWN"
-    }
-
-@Composable
-private fun supportColor(status: ApiSupportStatus): Color = when (status) {
-    ApiSupportStatus.ACTIVE -> MaterialTheme.colorScheme.primary
-    ApiSupportStatus.NOT_ACTIVE -> MaterialTheme.colorScheme.tertiary
-    ApiSupportStatus.NOT_AVAILABLE -> MaterialTheme.colorScheme.onSurfaceVariant
-    ApiSupportStatus.ERROR -> MaterialTheme.colorScheme.error
-    ApiSupportStatus.UNKNOWN -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 private val String.displayText: String

@@ -29,8 +29,8 @@ internal object VehicleTab {
             title = item.title,
             apiName = item.apiName,
             id = item.id,
-            support = item.support,
             value = item.value,
+            sourceLabel = item.source.label,
         ) {
             if (item.error.isNotBlank()) ValueLine("Ошибка", item.error)
         }

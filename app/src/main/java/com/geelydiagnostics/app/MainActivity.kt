@@ -16,15 +16,17 @@ import java.util.Locale
 class MainActivity : ComponentActivity(), ReadOnlySink {
 
     private var uiState by mutableStateOf(AppUiState())
-    private var client: Closeable? = null
+    private val clients = mutableListOf<Closeable>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        uiState = uiState.copy(selectedVhalProfile = loadVhalProfile())
         setContent {
             GeelyDiagnosticsApp(
                 state = uiState,
                 onRefresh = ::startReadOnlyScan,
+                onVhalProfileSelected = ::selectVhalProfile,
                 onClearLog = { uiState = uiState.copy(logLines = emptyList()) },
             )
         }
@@ -32,20 +34,21 @@ class MainActivity : ComponentActivity(), ReadOnlySink {
     }
 
     private fun startReadOnlyScan() {
-        client?.close()
-        client = null
+        closeClients()
         uiState = AppUiState(
             carStatus = ReadStatus.CHECKING,
             diagnosticsStatus = ReadStatus.CHECKING,
             dtcManagerStatus = ReadStatus.CHECKING,
             sensorStatus = ReadStatus.CHECKING,
+            vhalStatus = ReadStatus.CHECKING,
             carInfoStatus = ReadStatus.CHECKING,
             functionStatus = ReadStatus.CHECKING,
+            selectedVhalProfile = uiState.selectedVhalProfile,
             logLines = uiState.logLines,
         )
-        onLog("=== New ECARX read-only scan ===")
+        onLog("=== New multi-source read-only scan ===")
         try {
-            client = EcarxReadOnlyClient(applicationContext, this).also { it.start() }
+            clients += EcarxReadOnlyClient(applicationContext, this).also { it.start() }
         } catch (error: Throwable) {
             onCarStatus(ReadStatus.ERROR, describe(error))
             onDiagnosticsStatus(ReadStatus.ERROR, "ECARX API unavailable")
@@ -55,12 +58,38 @@ class MainActivity : ComponentActivity(), ReadOnlySink {
             onFunctionStatus(ReadStatus.ERROR, "ECARX API unavailable")
             onLog("Initialization failed: ${describe(error)}", error)
         }
+        try {
+            clients += VhalReadOnlyClient(applicationContext, uiState.selectedVhalProfile, this).also { it.start() }
+        } catch (error: Throwable) {
+            onVhalStatus(ReadStatus.ERROR, describe(error))
+            onLog("VHAL initialization failed: ${describe(error)}", error)
+        }
     }
 
     override fun onDestroy() {
-        client?.close()
-        client = null
+        closeClients()
         super.onDestroy()
+    }
+
+    private fun selectVhalProfile(profile: VhalProfile) {
+        if (profile == uiState.selectedVhalProfile) return
+        getSharedPreferences(PREFERENCES, MODE_PRIVATE)
+            .edit()
+            .putString(KEY_VHAL_PROFILE, profile.name)
+            .apply()
+        uiState = uiState.copy(selectedVhalProfile = profile)
+        startReadOnlyScan()
+    }
+
+    private fun loadVhalProfile(): VhalProfile {
+        val saved = getSharedPreferences(PREFERENCES, MODE_PRIVATE)
+            .getString(KEY_VHAL_PROFILE, null)
+        return VhalProfile.entries.firstOrNull { it.name == saved } ?: VhalProfile.G426
+    }
+
+    private fun closeClients() {
+        clients.forEach { client -> runCatching { client.close() } }
+        clients.clear()
     }
 
     override fun onCarStatus(status: ReadStatus, detail: String) = onMain {
@@ -79,6 +108,10 @@ class MainActivity : ComponentActivity(), ReadOnlySink {
         uiState = uiState.copy(sensorStatus = status, sensorDetail = detail)
     }
 
+    override fun onVhalStatus(status: ReadStatus, detail: String) = onMain {
+        uiState = uiState.copy(vhalStatus = status, vhalDetail = detail)
+    }
+
     override fun onCarInfoStatus(status: ReadStatus, detail: String) = onMain {
         uiState = uiState.copy(carInfoStatus = status, carInfoDetail = detail)
     }
@@ -91,22 +124,33 @@ class MainActivity : ComponentActivity(), ReadOnlySink {
         uiState = uiState.copy(dtcs = dtcs)
     }
 
-    override fun onSensorsChanged(sensors: List<SensorRecord>) = onMain {
-        uiState = uiState.copy(sensors = sensors)
+    override fun onSensorsChanged(source: VehicleDataSource, sensors: List<SensorRecord>) = onMain {
+        uiState = uiState.copy(
+            sensors = uiState.sensors.filterNot { it.source == source } + sensors,
+        )
     }
 
-    override fun onSensorValueChanged(id: Int, value: ApiValue) = onMain {
+    override fun onSensorValueChanged(
+        source: VehicleDataSource,
+        id: Int,
+        value: ApiValue,
+        areaId: Int,
+    ) = onMain {
         uiState = uiState.copy(
             sensors = uiState.sensors.map { sensor ->
-                if (sensor.id == id) sensor.copy(value = value) else sensor
+                if (sensor.source == source && sensor.id == id && sensor.areaId == areaId) {
+                    sensor.copy(value = value, error = "")
+                } else {
+                    sensor
+                }
             },
         )
     }
 
-    override fun onSensorSupportChanged(id: Int, support: ApiSupportStatus) = onMain {
+    override fun onSensorSupportChanged(source: VehicleDataSource, id: Int, support: ApiSupportStatus) = onMain {
         uiState = uiState.copy(
             sensors = uiState.sensors.map { sensor ->
-                if (sensor.id == id) sensor.copy(support = support) else sensor
+                if (sensor.source == source && sensor.id == id) sensor.copy(support = support) else sensor
             },
         )
     }
@@ -137,5 +181,7 @@ class MainActivity : ComponentActivity(), ReadOnlySink {
     companion object {
         private const val MAX_LOG_LINES = 300
         private const val LOG_TAG = "GeelyDiagnostics"
+        private const val PREFERENCES = "geely_diagnostics"
+        private const val KEY_VHAL_PROFILE = "vhal_profile"
     }
 }

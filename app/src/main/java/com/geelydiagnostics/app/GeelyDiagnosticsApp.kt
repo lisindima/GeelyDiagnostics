@@ -44,6 +44,7 @@ internal enum class AppTab(val title: String) {
 internal fun GeelyDiagnosticsApp(
     state: AppUiState,
     onRefresh: () -> Unit,
+    onVhalProfileSelected: (VhalProfile) -> Unit,
     onClearLog: () -> Unit,
     initialTab: AppTab = AppTab.DIAGNOSTICS,
 ) {
@@ -80,7 +81,7 @@ internal fun GeelyDiagnosticsApp(
                     }
                     when (AppTab.entries[selectedTabIndex]) {
                         AppTab.DIAGNOSTICS -> DiagnosticsTab.Content(state)
-                        AppTab.SENSORS -> SensorsTab.Content(state)
+                        AppTab.SENSORS -> SensorsTab.Content(state, onVhalProfileSelected)
                         AppTab.VEHICLE -> VehicleTab.Content(state)
                         AppTab.FUNCTIONS -> FunctionsTab.Content(state)
                         AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
@@ -106,7 +107,7 @@ private fun AppHeader(onRefresh: () -> Unit) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "ECARX AdaptAPI · строго только чтение",
+                text = "ECARX AdaptAPI + VHAL · строго только чтение",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 16.sp,
             )

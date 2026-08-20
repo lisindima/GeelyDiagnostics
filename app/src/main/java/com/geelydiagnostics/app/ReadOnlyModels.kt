@@ -15,6 +15,11 @@ enum class ApiSupportStatus {
     UNKNOWN,
 }
 
+enum class VehicleDataSource(val label: String) {
+    ECARX("ECARX"),
+    VHAL("VHAL"),
+}
+
 data class DtcRecord(
     val code: String,
     val id: String,
@@ -41,6 +46,10 @@ data class SensorRecord(
     val valueKind: String,
     val support: ApiSupportStatus,
     val error: String = "",
+    val source: VehicleDataSource = VehicleDataSource.ECARX,
+    val sourceProfile: String? = null,
+    val profilePropertyId: Int? = null,
+    val areaId: Int = 0,
 )
 
 data class VehicleInfoRecord(
@@ -50,6 +59,7 @@ data class VehicleInfoRecord(
     val value: ApiValue,
     val support: ApiSupportStatus,
     val error: String = "",
+    val source: VehicleDataSource = VehicleDataSource.ECARX,
 )
 
 data class VehicleFunctionRecord(
@@ -61,6 +71,7 @@ data class VehicleFunctionRecord(
     val zones: String = "",
     val support: ApiSupportStatus,
     val error: String = "",
+    val source: VehicleDataSource = VehicleDataSource.ECARX,
 )
 
 data class AppUiState(
@@ -72,6 +83,9 @@ data class AppUiState(
     val dtcManagerDetail: String = "",
     val sensorStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val sensorDetail: String = "",
+    val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
+    val vhalDetail: String = "",
+    val selectedVhalProfile: VhalProfile = VhalProfile.G426,
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carInfoDetail: String = "",
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
@@ -88,12 +102,13 @@ interface ReadOnlySink {
     fun onDiagnosticsStatus(status: ReadStatus, detail: String = "")
     fun onDtcManagerStatus(status: ReadStatus, detail: String = "")
     fun onSensorStatus(status: ReadStatus, detail: String = "")
+    fun onVhalStatus(status: ReadStatus, detail: String = "")
     fun onCarInfoStatus(status: ReadStatus, detail: String = "")
     fun onFunctionStatus(status: ReadStatus, detail: String = "")
     fun onDtcsChanged(dtcs: List<DtcRecord>)
-    fun onSensorsChanged(sensors: List<SensorRecord>)
-    fun onSensorValueChanged(id: Int, value: ApiValue)
-    fun onSensorSupportChanged(id: Int, support: ApiSupportStatus)
+    fun onSensorsChanged(source: VehicleDataSource, sensors: List<SensorRecord>)
+    fun onSensorValueChanged(source: VehicleDataSource, id: Int, value: ApiValue, areaId: Int = 0)
+    fun onSensorSupportChanged(source: VehicleDataSource, id: Int, support: ApiSupportStatus)
     fun onVehicleInfoChanged(items: List<VehicleInfoRecord>)
     fun onFunctionsChanged(functions: List<VehicleFunctionRecord>)
     fun onLog(message: String, error: Throwable? = null)
