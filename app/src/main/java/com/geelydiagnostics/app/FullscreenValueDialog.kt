@@ -48,6 +48,31 @@ internal fun FullscreenValueDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
+        FullscreenValueScreen(
+            title = title,
+            apiName = apiName,
+            idText = idText,
+            value = value,
+            sourceLabel = sourceLabel,
+            modeLabel = modeLabel,
+            onDismiss = onDismiss,
+            details = details,
+        )
+    }
+}
+
+/** Directly renderable content used by both the dialog and Android Studio Preview. */
+@Composable
+internal fun FullscreenValueScreen(
+    title: String,
+    apiName: String,
+    idText: String,
+    value: ApiValue,
+    sourceLabel: String,
+    modeLabel: String,
+    onDismiss: () -> Unit,
+    details: @Composable () -> Unit,
+) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
@@ -140,5 +165,4 @@ internal fun FullscreenValueDialog(
                 }
             }
         }
-    }
 }

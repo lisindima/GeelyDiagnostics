@@ -1,8 +1,13 @@
 package com.geelydiagnostics.app
 
 import android.content.res.Configuration
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
 
@@ -25,6 +30,39 @@ private fun DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS)
 )
 @Composable
 private fun SensorsPreview() = PreviewApp(AppTab.SENSORS)
+
+@Preview(
+    name = "ГУ · Значение на весь экран",
+    group = "1440×1920",
+    device = "spec:width=1440px,height=1920px,dpi=160",
+    locale = "ru",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showSystemUi = false,
+)
+@Composable
+private fun FullscreenSensorPreview() {
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(density = density.density, fontScale = 1.5f),
+    ) {
+        MaterialTheme(colorScheme = darkColorScheme()) {
+            FullscreenValueScreen(
+                title = "Оставшееся топливо",
+                apiName = "pafulvlindcdfulvlvalfromfutbl",
+                idText = "id 561025054",
+                value = ApiValue(display = "41.7 л", raw = "41700"),
+                sourceLabel = "VHAL · маппинг G426",
+                modeLabel = "АВТООБНОВЛЕНИЕ",
+                onDismiss = {},
+            ) {
+                ValueLine("Тип", "int")
+                ValueLine("Расшифровка", "профиль G426")
+                ValueLine("VHAL ID", "0x2170901E")
+                ValueLine("Поле профиля", "10012")
+            }
+        }
+    }
+}
 
 @Preview(
     name = "ГУ · Автомобиль",
