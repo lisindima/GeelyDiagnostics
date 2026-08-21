@@ -1,13 +1,17 @@
 package com.geelydiagnostics.app
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
 
@@ -32,7 +36,7 @@ private fun DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS)
 private fun SensorsPreview() = PreviewApp(AppTab.SENSORS)
 
 @Preview(
-    name = "ГУ · Значение на весь экран",
+    name = "ГУ · Значение + график",
     group = "1440×1920",
     device = "spec:width=1440px,height=1920px,dpi=160",
     locale = "ru",
@@ -69,6 +73,27 @@ private fun FullscreenSensorPreview() {
                 ValueLine("VHAL ID", "0x2170901E")
                 ValueLine("Поле профиля", "10012")
             }
+        }
+    }
+}
+
+@Preview(
+    name = "Компонент · График сенсора",
+    group = "Компоненты",
+    device = "spec:width=1100px,height=700px,dpi=160",
+    locale = "ru",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    showBackground = true,
+    showSystemUi = false,
+)
+@Composable
+private fun SensorChartPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Surface(modifier = Modifier.padding(24.dp)) {
+            SensorHistoryChart(
+                samples = previewChartSamples(),
+                isLive = true,
+            )
         }
     }
 }
