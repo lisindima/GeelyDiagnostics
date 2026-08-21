@@ -267,6 +267,8 @@ private fun sensor(id: Int, apiName: String, title: String, value: String, kind:
         ApiSupportStatus.ACTIVE,
         updatedAtMillis = System.currentTimeMillis(),
         expectedUpdateIntervalMillis = if (kind == "float") 15_000L else null,
+        autoUpdates = kind == "float",
+        chartable = kind == "float",
     )
 
 private fun info(id: Int, apiName: String, title: String, value: String, raw: String = value) =
@@ -299,6 +301,8 @@ private fun vhalSensor(
     profilePropertyId = propertyId,
     updatedAtMillis = System.currentTimeMillis(),
     expectedUpdateIntervalMillis = 15_000L,
+    autoUpdates = true,
+    chartable = kind == "float" || propertyId in setOf(10012, 10021),
 )
 
 private fun rawVhalSensor(id: Int, raw: String, kind: String) = SensorRecord(

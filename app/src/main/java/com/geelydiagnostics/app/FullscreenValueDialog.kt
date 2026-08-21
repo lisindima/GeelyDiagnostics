@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -139,15 +140,46 @@ internal fun FullscreenValueScreen(
                     }
                 }
                 item {
-                    SelectionContainer {
-                        Text(
-                            text = value.display,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            fontSize = 58.sp,
-                            lineHeight = 66.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        ),
+                    ) {
+                        Column {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(
+                                    text = title,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    fontSize = 26.sp,
+                                    lineHeight = 32.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = "${apiName.lowercase(Locale.ROOT)} · $idText",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 14.sp,
+                                )
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                            SelectionContainer {
+                                Text(
+                                    text = value.display,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 28.dp),
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 58.sp,
+                                    lineHeight = 66.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
                     }
                 }
                 if (chart != null) {
@@ -164,6 +196,13 @@ internal fun FullscreenValueScreen(
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
+                            Text(
+                                text = "ИСХОДНОЕ ЗНАЧЕНИЕ",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
                             SelectionContainer {
                                 Text(
                                     text = "raw  ${value.raw}",
@@ -172,20 +211,6 @@ internal fun FullscreenValueScreen(
                                     lineHeight = 28.sp,
                                 )
                             }
-                            Text(
-                                text = title.lowercase(Locale.getDefault()),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 21.sp,
-                                lineHeight = 26.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = "${apiName.lowercase(Locale.ROOT)} · $idText",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 15.sp,
-                            )
                             details()
                         }
                     }
