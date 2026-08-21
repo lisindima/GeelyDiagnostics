@@ -114,13 +114,24 @@ internal class VhalReadOnlyClient(
     }
 
     private fun readConfigs(vehicleClass: Class<*>, service: Any): List<PropertyConfig> {
-        val method = vehicleClass.methods.firstOrNull {
-            it.name == "getAllPropConfigs" && it.parameterCount == 1
-        } ?: throw NoSuchMethodException("IVehicle.getAllPropConfigs(callback)")
+        val methods = (vehicleClass.methods.asSequence() + service.javaClass.methods.asSequence())
+            .filter { it.name == "getAllPropConfigs" }
+            .distinctBy { method -> method.parameterTypes.joinToString { it.name } }
+            .toList()
+        val method = methods.firstOrNull { it.parameterCount == 0 }
+            ?: methods.firstOrNull { it.parameterCount == 1 }
+            ?: throw NoSuchMethodException(
+                "IVehicle.getAllPropConfigs() or getAllPropConfigs(callback); " +
+                    "available=${methods.joinToString { it.toGenericString() }.ifBlank { "none" }}",
+            )
         var status: Int? = null
-        val result = invokeCallback(method, service) { args ->
-            status = (args.firstOrNull() as? Number)?.toInt()
-            args.lastOrNull { it is List<*> }
+        val result = if (method.parameterCount == 0) {
+            method.invoke(service)
+        } else {
+            invokeCallback(method, service) { args ->
+                status = (args.firstOrNull() as? Number)?.toInt()
+                args.lastOrNull { it is List<*> }
+            }
         }
         if (status != null && status != STATUS_OK) {
             throw IllegalStateException("getAllPropConfigs status=$status")
@@ -128,7 +139,10 @@ internal class VhalReadOnlyClient(
         val rawConfigs = result as? List<*>
             ?: throw IllegalStateException("getAllPropConfigs() did not return a list")
         val configs = rawConfigs.mapNotNull(::readConfig).sortedBy(PropertyConfig::propertyId)
-        sink.onLog("VHAL configs: ${rawConfigs.size} received, ${configs.size} parsed")
+        sink.onLog(
+            "VHAL configs via getAllPropConfigs/${method.parameterCount}: " +
+                "${rawConfigs.size} received, ${configs.size} parsed",
+        )
         return configs
     }
 
