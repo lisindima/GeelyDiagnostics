@@ -52,20 +52,12 @@ internal object SensorsTab {
             query = query,
             favoriteKeys = state.favoriteKeys,
         )
-        val groups = when (selectedSource) {
-            SensorSourceFilter.ALL -> listOf(
-                "ECARX" to filtered.filter { it.source == VehicleDataSource.ECARX },
-                "VHAL · все свойства · декодер ${state.selectedVhalProfile.key}" to
-                    filtered.filter { it.source == VehicleDataSource.VHAL },
-            )
-            SensorSourceFilter.ECARX -> listOf(
-                "ECARX" to filtered,
-            )
-            SensorSourceFilter.VHAL -> listOf(
-                "VHAL · все свойства · декодер ${state.selectedVhalProfile.key}" to
-                    filtered,
-            )
-        }.filter { (_, values) -> values.isNotEmpty() }
+        val autoUpdating = filtered.filter(SensorRecord::autoUpdates)
+        val manuallyUpdated = filtered.filterNot(SensorRecord::autoUpdates)
+        val groups = listOf(
+            "Обновляются автоматически · по подписке (${autoUpdating.size})" to autoUpdating,
+            "Обновляются вручную · стартовый снимок (${manuallyUpdated.size})" to manuallyUpdated,
+        ).filter { (_, values) -> values.isNotEmpty() }
         val emptyText = when {
             selectedSource == SensorSourceFilter.VHAL && state.vhalStatus == ReadStatus.ERROR ->
                 "VHAL недоступен: ${state.vhalDetail.ifBlank { "причина записана в журнале" }}"
@@ -112,7 +104,11 @@ internal object SensorsTab {
                 idText = "id ${sensor.id}",
                 value = sensor.value,
                 sourceLabel = sensor.sourceLabel,
-                modeLabel = "АВТООБНОВЛЕНИЕ",
+                modeLabel = if (sensor.autoUpdates) {
+                    "АВТООБНОВЛЕНИЕ · ПОДПИСКА"
+                } else {
+                    "РУЧНОЕ ОБНОВЛЕНИЕ"
+                },
                 isFavorite = sensor.favoriteKey in state.favoriteKeys,
                 onFavoriteToggle = { onFavoriteToggle(sensor.favoriteKey) },
                 onDismiss = { expandedSensorKey = null },
@@ -207,7 +203,7 @@ internal object SensorsTab {
                 StatusCard(
                     modifier = Modifier.fillMaxWidth(),
                     title = "Live Data",
-                    description = "Показаны все доступные VHAL-свойства. Профиль только расшифровывает известные значения; изменяемые данные обновляются автоматически.",
+                    description = "Показаны все доступные VHAL-свойства. Профиль только расшифровывает известные значения; live-данные обновляются только по подписке.",
                     status = combinedStatus,
                     detail = combinedDetail,
                 )
@@ -284,6 +280,10 @@ internal object SensorsTab {
             "Обновлено",
             formatUpdateTime(sensor.updatedAtMillis, nowMillis) +
                 if (sensor.isStale(nowMillis)) " · УСТАРЕЛО" else "",
+        )
+        ValueLine(
+            "Обновление",
+            if (sensor.autoUpdates) "автоматически по подписке" else "только вручную",
         )
         if (sensor.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
         if (sensor.source == VehicleDataSource.VHAL) {

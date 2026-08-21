@@ -20,7 +20,7 @@ internal class VhalReadOnlyClient(
     private val profile: VhalProfile,
     private val sink: ReadOnlySink,
 ) : Closeable {
-    private val executor = Executors.newSingleThreadScheduledExecutor { task ->
+    private val executor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "VhalReadOnly").apply { isDaemon = true }
     }
 
@@ -82,26 +82,29 @@ internal class VhalReadOnlyClient(
             sink.onSensorsChanged(VehicleDataSource.VHAL, records)
 
             val callbackCount = subscribeToChanges(configs)
-            val pollingCount = if (callbackCount == 0) {
-                startFallbackPolling(vehicleClass, service, configs, specs)
-            } else {
-                0
+            val classifiedRecords = records.map { record ->
+                record.copy(autoUpdates = record.id in subscribedIds)
             }
-            val autoCount = callbackCount + pollingCount
-            val autoMode = if (pollingCount > 0) "polling" else "callback"
-            val mappedCount = records.count { it.sourceProfile != null }
+            recordsByKey = classifiedRecords.associateBy { PropertyKey(it.id, it.areaId) }
+            sink.onSensorsChanged(VehicleDataSource.VHAL, classifiedRecords)
+            val mappedCount = classifiedRecords.count { it.sourceProfile != null }
             val mappingDetail = if (profile == VhalProfile.RAW) {
                 "RAW без расшифровки"
             } else {
                 "$mappedCount расшифровано ${profile.key}"
             }
+            val updateDetail = if (callbackCount > 0) {
+                "подписки: $callbackCount"
+            } else {
+                "подписки недоступны · только стартовый снимок"
+            }
             sink.onVhalStatus(
                 ReadStatus.AVAILABLE,
-                "${records.size} значений · $mappingDetail · auto: $autoCount ($autoMode)",
+                "${records.size} значений · $mappingDetail · $updateDetail",
             )
             sink.onLog(
                 "VHAL: ${records.size} values from ${configs.size} configs; " +
-                    "$mappingDetail; $autoCount auto updates via $autoMode",
+                    "$mappingDetail; $callbackCount callback subscriptions; polling disabled",
             )
         } catch (error: Throwable) {
             if (closed) return
@@ -309,50 +312,6 @@ internal class VhalReadOnlyClient(
                 logChangedValue(oldRecord, decoded, "live")
             }.onFailure { sink.onLog("VHAL live value skipped: ${describe(it)}") }
         }
-    }
-
-    private fun startFallbackPolling(
-        vehicleClass: Class<*>,
-        service: Any,
-        configs: List<PropertyConfig>,
-        specs: Map<Int, VhalSignalSpec>,
-    ): Int {
-        val dynamic = configs.filter(PropertyConfig::isReadableAndDynamic)
-        if (dynamic.isEmpty()) return 0
-        sink.onLog("VHAL live callback unavailable; fallback polling every ${POLL_INTERVAL_SECONDS}s")
-        executor.scheduleWithFixedDelay(
-            {
-                if (!closed) {
-                    dynamic.forEach { config ->
-                        config.areaIds.forEach { areaId ->
-                            runCatching {
-                                val property = getProperty(vehicleClass, service, config.propertyId, areaId)
-                                val spec = specs[config.propertyId]
-                                val raw = extractRaw(property, spec?.valueType)
-                                val value = if (spec != null) {
-                                    VhalProfileRegistry.decode(spec, raw)
-                                } else {
-                                    ApiValue.raw(raw.text)
-                                }
-                                sink.onSensorValueChanged(
-                                    VehicleDataSource.VHAL,
-                                    config.propertyId,
-                                    value,
-                                    areaId,
-                                )
-                                recordsByKey[PropertyKey(config.propertyId, areaId)]?.let { record ->
-                                    logChangedValue(record, value, "poll")
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            POLL_INTERVAL_SECONDS,
-            POLL_INTERVAL_SECONDS,
-            TimeUnit.SECONDS,
-        )
-        return dynamic.sumOf { it.areaIds.size }
     }
 
     private fun logInitialValue(record: SensorRecord) {
@@ -589,7 +548,6 @@ internal class VhalReadOnlyClient(
         private const val CHANGE_MODE_CONTINUOUS = 2
         private const val SENSOR_RATE_ONCHANGE = 0f
         private const val LIVE_RATE_HZ = 5f
-        private const val POLL_INTERVAL_SECONDS = 2L
         private const val STALE_AFTER_MILLIS = 15_000L
         private const val MAX_LOG_VALUE_LENGTH = 240
         private const val CALLBACK_TIMEOUT_SECONDS = 2L

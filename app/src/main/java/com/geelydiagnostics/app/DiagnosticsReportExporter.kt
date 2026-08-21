@@ -52,6 +52,7 @@ internal object DiagnosticsReportExporter {
                     put("profilePropertyId", record.profilePropertyId ?: JSONObject.NULL)
                     put("updatedAt", record.updatedAtMillis.jsonTime())
                     put("changedSinceScan", record.changedSinceScan)
+                    put("autoUpdates", record.autoUpdates)
                     put("favorite", record.favoriteKey in state.favoriteKeys)
                     put("error", record.error)
                 })

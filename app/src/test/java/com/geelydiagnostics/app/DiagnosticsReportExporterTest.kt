@@ -20,6 +20,7 @@ class DiagnosticsReportExporterTest {
             sourceProfile = "G426",
             updatedAtMillis = 1_700_000_000_000L,
             changedSinceScan = true,
+            autoUpdates = true,
         )
         val state = AppUiState(
             selectedVhalProfile = VhalProfile.G426,
@@ -40,6 +41,7 @@ class DiagnosticsReportExporterTest {
         assertEquals("1", exported.getString("raw"))
         assertEquals("G426", exported.getString("mappingProfile"))
         assertTrue(exported.getBoolean("changedSinceScan"))
+        assertTrue(exported.getBoolean("autoUpdates"))
         assertTrue(exported.getBoolean("favorite"))
         assertEquals(1, report.getJSONArray("log").length())
     }

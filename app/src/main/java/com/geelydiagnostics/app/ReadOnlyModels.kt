@@ -55,6 +55,7 @@ data class SensorRecord(
     val updatedAtMillis: Long? = null,
     val expectedUpdateIntervalMillis: Long? = null,
     val changedSinceScan: Boolean = false,
+    val autoUpdates: Boolean = false,
 )
 
 data class VehicleInfoRecord(

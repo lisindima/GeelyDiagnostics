@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
@@ -16,6 +17,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -42,6 +44,7 @@ internal enum class AppTab(val title: String) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 internal fun GeelyDiagnosticsApp(
     state: AppUiState,
     onRefresh: () -> Unit,
@@ -82,49 +85,66 @@ internal fun GeelyDiagnosticsApp(
                             )
                         }
                     }
-                    when (AppTab.entries[selectedTabIndex]) {
-                        AppTab.DIAGNOSTICS -> {
-                            val tabState = remember(
-                                state.carStatus,
-                                state.carDetail,
-                                state.diagnosticsStatus,
-                                state.diagnosticsDetail,
-                                state.dtcManagerStatus,
-                                state.dtcManagerDetail,
-                                state.dtcs,
-                            ) { state }
-                            DiagnosticsTab.Content(tabState)
+                    PullToRefreshBox(
+                        isRefreshing = state.isScanInProgress,
+                        onRefresh = { if (!state.isScanInProgress) onRefresh() },
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        when (AppTab.entries[selectedTabIndex]) {
+                            AppTab.DIAGNOSTICS -> {
+                                val tabState = remember(
+                                    state.carStatus,
+                                    state.carDetail,
+                                    state.diagnosticsStatus,
+                                    state.diagnosticsDetail,
+                                    state.dtcManagerStatus,
+                                    state.dtcManagerDetail,
+                                    state.dtcs,
+                                ) { state }
+                                DiagnosticsTab.Content(tabState)
+                            }
+                            AppTab.SENSORS -> SensorsTab.Content(
+                                state,
+                                onVhalProfileSelected,
+                                onFavoriteToggle,
+                            )
+                            AppTab.VEHICLE -> {
+                                val tabState = remember(
+                                    state.carInfoStatus,
+                                    state.carInfoDetail,
+                                    state.vehicleInfo,
+                                    state.favoriteKeys,
+                                ) { state }
+                                VehicleTab.Content(tabState, onFavoriteToggle)
+                            }
+                            AppTab.FUNCTIONS -> {
+                                val tabState = remember(
+                                    state.functionStatus,
+                                    state.functionDetail,
+                                    state.functions,
+                                    state.favoriteKeys,
+                                ) { state }
+                                FunctionsTab.Content(tabState, onFavoriteToggle)
+                            }
+                            AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
                         }
-                        AppTab.SENSORS -> SensorsTab.Content(
-                            state,
-                            onVhalProfileSelected,
-                            onFavoriteToggle,
-                        )
-                        AppTab.VEHICLE -> {
-                            val tabState = remember(
-                                state.carInfoStatus,
-                                state.carInfoDetail,
-                                state.vehicleInfo,
-                                state.favoriteKeys,
-                            ) { state }
-                            VehicleTab.Content(tabState, onFavoriteToggle)
-                        }
-                        AppTab.FUNCTIONS -> {
-                            val tabState = remember(
-                                state.functionStatus,
-                                state.functionDetail,
-                                state.functions,
-                                state.favoriteKeys,
-                            ) { state }
-                            FunctionsTab.Content(tabState, onFavoriteToggle)
-                        }
-                        AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
                     }
                 }
             }
         }
     }
 }
+
+private val AppUiState.isScanInProgress: Boolean
+    get() = listOf(
+        carStatus,
+        diagnosticsStatus,
+        dtcManagerStatus,
+        sensorStatus,
+        vhalStatus,
+        carInfoStatus,
+        functionStatus,
+    ).any { it == ReadStatus.CHECKING }
 
 @Composable
 private fun AppHeader(onRefresh: () -> Unit, onExport: () -> Unit) {

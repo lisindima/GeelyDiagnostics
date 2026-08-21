@@ -36,6 +36,8 @@ class EcarxReadOnlyClient(
 
     @Volatile
     private var closed = false
+    @Volatile
+    private var connected = false
 
     private var car: ICar? = null
     private var connectable: IConnectable? = null
@@ -44,18 +46,22 @@ class EcarxReadOnlyClient(
     private var dtcWatcherRegistered = false
     private var sensorListenerRegistered = false
     private var sensorSubscriptionCount = 0
+    private val sensorSubscribedIds = linkedSetOf<Int>()
     private var sensorSpecsById: Map<Int, SensorSpec> = emptyMap()
 
     private val connectWatcher = object : IConnectable.IConnectWatcher {
         override fun onConnected() {
             if (closed) return
+            val isNewConnection = !connected
+            connected = true
             sink.onLog("IConnectable.onConnected()")
             sink.onCarStatus(ReadStatus.AVAILABLE, "CONNECTED")
-            submitRefresh("connection callback")
+            if (isNewConnection) submitRefresh("connection callback")
         }
 
         override fun onDisConnected() {
             if (closed) return
+            connected = false
             sink.onLog("IConnectable.onDisConnected()")
             sink.onCarStatus(ReadStatus.ERROR, "DISCONNECTED")
         }
@@ -245,13 +251,19 @@ class EcarxReadOnlyClient(
                     } else {
                         manager.registerListener(sensorListener, record.id)
                     }
-                    if (registered) sensorSubscriptionCount++
+                    if (registered) sensorSubscribedIds += record.id
                 } catch (error: Throwable) {
                     sink.onLog("Sensor listener ${record.apiName}: ${describe(error)}", error)
                 }
             }
+            sensorSubscriptionCount = sensorSubscribedIds.size
             sensorListenerRegistered = sensorSubscriptionCount > 0
         }
+
+        sink.onSensorsChanged(
+            VehicleDataSource.ECARX,
+            records.map { record -> record.copy(autoUpdates = record.id in sensorSubscribedIds) },
+        )
 
         val supported = records.count { it.support.isSupported }
         sink.onSensorStatus(
