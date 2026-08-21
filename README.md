@@ -147,7 +147,7 @@ Java 17.
 
 Готовый APK публикуется отдельно от исходников в
 [GitHub Releases](https://github.com/lisindima/GeelyDiagnostics/releases).
-Для версии `v0.11.1` имя файла — `GeelyDiagnostics-v0.11.1-debug.apk`.
+Для версии `v0.11.2` имя файла — `GeelyDiagnostics-v0.11.2-debug.apk`.
 
 Пакет: `com.geelydiagnostics.app`. Logcat tag: `GeelyDiagnostics`.
 
