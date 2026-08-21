@@ -57,9 +57,9 @@ internal object SensorsTab {
         val autoUpdating = filtered.filter(SensorRecord::autoUpdates)
         val manuallyUpdated = filtered.filterNot(SensorRecord::autoUpdates)
         val groups = listOf(
-            "Обновляются автоматически · по подписке (${autoUpdating.size})" to autoUpdating,
-            "Обновляются вручную · стартовый снимок (${manuallyUpdated.size})" to manuallyUpdated,
-        ).filter { (_, values) -> values.isNotEmpty() }
+            Triple("Автообновление", "Новые значения приходят по подписке", autoUpdating),
+            Triple("Ручное обновление", "Значения обновляются по запросу", manuallyUpdated),
+        ).filter { (_, _, values) -> values.isNotEmpty() }
         val emptyText = when {
             selectedSource == SensorSourceFilter.VHAL && state.vhalStatus == ReadStatus.ERROR ->
                 "VHAL недоступен: ${state.vhalDetail.ifBlank { "причина записана в журнале" }}"
@@ -86,7 +86,8 @@ internal object SensorsTab {
             SensorList(
                 state = state,
                 supportedCount = supported.size,
-                displayedCount = groups.sumOf { (_, sensors) -> sensors.size },
+                displayedCount = filtered.size,
+                autoUpdatingCount = autoUpdating.size,
                 groups = groups,
                 emptyText = emptyText,
                 query = query,
@@ -200,7 +201,8 @@ internal object SensorsTab {
         state: AppUiState,
         supportedCount: Int,
         displayedCount: Int,
-        groups: List<Pair<String, List<SensorRecord>>>,
+        autoUpdatingCount: Int,
+        groups: List<Triple<String, String, List<SensorRecord>>>,
         emptyText: String,
         query: String,
         onQueryChange: (String) -> Unit,
@@ -216,8 +218,9 @@ internal object SensorsTab {
             "ECARX: ${state.sensorDetail.ifBlank { state.sensorStatus.labelForSource }}",
             "VHAL ${state.selectedVhalProfile.key}: ${state.vhalDetail.ifBlank { state.vhalStatus.labelForSource }}",
         ).joinToString(" · ")
-        val ecarxCount = state.sensors.count { it.source == VehicleDataSource.ECARX }
-        val vhalCount = state.sensors.count { it.source == VehicleDataSource.VHAL }
+        val displayedSensors = groups.flatMap { (_, _, sensors) -> sensors }
+        val ecarxCount = displayedSensors.count { it.source == VehicleDataSource.ECARX }
+        val vhalCount = displayedSensors.count { it.source == VehicleDataSource.VHAL }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -248,16 +251,25 @@ internal object SensorsTab {
                 )
             }
             item {
-                SectionTitle(
-                    "Показано: $displayedCount · ECARX: $ecarxCount · VHAL: $vhalCount · " +
-                        "Поддерживается: $supportedCount",
+                SensorResultsSummary(
+                    displayedCount = displayedCount,
+                    autoUpdatingCount = autoUpdatingCount,
+                    ecarxCount = ecarxCount,
+                    vhalCount = vhalCount,
+                    supportedCount = supportedCount,
                 )
             }
             if (groups.isEmpty()) {
                 item { EmptyMessage(emptyText) }
             } else {
-                groups.forEach { (groupTitle, sensors) ->
-                    item { SectionTitle(groupTitle) }
+                groups.forEach { (groupTitle, groupSubtitle, sensors) ->
+                    item {
+                        SensorGroupHeader(
+                            title = groupTitle,
+                            subtitle = groupSubtitle,
+                            count = sensors.size,
+                        )
+                    }
                     sensors.chunked(2).forEach { row ->
                         item {
                             TwoColumnRow(row) { sensor ->
@@ -273,6 +285,65 @@ internal object SensorsTab {
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun SensorResultsSummary(
+        displayedCount: Int,
+        autoUpdatingCount: Int,
+        ecarxCount: Int,
+        vhalCount: Int,
+        supportedCount: Int,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = "Показано $displayedCount  ·  автообновление $autoUpdatingCount",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "ECARX $ecarxCount  ·  VHAL $vhalCount  ·  доступно $supportedCount",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+            )
+        }
+    }
+
+    @Composable
+    private fun SensorGroupHeader(title: String, subtitle: String, count: Int) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = subtitle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp,
+                )
+            }
+            Text(
+                text = count.toString(),
+                modifier = Modifier.padding(top = 2.dp),
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 
