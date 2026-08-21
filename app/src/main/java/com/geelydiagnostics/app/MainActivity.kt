@@ -1,8 +1,11 @@
 package com.geelydiagnostics.app
 
+import android.content.ContentValues
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,10 +19,13 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
 
     private lateinit var viewModel: DiagnosticsViewModel
+    private var pendingExportFileName: String? = null
 
     private val createReportDocument = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
+        val fileName = pendingExportFileName
+        pendingExportFileName = null
         if (uri == null) return@registerForActivityResult
         runCatching {
             val output = requireNotNull(contentResolver.openOutputStream(uri))
@@ -29,7 +35,7 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Отчёт сохранён", Toast.LENGTH_SHORT).show()
         }.onFailure { error ->
             viewModel.onLog("Report export failed: ${error.message}", error)
-            Toast.makeText(this, "Не удалось сохранить отчёт", Toast.LENGTH_LONG).show()
+            saveReportLocally(fileName ?: newReportFileName(), error)
         }
     }
 
@@ -49,20 +55,27 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun exportReport() {
-        val now = System.currentTimeMillis()
-        val suffix = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date(now))
-        val fileName = "GeelyDiagnostics-$suffix.json"
+        val fileName = newReportFileName()
         val pickerIntent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "application/json"
         }
         val pickerAvailable = pickerIntent.resolveActivity(packageManager) != null
         if (pickerAvailable) {
+            pendingExportFileName = fileName
             runCatching { createReportDocument.launch(fileName) }
-                .onFailure { error -> saveReportLocally(fileName, error) }
+                .onFailure { error ->
+                    pendingExportFileName = null
+                    saveReportLocally(fileName, error)
+                }
         } else {
             saveReportLocally(fileName)
         }
+    }
+
+    private fun newReportFileName(): String {
+        val suffix = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        return "GeelyDiagnostics-$suffix.json"
     }
 
     private fun createReport(): String = DiagnosticsReportExporter.create(
@@ -72,21 +85,73 @@ class MainActivity : ComponentActivity() {
     )
 
     private fun saveReportLocally(fileName: String, pickerError: Throwable? = null) {
+        var downloadsError: Throwable? = null
         runCatching {
-            val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
-            check(directory.exists() || directory.mkdirs()) { "Cannot create ${directory.absolutePath}" }
-            File(directory, fileName).apply { writeText(createReport(), Charsets.UTF_8) }
-        }.onSuccess { file ->
+            val report = createReport()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                runCatching { saveReportToDownloads(fileName, report) }
+                    .getOrElse { error ->
+                        downloadsError = error
+                        saveReportToPrivateStorage(fileName, report)
+                    }
+            } else {
+                saveReportToPrivateStorage(fileName, report)
+            }
+        }.onSuccess { saved ->
             pickerError?.let { viewModel.onLog("System file picker failed: ${it.message}", it) }
-            viewModel.onLog("Diagnostic report saved locally: ${file.absolutePath}")
+            downloadsError?.let { viewModel.onLog("Public Downloads export failed: ${it.message}", it) }
+            viewModel.onLog("Diagnostic report saved locally: ${saved.location}")
             Toast.makeText(
                 this,
-                "Отчёт сохранён локально:\n${file.absolutePath}",
+                "Отчёт сохранён:\n${saved.location}",
                 Toast.LENGTH_LONG,
             ).show()
         }.onFailure { error ->
             viewModel.onLog("Local report export failed: ${error.message}", error)
             Toast.makeText(this, "Не удалось сохранить отчёт", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun saveReportToDownloads(fileName: String, report: String): SavedReport {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+            put(
+                MediaStore.MediaColumns.RELATIVE_PATH,
+                "${Environment.DIRECTORY_DOWNLOADS}/$PUBLIC_REPORT_DIRECTORY",
+            )
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val uri = requireNotNull(
+            contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values),
+        ) { "MediaStore did not create a Downloads entry" }
+        try {
+            val output = requireNotNull(contentResolver.openOutputStream(uri, "w"))
+            output.writer(Charsets.UTF_8).use { writer -> writer.write(report) }
+            val published = contentResolver.update(
+                uri,
+                ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
+                null,
+                null,
+            )
+            check(published > 0) { "MediaStore did not publish the Downloads entry" }
+        } catch (error: Throwable) {
+            runCatching { contentResolver.delete(uri, null, null) }
+            throw error
+        }
+        return SavedReport("${Environment.DIRECTORY_DOWNLOADS}/$PUBLIC_REPORT_DIRECTORY/$fileName")
+    }
+
+    private fun saveReportToPrivateStorage(fileName: String, report: String): SavedReport {
+        val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
+        check(directory.exists() || directory.mkdirs()) { "Cannot create ${directory.absolutePath}" }
+        val file = File(directory, fileName).apply { writeText(report, Charsets.UTF_8) }
+        return SavedReport(file.absolutePath)
+    }
+
+    private data class SavedReport(val location: String)
+
+    private companion object {
+        const val PUBLIC_REPORT_DIRECTORY = "GeelyDiagnostics"
     }
 }
