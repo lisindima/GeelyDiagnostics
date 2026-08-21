@@ -135,8 +135,16 @@ internal fun FullscreenValueScreen(
                             )
                         }
                         Spacer(Modifier.width(8.dp))
-                        Button(onClick = onDismiss) {
-                            Text("Закрыть", fontSize = 19.sp)
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.semantics { contentDescription = "Закрыть" },
+                        ) {
+                            Text(
+                                text = "×",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 34.sp,
+                                lineHeight = 34.sp,
+                            )
                         }
                     }
                 }

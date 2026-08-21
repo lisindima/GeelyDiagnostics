@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,9 +15,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -72,17 +75,10 @@ internal object SensorsTab {
 
         Column(Modifier.fillMaxSize()) {
             ProfileSelector(state.selectedVhalProfile, onVhalProfileSelected)
-            PrimaryTabRow(selectedTabIndex = selectedSourceIndex) {
-                SensorSourceFilter.entries.forEachIndexed { index, filter ->
-                    Tab(
-                        selected = selectedSourceIndex == index,
-                        onClick = { selectedSourceIndex = index },
-                        text = {
-                            Text(filter.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                        },
-                    )
-                }
-            }
+            SensorSourceSelector(
+                selectedIndex = selectedSourceIndex,
+                onSelected = { selectedSourceIndex = it },
+            )
             SensorList(
                 state = state,
                 supportedCount = supported.size,
@@ -141,23 +137,25 @@ internal object SensorsTab {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 12.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = MaterialTheme.shapes.medium,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = "Профиль VHAL",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                     )
                     Text(
                         text = selected.vehicle,
-                        fontSize = 16.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
@@ -166,7 +164,7 @@ internal object SensorsTab {
                         } else {
                             "Используется только для расшифровки; raw-свойства не скрываются"
                         },
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                     )
                 }
@@ -174,8 +172,8 @@ internal object SensorsTab {
                     Button(
                         onClick = { expanded = true },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            contentColor = MaterialTheme.colorScheme.primaryContainer,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
                     ) {
                         Text(selected.key, fontSize = 16.sp)
@@ -192,6 +190,41 @@ internal object SensorsTab {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun SensorSourceSelector(selectedIndex: Int, onSelected: (Int) -> Unit) {
+        val filters = SensorSourceFilter.entries
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 2.dp),
+        ) {
+            filters.forEachIndexed { index, filter ->
+                val selected = selectedIndex == index
+                SegmentedButton(
+                    selected = selected,
+                    onClick = { onSelected(index) },
+                    shape = SegmentedButtonDefaults.itemShape(index, filters.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        activeBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surface,
+                        inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    ),
+                    icon = {},
+                    label = {
+                        Text(
+                            text = filter.title,
+                            fontSize = 14.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        )
+                    },
+                )
             }
         }
     }

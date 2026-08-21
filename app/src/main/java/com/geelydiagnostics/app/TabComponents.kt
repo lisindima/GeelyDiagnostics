@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -315,12 +314,19 @@ internal fun ValueLine(label: String, value: String) {
     ) {
         Text(
             text = "$label:",
-            modifier = Modifier.width(132.dp),
+            modifier = Modifier.weight(0.34f),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp,
+            lineHeight = 17.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
-        SelectionContainer(modifier = Modifier.weight(1f)) {
-            Text(text = value, fontSize = 14.sp)
+        SelectionContainer(modifier = Modifier.weight(0.66f)) {
+            Text(
+                text = value,
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+            )
         }
     }
 }
