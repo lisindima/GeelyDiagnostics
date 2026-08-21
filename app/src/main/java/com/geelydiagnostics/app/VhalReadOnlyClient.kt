@@ -1,6 +1,7 @@
 package com.geelydiagnostics.app
 
-import android.content.Context
+import android.hardware.automotive.vehicle.V2_0.IVehicleCallback
+import android.hardware.automotive.vehicle.V2_0.VehiclePropValue
 import java.io.Closeable
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -8,15 +9,11 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.math.max
-import kotlin.math.min
 
 /**
- * Read-only VHAL boundary. HIDL supplies the complete property catalog and initial values;
- * CarPropertyManager is used only to observe subsequent value changes.
+ * VHAL boundary. HIDL supplies the property catalog, initial values, and change callbacks.
  */
 internal class VhalReadOnlyClient(
-    private val context: Context,
     private val profile: VhalProfile,
     private val sink: ReadOnlySink,
 ) : Closeable {
@@ -26,9 +23,8 @@ internal class VhalReadOnlyClient(
 
     @Volatile
     private var closed = false
-    private var car: Any? = null
-    private var propertyManager: Any? = null
-    private var propertyCallback: Any? = null
+    private var vehicleService: Any? = null
+    private var vehicleCallback: IVehicleCallback? = null
     private val subscribedIds = linkedSetOf<Int>()
     private val lastLoggedRawByKey = mutableMapOf<PropertyKey, String>()
     private var recordsByKey = emptyMap<PropertyKey, SensorRecord>()
@@ -81,7 +77,7 @@ internal class VhalReadOnlyClient(
             records.forEach(::logInitialValue)
             sink.onSensorsChanged(VehicleDataSource.VHAL, records)
 
-            val callbackCount = subscribeToChanges(configs)
+            val callbackCount = subscribeToChanges(vehicleClass, service, configs)
             val classifiedRecords = records.map { record ->
                 record.copy(autoUpdates = record.id in subscribedIds)
             }
@@ -138,10 +134,14 @@ internal class VhalReadOnlyClient(
         }
         val rawConfigs = result as? List<*>
             ?: throw IllegalStateException("getAllPropConfigs() did not return a list")
-        val configs = rawConfigs.mapNotNull(::readConfig).sortedBy(PropertyConfig::propertyId)
+        val parsedConfigs = rawConfigs.mapNotNull(::readConfig)
+        val configs = parsedConfigs
+            .groupBy(PropertyConfig::propertyId)
+            .map { (_, duplicates) -> duplicates.merge() }
+            .sortedBy(PropertyConfig::propertyId)
         sink.onLog(
             "VHAL configs via getAllPropConfigs/${method.parameterCount}: " +
-                "${rawConfigs.size} received, ${configs.size} parsed",
+                "${rawConfigs.size} received, ${parsedConfigs.size} parsed, ${configs.size} unique",
         )
         return configs
     }
@@ -159,8 +159,6 @@ internal class VhalReadOnlyClient(
                 propertyId = type.getField("prop").getInt(value),
                 access = type.getField("access").getInt(value),
                 changeMode = type.getField("changeMode").getInt(value),
-                minSampleRate = runCatching { type.getField("minSampleRate").getFloat(value) }.getOrDefault(0f),
-                maxSampleRate = runCatching { type.getField("maxSampleRate").getFloat(value) }.getOrDefault(0f),
                 areaIds = areas,
             )
         }.onFailure { sink.onLog("VHAL config skipped: ${describe(it)}") }.getOrNull()
@@ -252,81 +250,117 @@ internal class VhalReadOnlyClient(
         expectedUpdateIntervalMillis = expectedUpdateIntervalMillis,
     )
 
-    /** CarPropertyManager owns the Binder callback, keeping this reflection-only and read-only. */
-    private fun subscribeToChanges(configs: List<PropertyConfig>): Int {
+    private fun subscribeToChanges(
+        vehicleClass: Class<*>,
+        service: Any,
+        configs: List<PropertyConfig>,
+    ): Int {
         if (closed) return 0
         return try {
-            val carClass = Class.forName(CAR_CLASS)
-            val createdCar = carClass.methods.firstOrNull {
-                it.name == "createCar" && it.parameterCount == 1 &&
-                    Context::class.java.isAssignableFrom(it.parameterTypes[0])
-            }?.invoke(null, context)
-                ?: throw IllegalStateException("Car.createCar(context) returned null")
-            val manager = carClass.getMethod("getCarManager", String::class.java)
-                .invoke(createdCar, PROPERTY_SERVICE)
-                ?: throw IllegalStateException("CarPropertyManager unavailable")
-            val callbackType = Class.forName(PROPERTY_CALLBACK_CLASS)
-            val callback = Proxy.newProxyInstance(
-                callbackType.classLoader ?: javaClass.classLoader,
-                arrayOf(callbackType),
-            ) { proxy, method, args ->
-                when (method.name) {
-                    "onChangeEvent" -> args?.firstOrNull()?.let(::queueLiveValue)
-                    "onErrorEvent" -> sink.onLog("VHAL live error: ${args.orEmpty().joinToString()}")
-                    "toString" -> "ReadOnlyCarPropertyCallback"
-                    "hashCode" -> System.identityHashCode(proxy)
-                    "equals" -> proxy === args?.firstOrNull()
-                    else -> null
+            val dynamicConfigs = configs.asSequence()
+                .filter(PropertyConfig::isReadableAndDynamic)
+                .distinctBy(PropertyConfig::propertyId)
+                .toList()
+            if (dynamicConfigs.isEmpty()) return 0
+
+            val callback = object : IVehicleCallback.Stub() {
+                override fun onPropertyEvent(values: ArrayList<VehiclePropValue>) {
+                    values.forEach(::queueHidlValue)
+                }
+
+                override fun onPropertySet(value: VehiclePropValue) = Unit
+
+                override fun onPropertySetError(errorCode: Int, propertyId: Int, areaId: Int) {
+                    sink.onLog(
+                        "VHAL callback error=$errorCode property=${hexId(propertyId)} " +
+                            "area=${hexId(areaId)}",
+                    )
                 }
             }
-            val register = manager.javaClass.methods.firstOrNull {
-                it.name == "registerCallback" && it.parameterCount == 3
-            } ?: throw NoSuchMethodException("CarPropertyManager.registerCallback(callback, id, rate)")
-
-            car = createdCar
-            propertyManager = manager
-            propertyCallback = callback
-            configs.asSequence()
-                .filter(PropertyConfig::isReadableAndDynamic)
-                .count { config ->
-                    val result = runCatching {
-                        register.invoke(manager, callback, config.propertyId, config.subscriptionRate())
-                    }.onFailure {
-                        sink.onLog("VHAL live ${hexId(config.propertyId)}: ${describe(it)}")
-                    }
-                    val returned = result.getOrNull()
-                    val registered = result.isSuccess && (returned !is Boolean || returned)
-                    if (registered) subscribedIds += config.propertyId
-                    registered
+            val subscribe = (vehicleClass.methods.asSequence() + service.javaClass.methods.asSequence())
+                .firstOrNull { method ->
+                    method.name == "subscribe" && method.parameterCount == 2 &&
+                        method.parameterTypes[0].isInstance(callback)
+                } ?: throw NoSuchMethodException("IVehicle.subscribe(callback, options)")
+            val optionsClass = Class.forName(SUBSCRIBE_OPTIONS_CLASS)
+            val options = ArrayList<Any>(dynamicConfigs.size)
+            dynamicConfigs.forEach { config ->
+                options += optionsClass.getDeclaredConstructor().newInstance().also { option ->
+                    optionsClass.getField("propId").setInt(option, config.propertyId)
+                    optionsClass.getField("sampleRate").setFloat(option, HIDL_SAMPLE_RATE)
+                    optionsClass.getField("flags").setInt(option, SUBSCRIBE_FLAG_EVENTS_FROM_CAR)
                 }
+            }
+
+            val batchStatus = subscribe.status(service, callback, options)
+            val successfulIds = if (batchStatus == STATUS_OK) {
+                dynamicConfigs.map(PropertyConfig::propertyId)
+            } else {
+                sink.onLog(
+                    "VHAL HIDL batch subscription status=$batchStatus; " +
+                        "retrying ${options.size} properties individually",
+                )
+                val subscribed = mutableListOf<Int>()
+                val failureStatuses = linkedMapOf<Int, Int>()
+                dynamicConfigs.zip(options).forEach { (config, option) ->
+                    val status = subscribe.status(service, callback, arrayListOf(option))
+                    if (status == STATUS_OK) {
+                        subscribed += config.propertyId
+                    } else if (failureStatuses.size < MAX_SUBSCRIBE_FAILURE_SAMPLES) {
+                        failureStatuses[config.propertyId] = status
+                    }
+                }
+                if (failureStatuses.isNotEmpty()) {
+                    sink.onLog(
+                        "VHAL HIDL subscription failure samples: " +
+                            failureStatuses.entries.joinToString { (id, status) ->
+                                "${hexId(id)}=$status"
+                            },
+                    )
+                }
+                subscribed
+            }
+            if (successfulIds.isEmpty()) {
+                throw IllegalStateException("IVehicle.subscribe rejected all properties (batch=$batchStatus)")
+            }
+
+            vehicleService = service
+            vehicleCallback = callback
+            subscribedIds += successfulIds
+            sink.onLog(
+                "VHAL HIDL subscription: ${subscribedIds.size}/${dynamicConfigs.size} properties",
+            )
+            subscribedIds.size
         } catch (error: Throwable) {
-            sink.onLog("VHAL live unavailable: ${describe(error)}")
+            sink.onLog("VHAL HIDL subscription unavailable: ${describe(error)}")
             0
         }
     }
 
-    private fun queueLiveValue(carPropertyValue: Any) {
+    private fun queueHidlValue(vehiclePropValue: VehiclePropValue) {
         if (closed) return
         executor.execute {
             if (closed) return@execute
             runCatching {
-                val type = carPropertyValue.javaClass
-                val propertyId = (type.getMethod("getPropertyId").invoke(carPropertyValue) as Number).toInt()
-                val areaId = (type.getMethod("getAreaId").invoke(carPropertyValue) as Number).toInt()
-                val value = type.getMethod("getValue").invoke(carPropertyValue)
+                val type = vehiclePropValue.javaClass
+                val propertyId = type.getField("prop").getInt(vehiclePropValue)
+                val areaId = type.getField("areaId").getInt(vehiclePropValue)
                 val oldRecord = recordsByKey[PropertyKey(propertyId, areaId)]
                     ?: recordsByKey[PropertyKey(propertyId, 0)]
                     ?: return@runCatching
-                val raw = rawFromCarProperty(value)
                 val spec = oldRecord.profilePropertyId?.let { profilePropertyId ->
                     VhalProfileRegistry.signals(profile).firstOrNull { it.propertyId == profilePropertyId }
                 }
+                val raw = extractRaw(vehiclePropValue, spec?.valueType)
                 val decoded = if (spec != null) VhalProfileRegistry.decode(spec, raw) else ApiValue.raw(raw.text)
                 sink.onSensorValueChanged(VehicleDataSource.VHAL, propertyId, decoded, oldRecord.areaId)
-                logChangedValue(oldRecord, decoded, "live")
+                logChangedValue(oldRecord, decoded, "HIDL")
             }.onFailure { sink.onLog("VHAL live value skipped: ${describe(it)}") }
         }
     }
+
+    private fun Method.status(receiver: Any, callback: IVehicleCallback, options: ArrayList<Any>): Int =
+        (invoke(receiver, callback, options) as? Number)?.toInt() ?: STATUS_OK
 
     private fun logInitialValue(record: SensorRecord) {
         val key = PropertyKey(record.id, record.areaId)
@@ -363,24 +397,6 @@ internal class VhalReadOnlyClient(
         .replace('\n', ' ')
         .replace('\r', ' ')
         .take(MAX_LOG_VALUE_LENGTH)
-
-    private fun rawFromCarProperty(value: Any?): VhalRawValue {
-        if (value == null) return VhalRawValue("null")
-        if (value is Number) return VhalRawValue.number(value)
-        if (value is Boolean) return VhalRawValue(value.toString(), if (value) 1.0 else 0.0)
-        if (value is CharSequence || value is Char) return VhalRawValue(value.toString())
-        val values = when (value) {
-            is IntArray -> value.toList()
-            is LongArray -> value.toList()
-            is FloatArray -> value.toList()
-            is DoubleArray -> value.toList()
-            is ByteArray -> value.map { it.toInt() and 0xff }
-            is Array<*> -> value.toList()
-            is Iterable<*> -> value.toList()
-            else -> return VhalRawValue(value.toString())
-        }
-        return VhalRawValue(values.joinToString(prefix = "[", postfix = "]") { formatAny(it) })
-    }
 
     private fun invokeCallback(
         method: Method,
@@ -486,28 +502,25 @@ internal class VhalReadOnlyClient(
     }
 
     private fun unsubscribeAll() {
-        val manager = propertyManager
-        val callback = propertyCallback
-        if (manager != null && callback != null) {
-            val perProperty = manager.javaClass.methods.firstOrNull {
-                it.name == "unregisterCallback" && it.parameterCount == 2
+        val service = vehicleService
+        val callback = vehicleCallback
+        if (service != null && callback != null) {
+            val unsubscribe = service.javaClass.methods.firstOrNull {
+                it.name == "unsubscribe" && it.parameterCount == 2
             }
-            val all = manager.javaClass.methods.firstOrNull {
-                it.name == "unregisterCallback" && it.parameterCount == 1
-            }
-            runCatching {
-                if (perProperty != null) {
-                    subscribedIds.forEach { perProperty.invoke(manager, callback, it) }
-                } else {
-                    all?.invoke(manager, callback)
+            if (unsubscribe == null) {
+                sink.onLog("VHAL HIDL unsubscribe unavailable")
+            } else {
+                var failures = 0
+                subscribedIds.forEach { propertyId ->
+                    if (runCatching { unsubscribe.invoke(service, callback, propertyId) }.isFailure) failures++
                 }
+                if (failures > 0) sink.onLog("VHAL HIDL unsubscribe failures: $failures")
             }
         }
-        runCatching { car?.javaClass?.getMethod("disconnect")?.invoke(car) }
         subscribedIds.clear()
-        propertyCallback = null
-        propertyManager = null
-        car = null
+        vehicleCallback = null
+        vehicleService = null
     }
 
     private fun describe(error: Throwable): String = generateSequence(error) { it.cause }
@@ -522,8 +535,6 @@ internal class VhalReadOnlyClient(
         val propertyId: Int,
         val access: Int,
         val changeMode: Int,
-        val minSampleRate: Float,
-        val maxSampleRate: Float,
         val areaIds: List<Int>,
     ) {
         fun isReadable(): Boolean = access and ACCESS_READ != 0
@@ -532,13 +543,15 @@ internal class VhalReadOnlyClient(
 
         fun expectedUpdateIntervalMillis(): Long? =
             if (changeMode == CHANGE_MODE_CONTINUOUS) STALE_AFTER_MILLIS else null
+    }
 
-        fun subscriptionRate(): Float {
-            if (changeMode != CHANGE_MODE_CONTINUOUS) return SENSOR_RATE_ONCHANGE
-            val lower = max(minSampleRate, SENSOR_RATE_ONCHANGE)
-            val upper = if (maxSampleRate > 0f) max(maxSampleRate, lower) else LIVE_RATE_HZ
-            return min(max(LIVE_RATE_HZ, lower), upper)
-        }
+    private fun List<PropertyConfig>.merge(): PropertyConfig {
+        val first = first()
+        return first.copy(
+            access = fold(0) { result, config -> result or config.access },
+            changeMode = maxOf { it.changeMode },
+            areaIds = flatMap(PropertyConfig::areaIds).distinct(),
+        )
     }
 
     private object BigDecimalCompat {
@@ -552,16 +565,15 @@ internal class VhalReadOnlyClient(
     companion object {
         private const val VEHICLE_CLASS = "android.hardware.automotive.vehicle.V2_0.IVehicle"
         private const val VALUE_CLASS = "android.hardware.automotive.vehicle.V2_0.VehiclePropValue"
-        private const val CAR_CLASS = "android.car.Car"
-        private const val PROPERTY_CALLBACK_CLASS =
-            "android.car.hardware.property.CarPropertyManager\$CarPropertyEventCallback"
-        private const val PROPERTY_SERVICE = "property"
+        private const val SUBSCRIBE_OPTIONS_CLASS =
+            "android.hardware.automotive.vehicle.V2_0.SubscribeOptions"
         private const val STATUS_OK = 0
+        private const val SUBSCRIBE_FLAG_EVENTS_FROM_CAR = 1
+        private const val HIDL_SAMPLE_RATE = 0f
+        private const val MAX_SUBSCRIBE_FAILURE_SAMPLES = 8
         private const val ACCESS_READ = 1
         private const val CHANGE_MODE_STATIC = 0
         private const val CHANGE_MODE_CONTINUOUS = 2
-        private const val SENSOR_RATE_ONCHANGE = 0f
-        private const val LIVE_RATE_HZ = 5f
         private const val STALE_AFTER_MILLIS = 15_000L
         private const val MAX_LOG_VALUE_LENGTH = 240
         private const val CALLBACK_TIMEOUT_SECONDS = 2L

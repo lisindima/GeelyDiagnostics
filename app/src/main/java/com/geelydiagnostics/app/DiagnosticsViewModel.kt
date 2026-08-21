@@ -79,7 +79,7 @@ internal class DiagnosticsViewModel(application: Application) :
             onLog("Initialization failed: ${describe(error)}", error)
         }
         try {
-            clients += VhalReadOnlyClient(application, uiState.selectedVhalProfile, this)
+            clients += VhalReadOnlyClient(uiState.selectedVhalProfile, this)
                 .also { it.start() }
         } catch (error: Throwable) {
             onVhalStatus(ReadStatus.ERROR, describe(error))
