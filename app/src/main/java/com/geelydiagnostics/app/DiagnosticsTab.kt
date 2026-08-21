@@ -71,7 +71,12 @@ internal object DiagnosticsTab {
                     )
                 }
             }
-            item { SectionTitle("Блоки: $ecuCount · Коды ошибок: $dtcCodeCount") }
+            item {
+                CompactSummary(
+                    primaryText = "Блоков $ecuCount · кодов ошибок $dtcCodeCount",
+                    secondaryText = "Записей API ${state.dtcs.size}",
+                )
+            }
             if (state.dtcs.isEmpty()) {
                 item { EmptyMessage("Данные по блокам пока не получены.") }
             } else {

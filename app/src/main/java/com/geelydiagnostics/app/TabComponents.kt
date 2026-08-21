@@ -69,8 +69,9 @@ internal fun <T> CatalogScreen(
         }
         item { controls() }
         item {
-            SectionTitle(
-                "Показано: $displayedCount · Поддерживается: $supportedCount · Проверено: $totalCount",
+            CompactSummary(
+                primaryText = "Показано $displayedCount · поддерживается $supportedCount",
+                secondaryText = "Проверено $totalCount",
             )
         }
         if (rows.isEmpty()) {
@@ -378,20 +379,26 @@ internal fun EmptyMessage(text: String) {
 }
 
 @Composable
-internal fun SectionTitle(text: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shape = MaterialTheme.shapes.medium,
+internal fun CompactSummary(primaryText: String, secondaryText: String? = null) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp),
-            fontSize = 20.sp,
-            lineHeight = 25.sp,
-            fontWeight = FontWeight.Bold,
+            text = primaryText,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
         )
+        if (!secondaryText.isNullOrBlank()) {
+            Text(
+                text = secondaryText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+            )
+        }
     }
 }
 

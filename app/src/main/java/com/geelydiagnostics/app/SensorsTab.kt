@@ -251,12 +251,9 @@ internal object SensorsTab {
                 )
             }
             item {
-                SensorResultsSummary(
-                    displayedCount = displayedCount,
-                    autoUpdatingCount = autoUpdatingCount,
-                    ecarxCount = ecarxCount,
-                    vhalCount = vhalCount,
-                    supportedCount = supportedCount,
+                CompactSummary(
+                    primaryText = "Показано $displayedCount  ·  автообновление $autoUpdatingCount",
+                    secondaryText = "ECARX $ecarxCount  ·  VHAL $vhalCount  ·  доступно $supportedCount",
                 )
             }
             if (groups.isEmpty()) {
@@ -285,34 +282,6 @@ internal object SensorsTab {
                     }
                 }
             }
-        }
-    }
-
-    @Composable
-    private fun SensorResultsSummary(
-        displayedCount: Int,
-        autoUpdatingCount: Int,
-        ecarxCount: Int,
-        vhalCount: Int,
-        supportedCount: Int,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(
-                text = "Показано $displayedCount  ·  автообновление $autoUpdatingCount",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "ECARX $ecarxCount  ·  VHAL $vhalCount  ·  доступно $supportedCount",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 13.sp,
-            )
         }
     }
 
