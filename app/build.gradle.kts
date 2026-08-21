@@ -13,8 +13,8 @@ android {
         applicationId = "com.geelydiagnostics.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "0.11.7"
+        versionCode = 23
+        versionName = "0.11.8"
     }
 
     buildTypes {

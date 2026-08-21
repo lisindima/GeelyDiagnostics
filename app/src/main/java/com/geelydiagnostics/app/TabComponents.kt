@@ -190,6 +190,16 @@ internal fun DataCard(
                 }
             }
 
+            Text(
+                text = title.lowercase(Locale.getDefault()),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             SelectionContainer {
                 Text(
                     text = "RAW · ${value.raw}",
@@ -201,17 +211,6 @@ internal fun DataCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-
-            Text(
-                text = title.lowercase(Locale.getDefault()),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 15.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
             Text(
                 text = "${apiName.lowercase(Locale.ROOT)} · $idLabel",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
