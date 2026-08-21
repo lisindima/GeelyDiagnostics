@@ -88,17 +88,24 @@ internal object FunctionsTab {
             id = function.id,
             value = function.value,
             sourceLabel = function.source.label,
+            modeLabel = "ПОДДЕРЖИВАЕМАЯ ФУНКЦИЯ",
+            footerText = formatUpdateTime(function.updatedAtMillis, nowMillis),
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            FunctionDetails(function, nowMillis)
+            FunctionMetadata(function)
         }
     }
 
     @Composable
     private fun FunctionDetails(function: VehicleFunctionRecord, nowMillis: Long) {
         ValueLine("Обновлено", formatUpdateTime(function.updatedAtMillis, nowMillis))
+        FunctionMetadata(function)
+    }
+
+    @Composable
+    private fun FunctionMetadata(function: VehicleFunctionRecord) {
         if (function.supportedValues.isNotBlank()) {
             ValueLine("Допустимые raw", function.supportedValues)
         }

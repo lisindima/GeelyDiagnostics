@@ -1,27 +1,19 @@
 package com.geelydiagnostics.app
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,13 +23,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -282,152 +269,30 @@ internal object SensorsTab {
         onFavoriteToggle: () -> Unit,
         onClick: () -> Unit,
     ) {
-        Card(
+        val stale = sensor.isStale(nowMillis)
+        DataCard(
+            title = sensor.title,
+            apiName = sensor.apiName,
+            id = sensor.id,
+            idLabel = sensor.cardIdLabel,
+            value = sensor.value,
+            sourceLabel = sensor.sourceLabel,
+            modeLabel = if (sensor.autoUpdates) "● ПО ПОДПИСКЕ" else "РУЧНОЕ ОБНОВЛЕНИЕ",
+            modeIsHighlighted = sensor.autoUpdates,
+            footerText = formatUpdateTime(sensor.updatedAtMillis, nowMillis) +
+                if (stale) " · УСТАРЕЛО" else "",
+            footerIsError = stale,
+            isFavorite = isFavorite,
+            onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Text(
-                            text = sensor.sourceLabel,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = if (sensor.autoUpdates) "● ПО ПОДПИСКЕ" else "РУЧНОЕ ОБНОВЛЕНИЕ",
-                            color = if (sensor.autoUpdates) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    IconButton(
-                        onClick = onFavoriteToggle,
-                        modifier = Modifier.semantics {
-                            contentDescription = if (isFavorite) {
-                                "Удалить из избранного"
-                            } else {
-                                "Добавить в избранное"
-                            }
-                        },
-                    ) {
-                        Text(
-                            text = if (isFavorite) "★" else "☆",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 26.sp,
-                        )
-                    }
-                }
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shape = MaterialTheme.shapes.medium,
-                ) {
-                    SelectionContainer {
-                        Text(
-                            text = sensor.value.display,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
-                            fontSize = 38.sp,
-                            lineHeight = 44.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-
-                SelectionContainer {
-                    Text(
-                        text = "RAW · ${sensor.value.raw}",
-                        modifier = Modifier.padding(horizontal = 2.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
+            if (sensor.error.isNotBlank()) {
                 Text(
-                    text = sensor.title.lowercase(Locale.getDefault()),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 15.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    text = sensor.error,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = "${sensor.apiName.lowercase(Locale.ROOT)} · ${sensor.cardIdLabel}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                if (sensor.error.isNotBlank()) {
-                    Text(
-                        text = sensor.error,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                Spacer(Modifier.height(2.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = formatUpdateTime(sensor.updatedAtMillis, nowMillis) +
-                            if (sensor.isStale(nowMillis)) " · УСТАРЕЛО" else "",
-                        modifier = Modifier.weight(1f),
-                        color = if (sensor.isStale(nowMillis)) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = "ОТКРЫТЬ ↗",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
             }
         }
     }

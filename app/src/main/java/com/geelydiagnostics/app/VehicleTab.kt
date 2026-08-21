@@ -88,11 +88,13 @@ internal object VehicleTab {
             id = item.id,
             value = item.value,
             sourceLabel = item.source.label,
+            modeLabel = "СВЕДЕНИЯ ОБ АВТОМОБИЛЕ",
+            footerText = formatUpdateTime(item.updatedAtMillis, nowMillis),
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            VehicleInfoDetails(item, nowMillis)
+            if (item.error.isNotBlank()) ValueLine("Ошибка", item.error)
         }
     }
 

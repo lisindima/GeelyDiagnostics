@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -98,6 +101,11 @@ internal fun DataCard(
     id: Int,
     value: ApiValue,
     sourceLabel: String,
+    modeLabel: String? = null,
+    modeIsHighlighted: Boolean = false,
+    idLabel: String = "id $id",
+    footerText: String? = null,
+    footerIsError: Boolean = false,
     isFavorite: Boolean,
     onFavoriteToggle: () -> Unit,
     onClick: () -> Unit,
@@ -106,78 +114,144 @@ internal fun DataCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                SelectionContainer(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = value.display,
-                        fontSize = 28.sp,
-                        lineHeight = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
                     Text(
                         text = sourceLabel,
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    IconButton(
-                        onClick = onFavoriteToggle,
-                        modifier = Modifier.semantics {
-                            contentDescription = if (isFavorite) {
-                                "Удалить из избранного"
-                            } else {
-                                "Добавить в избранное"
-                            }
-                        },
-                    ) {
+                    if (modeLabel != null) {
                         Text(
-                            text = if (isFavorite) "★" else "☆",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 24.sp,
+                            text = modeLabel,
+                            color = if (modeIsHighlighted) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
+                IconButton(
+                    onClick = onFavoriteToggle,
+                    modifier = Modifier.semantics {
+                        contentDescription = if (isFavorite) {
+                            "Удалить из избранного"
+                        } else {
+                            "Добавить в избранное"
+                        }
+                    },
+                ) {
+                    Text(
+                        text = if (isFavorite) "★" else "☆",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 26.sp,
+                    )
+                }
             }
-            Spacer(Modifier.height(8.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                SelectionContainer {
+                    Text(
+                        text = value.display,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                        fontSize = 38.sp,
+                        lineHeight = 44.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
             SelectionContainer {
                 Text(
-                    text = "raw  ${value.raw}",
+                    text = "RAW · ${value.raw}",
+                    modifier = Modifier.padding(horizontal = 2.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.height(10.dp))
+
             Text(
                 text = title.lowercase(Locale.getDefault()),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 14.sp,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "${apiName.lowercase(Locale.ROOT)} · id $id",
+                text = "${apiName.lowercase(Locale.ROOT)} · $idLabel",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(10.dp))
+
             content()
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "НА ВЕСЬ ЭКРАН ↗",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-            )
+
+            Spacer(Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (footerText == null) {
+                    Spacer(Modifier.weight(1f))
+                } else {
+                    Text(
+                        text = footerText,
+                        modifier = Modifier.weight(1f),
+                        color = if (footerIsError) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = "ОТКРЫТЬ ↗",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }
