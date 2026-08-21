@@ -72,9 +72,10 @@ internal object DiagnosticsTab {
                 }
             }
             item {
-                CompactSummary(
-                    primaryText = "Блоков $ecuCount · кодов ошибок $dtcCodeCount",
-                    secondaryText = "Записей API ${state.dtcs.size}",
+                CountSummary(
+                    title = "Блоки",
+                    count = ecuCount,
+                    detail = "Кодов ошибок $dtcCodeCount · записей API ${state.dtcs.size}",
                 )
             }
             if (state.dtcs.isEmpty()) {

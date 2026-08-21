@@ -251,9 +251,11 @@ internal object SensorsTab {
                 )
             }
             item {
-                CompactSummary(
-                    primaryText = "Показано $displayedCount  ·  автообновление $autoUpdatingCount",
-                    secondaryText = "ECARX $ecarxCount  ·  VHAL $vhalCount  ·  доступно $supportedCount",
+                CountSummary(
+                    title = "Показано",
+                    count = displayedCount,
+                    detail = "Автообновление $autoUpdatingCount · ECARX $ecarxCount · " +
+                        "VHAL $vhalCount · доступно $supportedCount",
                 )
             }
             if (groups.isEmpty()) {
@@ -287,33 +289,12 @@ internal object SensorsTab {
 
     @Composable
     private fun SensorGroupHeader(title: String, subtitle: String, count: Int) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = subtitle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                )
-            }
-            Text(
-                text = count.toString(),
-                modifier = Modifier.padding(top = 2.dp),
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        CountSummary(
+            title = title,
+            count = count,
+            detail = subtitle,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 
     @Composable

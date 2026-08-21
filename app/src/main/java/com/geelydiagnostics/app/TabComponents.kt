@@ -69,9 +69,10 @@ internal fun <T> CatalogScreen(
         }
         item { controls() }
         item {
-            CompactSummary(
-                primaryText = "Показано $displayedCount · поддерживается $supportedCount",
-                secondaryText = "Проверено $totalCount",
+            CountSummary(
+                title = "Показано",
+                count = displayedCount,
+                detail = "Поддерживается $supportedCount · проверено $totalCount",
             )
         }
         if (rows.isEmpty()) {
@@ -379,26 +380,41 @@ internal fun EmptyMessage(text: String) {
 }
 
 @Composable
-internal fun CompactSummary(primaryText: String, secondaryText: String? = null) {
-    Column(
-        modifier = Modifier
+internal fun CountSummary(
+    title: String,
+    count: Int,
+    detail: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 2.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Text(
-            text = primaryText,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (!secondaryText.isNullOrBlank()) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
-                text = secondaryText,
+                text = title,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = detail,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
             )
         }
+        Text(
+            text = count.toString(),
+            color = MaterialTheme.colorScheme.primary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
