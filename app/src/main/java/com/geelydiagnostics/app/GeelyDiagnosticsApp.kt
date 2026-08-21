@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
@@ -148,31 +149,50 @@ private val AppUiState.isScanInProgress: Boolean
 
 @Composable
 private fun AppHeader(onRefresh: () -> Unit, onExport: () -> Unit) {
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = 12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = MaterialTheme.shapes.extraLarge,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Geely Diagnostics",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "ECARX AdaptAPI + VHAL · строго только чтение",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 16.sp,
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-        Button(onClick = onExport) {
-            Text("Экспорт", fontSize = 17.sp)
-        }
-        Spacer(Modifier.width(10.dp))
-        Button(onClick = onRefresh) {
-            Text("Обновить", fontSize = 17.sp)
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Geely Diagnostics",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "ECARX AdaptAPI + VHAL · строго только чтение",
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontSize = 16.sp,
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Button(
+                onClick = onExport,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
+            ) {
+                Text("Экспорт", fontSize = 17.sp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Button(
+                onClick = onRefresh,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
+            ) {
+                Text("Обновить", fontSize = 17.sp)
+            }
         }
     }
 }

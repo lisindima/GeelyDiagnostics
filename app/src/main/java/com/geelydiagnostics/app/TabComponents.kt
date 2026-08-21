@@ -316,23 +316,42 @@ internal fun StatusCard(
     status: ReadStatus,
     detail: String,
 ) {
+    val (statusContainer, statusContent) = statusColors(status)
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = status.label,
-                color = statusColor(status),
-                fontWeight = FontWeight.Bold,
-                fontSize = 21.sp,
-            )
-            if (detail.isNotBlank()) {
-                Spacer(Modifier.height(6.dp))
-                Text(text = detail.displayText, fontSize = 13.sp, maxLines = 3)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    description,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp,
+                )
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = statusContainer,
+                contentColor = statusContent,
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    Text(
+                        text = status.label,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 21.sp,
+                    )
+                    if (detail.isNotBlank()) {
+                        Spacer(Modifier.height(5.dp))
+                        Text(text = detail.displayText, fontSize = 13.sp, maxLines = 3)
+                    }
+                }
             }
         }
     }
@@ -345,7 +364,20 @@ internal fun EmptyMessage(text: String) {
 
 @Composable
 internal fun SectionTitle(text: String) {
-    Text(text = text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp),
+            fontSize = 20.sp,
+            lineHeight = 25.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
 }
 
 internal val ApiSupportStatus.isVisibleAsSupported: Boolean
@@ -360,11 +392,15 @@ private val ReadStatus.label: String
     }
 
 @Composable
-private fun statusColor(status: ReadStatus): Color = when (status) {
-    ReadStatus.NOT_CHECKED -> MaterialTheme.colorScheme.onSurfaceVariant
-    ReadStatus.CHECKING -> MaterialTheme.colorScheme.tertiary
-    ReadStatus.AVAILABLE -> MaterialTheme.colorScheme.primary
-    ReadStatus.ERROR -> MaterialTheme.colorScheme.error
+private fun statusColors(status: ReadStatus): Pair<Color, Color> = when (status) {
+    ReadStatus.NOT_CHECKED ->
+        MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    ReadStatus.CHECKING ->
+        MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+    ReadStatus.AVAILABLE ->
+        MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+    ReadStatus.ERROR ->
+        MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
 }
 
 private val String.displayText: String

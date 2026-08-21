@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -134,46 +136,59 @@ internal object SensorsTab {
         onSelected: (VhalProfile) -> Unit,
     ) {
         var expanded by remember { mutableStateOf(false) }
-        Row(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shape = MaterialTheme.shapes.large,
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = "Профиль VHAL",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                )
-                Text(
-                    text = selected.vehicle,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = if (selected == VhalProfile.RAW) {
-                        "Без расшифровки: все свойства показаны как RAW"
-                    } else {
-                        "Используется только для расшифровки; raw-свойства не скрываются"
-                    },
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
-                )
-            }
-            Box {
-                Button(onClick = { expanded = true }) {
-                    Text(selected.key, fontSize = 16.sp)
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Профиль VHAL",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 13.sp,
+                    )
+                    Text(
+                        text = selected.vehicle,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = if (selected == VhalProfile.RAW) {
+                            "Без расшифровки: все свойства показаны как RAW"
+                        } else {
+                            "Используется только для расшифровки; raw-свойства не скрываются"
+                        },
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 12.sp,
+                    )
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    VhalProfile.entries.forEach { profile ->
-                        DropdownMenuItem(
-                            text = { Text("${profile.key} · ${profile.vehicle}") },
-                            onClick = {
-                                expanded = false
-                                onSelected(profile)
-                            },
-                        )
+                Box {
+                    Button(
+                        onClick = { expanded = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            contentColor = MaterialTheme.colorScheme.primaryContainer,
+                        ),
+                    ) {
+                        Text(selected.key, fontSize = 16.sp)
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        VhalProfile.entries.forEach { profile ->
+                            DropdownMenuItem(
+                                text = { Text("${profile.key} · ${profile.vehicle}") },
+                                onClick = {
+                                    expanded = false
+                                    onSelected(profile)
+                                },
+                            )
+                        }
                     }
                 }
             }

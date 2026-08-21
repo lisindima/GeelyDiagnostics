@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -143,8 +144,9 @@ internal fun FullscreenValueScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            containerColor = MaterialTheme.colorScheme.surface,
                         ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     ) {
                         Column {
                             Column(
@@ -167,17 +169,23 @@ internal fun FullscreenValueScreen(
                                 )
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                            SelectionContainer {
-                                Text(
-                                    text = value.display,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 24.dp, vertical = 28.dp),
-                                    textAlign = TextAlign.Center,
-                                    fontSize = 58.sp,
-                                    lineHeight = 66.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ) {
+                                SelectionContainer {
+                                    Text(
+                                        text = value.display,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 28.dp),
+                                        textAlign = TextAlign.Center,
+                                        fontSize = 58.sp,
+                                        lineHeight = 66.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
                             }
                         }
                     }
@@ -189,8 +197,9 @@ internal fun FullscreenValueScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            containerColor = MaterialTheme.colorScheme.surface,
                         ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     ) {
                         Column(
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),

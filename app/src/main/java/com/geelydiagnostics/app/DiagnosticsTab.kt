@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -117,44 +119,65 @@ internal object DiagnosticsTab {
         val codeCount = records.count { it.code.isNotBlank() }
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         ) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+            Column {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ) {
-                    Text(
-                        text = "ECU type $ecuType",
-                        modifier = Modifier.weight(1f),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = if (codeCount == 0) "Коды не переданы" else "Кодов ошибок: $codeCount",
-                        color = if (codeCount == 0) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "ECU type $ecuType",
+                            modifier = Modifier.weight(1f),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Surface(
+                            color = if (codeCount == 0) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.errorContainer
+                            },
+                            contentColor = if (codeCount == 0) {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            },
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Text(
+                                text = if (codeCount == 0) {
+                                    "Коды не переданы"
+                                } else {
+                                    "Кодов ошибок: $codeCount"
+                                },
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
                 }
-                DtcRecordRow("Код ошибки", "DTC ID", "Статус*", "Время ГУ*", true)
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                records.forEachIndexed { index, record ->
-                    DtcRecordRow(
-                        code = record.code.ifBlank { "не передан" },
-                        id = record.id.ifBlank { "—" },
-                        status = record.status.toString(),
-                        time = formatTickTime(record.tickTime),
-                    )
-                    if (index != records.lastIndex) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    DtcRecordRow("Код ошибки", "DTC ID", "Статус*", "Время ГУ*", true)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    records.forEachIndexed { index, record ->
+                        DtcRecordRow(
+                            code = record.code.ifBlank { "не передан" },
+                            id = record.id.ifBlank { "—" },
+                            status = record.status.toString(),
+                            time = formatTickTime(record.tickTime),
+                        )
+                        if (index != records.lastIndex) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        }
                     }
                 }
             }
