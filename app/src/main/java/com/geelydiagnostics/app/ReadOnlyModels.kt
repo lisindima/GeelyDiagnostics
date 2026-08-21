@@ -40,6 +40,12 @@ data class ApiValue(
     }
 }
 
+@Immutable
+data class SensorSample(
+    val timestampMillis: Long,
+    val value: Double,
+)
+
 data class SensorRecord(
     val id: Int,
     val apiName: String,
@@ -56,6 +62,7 @@ data class SensorRecord(
     val expectedUpdateIntervalMillis: Long? = null,
     val changedSinceScan: Boolean = false,
     val autoUpdates: Boolean = false,
+    val chartable: Boolean = false,
 )
 
 data class VehicleInfoRecord(
@@ -101,6 +108,7 @@ data class AppUiState(
     val functionDetail: String = "",
     val dtcs: List<DtcRecord> = emptyList(),
     val sensors: List<SensorRecord> = emptyList(),
+    val sensorHistory: Map<String, List<SensorSample>> = emptyMap(),
     val vehicleInfo: List<VehicleInfoRecord> = emptyList(),
     val functions: List<VehicleFunctionRecord> = emptyList(),
     val logLines: List<String> = emptyList(),

@@ -294,6 +294,7 @@ class EcarxReadOnlyClient(
                 support = support,
                 updatedAtMillis = System.currentTimeMillis(),
                 expectedUpdateIntervalMillis = if (spec.continuous) STALE_AFTER_MILLIS else null,
+                chartable = spec.continuous,
             )
         } catch (error: Throwable) {
             SensorRecord(
@@ -305,6 +306,7 @@ class EcarxReadOnlyClient(
                 support = ApiSupportStatus.ERROR,
                 error = describe(error),
                 updatedAtMillis = System.currentTimeMillis(),
+                chartable = spec.continuous,
             )
         }
     }

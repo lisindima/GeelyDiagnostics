@@ -56,6 +56,12 @@ private fun FullscreenSensorPreview() {
                 isFavorite = true,
                 onFavoriteToggle = {},
                 onDismiss = {},
+                chart = {
+                    SensorHistoryChart(
+                        samples = previewChartSamples(),
+                        isLive = true,
+                    )
+                },
             ) {
                 ValueLine("Тип", "int")
                 ValueLine("Обновлено", "17:26:16 · только что")
@@ -65,6 +71,15 @@ private fun FullscreenSensorPreview() {
             }
         }
     }
+}
+
+private fun previewChartSamples(): List<SensorSample> = listOf(
+    41.2, 41.3, 41.3, 41.5, 41.4, 41.6, 41.7,
+).mapIndexed { index, value ->
+    SensorSample(
+        timestampMillis = SAMPLE_TICK_TIME + index * 10_000L,
+        value = value,
+    )
 }
 
 @Preview(

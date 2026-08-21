@@ -43,6 +43,7 @@ internal fun FullscreenValueDialog(
     isFavorite: Boolean = false,
     onFavoriteToggle: () -> Unit = {},
     onDismiss: () -> Unit,
+    chart: (@Composable () -> Unit)? = null,
     details: @Composable () -> Unit,
 ) {
     Dialog(
@@ -63,6 +64,7 @@ internal fun FullscreenValueDialog(
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
             onDismiss = onDismiss,
+            chart = chart,
             details = details,
         )
     }
@@ -80,6 +82,7 @@ internal fun FullscreenValueScreen(
     isFavorite: Boolean = false,
     onFavoriteToggle: () -> Unit = {},
     onDismiss: () -> Unit,
+    chart: (@Composable () -> Unit)? = null,
     details: @Composable () -> Unit,
 ) {
         Surface(
@@ -146,6 +149,9 @@ internal fun FullscreenValueScreen(
                             fontWeight = FontWeight.Bold,
                         )
                     }
+                }
+                if (chart != null) {
+                    item { chart() }
                 }
                 item {
                     Card(

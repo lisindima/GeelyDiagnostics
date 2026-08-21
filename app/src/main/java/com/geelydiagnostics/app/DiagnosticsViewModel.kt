@@ -125,7 +125,14 @@ internal class DiagnosticsViewModel(application: Application) :
     }
 
     override fun onSensorsChanged(source: VehicleDataSource, sensors: List<SensorRecord>) = onMain {
-        uiState = uiState.copy(sensors = uiState.sensors.filterNot { it.source == source } + sensors)
+        var history = uiState.sensorHistory
+        sensors.forEach { sensor ->
+            history = history.withSample(sensor, sensor.updatedAtMillis ?: System.currentTimeMillis())
+        }
+        uiState = uiState.copy(
+            sensors = uiState.sensors.filterNot { it.source == source } + sensors,
+            sensorHistory = history,
+        )
     }
 
     override fun onSensorValueChanged(
@@ -135,19 +142,24 @@ internal class DiagnosticsViewModel(application: Application) :
         areaId: Int,
     ) = onMain {
         val now = System.currentTimeMillis()
+        var updatedSensor: SensorRecord? = null
+        val sensors = uiState.sensors.map { sensor ->
+            if (sensor.source == source && sensor.id == id && sensor.areaId == areaId) {
+                sensor.copy(
+                    value = value,
+                    error = "",
+                    updatedAtMillis = now,
+                    changedSinceScan = sensor.changedSinceScan || sensor.value.raw != value.raw,
+                ).also { updatedSensor = it }
+            } else {
+                sensor
+            }
+        }
+        val history = updatedSensor?.let { uiState.sensorHistory.withSample(it, now) }
+            ?: uiState.sensorHistory
         uiState = uiState.copy(
-            sensors = uiState.sensors.map { sensor ->
-                if (sensor.source == source && sensor.id == id && sensor.areaId == areaId) {
-                    sensor.copy(
-                        value = value,
-                        error = "",
-                        updatedAtMillis = now,
-                        changedSinceScan = sensor.changedSinceScan || sensor.value.raw != value.raw,
-                    )
-                } else {
-                    sensor
-                }
-            },
+            sensors = sensors,
+            sensorHistory = history,
         )
     }
 
@@ -193,6 +205,24 @@ internal class DiagnosticsViewModel(application: Application) :
     private fun describe(error: Throwable): String =
         error.javaClass.name + (error.message?.let { ": $it" } ?: "")
 
+    private fun Map<String, List<SensorSample>>.withSample(
+        sensor: SensorRecord,
+        timestampMillis: Long,
+    ): Map<String, List<SensorSample>> {
+        if (!sensor.chartable) return this
+        val numericValue = sensor.value.chartNumber() ?: return this
+        val key = sensor.favoriteKey
+        val sample = SensorSample(timestampMillis = timestampMillis, value = numericValue)
+        val existing = get(key).orEmpty()
+        if (existing.lastOrNull() == sample) return this
+        val oldestAllowed = timestampMillis - SENSOR_HISTORY_WINDOW_MILLIS
+        val updated = (existing.asSequence()
+            .dropWhile { it.timestampMillis < oldestAllowed }
+            .toList() + sample)
+            .takeLast(MAX_SENSOR_HISTORY_SAMPLES)
+        return this + (key to updated)
+    }
+
     override fun onCleared() {
         closeClients()
         super.onCleared()
@@ -200,6 +230,8 @@ internal class DiagnosticsViewModel(application: Application) :
 
     companion object {
         private const val MAX_LOG_LINES = 300
+        private const val MAX_SENSOR_HISTORY_SAMPLES = 360
+        private const val SENSOR_HISTORY_WINDOW_MILLIS = 120_000L
         private const val LOG_TAG = "GeelyDiagnostics"
         private const val PREFERENCES = "geely_diagnostics"
         private const val KEY_VHAL_PROFILE = "vhal_profile"

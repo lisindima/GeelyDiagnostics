@@ -112,6 +112,16 @@ internal object SensorsTab {
                 isFavorite = sensor.favoriteKey in state.favoriteKeys,
                 onFavoriteToggle = { onFavoriteToggle(sensor.favoriteKey) },
                 onDismiss = { expandedSensorKey = null },
+                chart = if (sensor.chartable) {
+                    {
+                        SensorHistoryChart(
+                            samples = state.sensorHistory[sensor.favoriteKey].orEmpty(),
+                            isLive = sensor.autoUpdates,
+                        )
+                    }
+                } else {
+                    null
+                },
             ) {
                 SensorDetails(sensor, nowMillis)
             }

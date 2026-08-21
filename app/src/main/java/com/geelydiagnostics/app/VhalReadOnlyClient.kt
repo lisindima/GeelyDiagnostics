@@ -58,6 +58,7 @@ internal class VhalReadOnlyClient(
                         raw = null,
                         error = "Значение ещё читается",
                         expectedUpdateIntervalMillis = config.expectedUpdateIntervalMillis(),
+                        chartable = config.isChartable(specs[config.propertyId]),
                     )
                 }
             }
@@ -178,6 +179,7 @@ internal class VhalReadOnlyClient(
             null,
             "Свойство присутствует в VHAL, но не помечено доступным для чтения",
             config.expectedUpdateIntervalMillis(),
+            config.isChartable(spec),
         )
     } else try {
         val returned = getProperty(vehicleClass, service, config.propertyId, areaId)
@@ -187,6 +189,7 @@ internal class VhalReadOnlyClient(
             spec,
             extractRaw(returned, spec?.valueType),
             expectedUpdateIntervalMillis = config.expectedUpdateIntervalMillis(),
+            chartable = config.isChartable(spec),
         )
     } catch (error: Throwable) {
         recordFor(
@@ -196,6 +199,7 @@ internal class VhalReadOnlyClient(
             null,
             describe(error),
             config.expectedUpdateIntervalMillis(),
+            config.isChartable(spec),
         )
     }
 
@@ -230,6 +234,7 @@ internal class VhalReadOnlyClient(
         raw: VhalRawValue?,
         error: String = "",
         expectedUpdateIntervalMillis: Long? = null,
+        chartable: Boolean = false,
     ) = SensorRecord(
         id = propertyId,
         areaId = areaId,
@@ -248,6 +253,7 @@ internal class VhalReadOnlyClient(
         profilePropertyId = spec?.propertyId,
         updatedAtMillis = System.currentTimeMillis(),
         expectedUpdateIntervalMillis = expectedUpdateIntervalMillis,
+        chartable = chartable,
     )
 
     private fun subscribeToChanges(
@@ -543,6 +549,13 @@ internal class VhalReadOnlyClient(
 
         fun expectedUpdateIntervalMillis(): Long? =
             if (changeMode == CHANGE_MODE_CONTINUOUS) STALE_AFTER_MILLIS else null
+
+        fun isChartable(spec: VhalSignalSpec?): Boolean = if (spec == null) {
+            changeMode == CHANGE_MODE_CONTINUOUS && propertyTypeIsScalarNumber(propertyId)
+        } else {
+            spec.unit != null &&
+                (spec.valueType == VhalValueType.INT || spec.valueType == VhalValueType.FLOAT)
+        }
     }
 
     private fun List<PropertyConfig>.merge(): PropertyConfig {
@@ -563,6 +576,13 @@ internal class VhalReadOnlyClient(
     }
 
     companion object {
+        private fun propertyTypeIsScalarNumber(propertyId: Int): Boolean = when (
+            propertyId and PROPERTY_TYPE_MASK
+        ) {
+            TYPE_INT32, TYPE_INT64, TYPE_FLOAT -> true
+            else -> false
+        }
+
         private const val VEHICLE_CLASS = "android.hardware.automotive.vehicle.V2_0.IVehicle"
         private const val VALUE_CLASS = "android.hardware.automotive.vehicle.V2_0.VehiclePropValue"
         private const val SUBSCRIBE_OPTIONS_CLASS =
