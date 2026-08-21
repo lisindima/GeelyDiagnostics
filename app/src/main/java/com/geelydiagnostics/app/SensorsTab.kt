@@ -342,33 +342,35 @@ internal object SensorsTab {
                     }
                 }
 
-                SelectionContainer {
-                    Text(
-                        text = sensor.value.display,
-                        fontSize = 34.sp,
-                        lineHeight = 40.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = MaterialTheme.shapes.medium,
                 ) {
                     SelectionContainer {
                         Text(
-                            text = "raw  ${sensor.value.raw}",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
+                            text = sensor.value.display,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                            fontSize = 38.sp,
+                            lineHeight = 44.sp,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                }
+
+                SelectionContainer {
+                    Text(
+                        text = "RAW · ${sensor.value.raw}",
+                        modifier = Modifier.padding(horizontal = 2.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
 
                 Text(
