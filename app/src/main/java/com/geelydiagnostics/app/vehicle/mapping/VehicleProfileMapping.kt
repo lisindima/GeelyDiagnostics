@@ -70,7 +70,11 @@ class JsonVehicleProfileMappingLoader {
         }
         val mappings = (0 until array.length()).map { index ->
             val item = array.getJSONObject(index)
-            check(!item.has("writeSignalId") && !item.has("writeTransform")) {
+            check(
+                !item.has("writeSignalId") &&
+                    !item.has("writeSignalName") &&
+                    !item.has("writeTransform"),
+            ) {
                 "Read-only mapping contains write fields at index $index"
             }
             ReadSignalMapping(

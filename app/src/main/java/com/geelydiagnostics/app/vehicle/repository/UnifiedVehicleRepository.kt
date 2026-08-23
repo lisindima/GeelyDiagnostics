@@ -54,16 +54,14 @@ internal class UnifiedVehicleRepository(
     private val sources = mutableListOf<Closeable>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
     private var state = VehicleRepositoryState()
-    private var vhalValues = emptyMap<com.geelydiagnostics.app.vehicle.property.CarPropertyKey, CarPropertySnapshot>()
-    private val changedVhalKeys = mutableSetOf<com.geelydiagnostics.app.vehicle.property.CarPropertyKey>()
+    private val vhalCache = VehiclePropertyCache()
 
     @Synchronized
     fun start(profile: VehicleProfile) {
         sources.forEach { runCatching { it.close() } }
         sources.clear()
         diagnostics.reset()
-        vhalValues = emptyMap()
-        changedVhalKeys.clear()
+        vhalCache.clear()
         state = VehicleRepositoryState(
             carStatus = ReadStatus.CHECKING,
             sensorStatus = ReadStatus.CHECKING,
@@ -188,15 +186,13 @@ internal class UnifiedVehicleRepository(
 
     @Synchronized
     override fun onVhalSnapshot(values: List<CarPropertySnapshot>) {
-        vhalValues = values.associateBy { it.key }
+        vhalCache.replace(values)
         publishVhalSensors()
     }
 
     @Synchronized
     override fun onVhalValue(value: CarPropertySnapshot) {
-        val old = vhalValues[value.key]
-        vhalValues = vhalValues + (value.key to value)
-        if (old?.rawValue?.text != value.rawValue?.text) changedVhalKeys += value.key
+        vhalCache.update(value)
         publishVhalSensors()
     }
 
@@ -215,8 +211,8 @@ internal class UnifiedVehicleRepository(
     fun clearLog() = update { copy(logLines = emptyList()) }
 
     private fun publishVhalSensors() = update {
-        val projected = vhalValues.values.map { value ->
-            value.toSensorRecord(changedSinceScan = value.key in changedVhalKeys)
+        val projected = vhalCache.values().map { value ->
+            value.toSensorRecord(changedSinceScan = vhalCache.changedSinceSnapshot(value.key))
         }
         copy(sensors = sensors.filterNot { it.source == VehicleDataSource.VHAL } + projected)
     }

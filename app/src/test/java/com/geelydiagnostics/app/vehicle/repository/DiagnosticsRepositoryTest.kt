@@ -20,4 +20,16 @@ class DiagnosticsRepositoryTest {
         assertEquals(ReadStatus.AVAILABLE, repository.snapshot().dtcManagerStatus)
         assertEquals(listOf(dtc), repository.snapshot().dtcs)
     }
+
+    @Test
+    fun resetStartsFreshCheckingStateAndDropsPreviousDtcs() {
+        val repository = DiagnosticsRepository()
+        repository.updateDtcs(listOf(DtcRecord("P0001", "1", 2, 3, 4L)))
+
+        repository.reset()
+
+        assertEquals(ReadStatus.CHECKING, repository.snapshot().diagnosticsStatus)
+        assertEquals(ReadStatus.CHECKING, repository.snapshot().dtcManagerStatus)
+        assertEquals(emptyList<DtcRecord>(), repository.snapshot().dtcs)
+    }
 }

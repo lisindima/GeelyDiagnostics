@@ -100,4 +100,75 @@ class MappedPropertyDecoderTest {
         assertEquals("7", result.rawValue?.text)
         assertTrue(result.error.contains("No mapping"))
     }
+
+    @Test
+    fun formatsVerifiedDecimalPlacesWithoutChangingRaw() {
+        val temperatureId = CarPropertyId.EXTERIOR_TEMPERATURE
+        val temperatureCatalog = catalogOf(
+            CarPropertyDefinition(temperatureId, CarValueType.FLOAT, "temperature", 0),
+        )
+        val mapping = ReadSignalMapping(temperatureId, 10, "temperature")
+
+        val result = MappedPropertyDecoder(temperatureCatalog).decode(
+            mapping,
+            RawVehicleValue("21.6", 21.6),
+            mapping.signalId,
+            mapping.signalName,
+            0,
+            "G426",
+            null,
+            100L,
+            false,
+        )
+
+        assertEquals(CarValue.FloatValue(21.6), result.value)
+        assertEquals("22 °C", result.displayValue)
+        assertEquals("21.6", result.rawValue?.text)
+    }
+
+    @Test
+    fun convertsZeroAndOneToTypedBoolean() {
+        val acId = CarPropertyId(30001)
+        val booleanCatalog = catalogOf(
+            CarPropertyDefinition(acId, CarValueType.BOOLEAN, "ac"),
+        )
+        val mapping = ReadSignalMapping(acId, 11, "ac")
+
+        val off = MappedPropertyDecoder(booleanCatalog).decode(
+            mapping, RawVehicleValue("0", 0.0), 11, "ac", 0, "G426", null, 1L, true,
+        )
+        val on = MappedPropertyDecoder(booleanCatalog).decode(
+            mapping, RawVehicleValue("1", 1.0), 11, "ac", 0, "G426", null, 2L, true,
+        )
+
+        assertEquals(CarValue.BooleanValue(false), off.value)
+        assertEquals("Выключен", off.displayValue)
+        assertEquals(CarValue.BooleanValue(true), on.value)
+        assertEquals("Включён", on.displayValue)
+    }
+
+    @Test
+    fun invalidBooleanRemainsRawAndBecomesExplicitError() {
+        val acId = CarPropertyId(30001)
+        val mapping = ReadSignalMapping(acId, 11, "ac")
+        val result = MappedPropertyDecoder(
+            catalogOf(CarPropertyDefinition(acId, CarValueType.BOOLEAN, "ac")),
+        ).decode(
+            mapping, RawVehicleValue("2", 2.0), 11, "ac", 0, "G426", null, 1L, true,
+        )
+
+        assertEquals(VehiclePropertyStatus.ERROR, result.status)
+        assertEquals("2", result.displayValue)
+        assertEquals("2", result.rawValue?.text)
+        assertTrue(result.error.contains("BOOLEAN"))
+    }
+
+    private fun catalogOf(vararg definitions: CarPropertyDefinition): CarPropertyCatalog =
+        object : CarPropertyCatalog {
+            private val byId = definitions.associateBy(CarPropertyDefinition::id)
+
+            override fun definition(id: CarPropertyId): CarPropertyDefinition? = byId[id]
+
+            override fun all(): List<CarPropertyDefinition> = definitions.toList()
+        }
 }

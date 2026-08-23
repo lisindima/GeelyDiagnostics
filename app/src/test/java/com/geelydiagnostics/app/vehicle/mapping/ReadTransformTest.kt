@@ -46,6 +46,51 @@ class ReadTransformTest {
         assertTrue(transform.apply(RawVehicleValue("2", 2.0)) is TransformResult.Failure)
     }
 
+    @Test
+    fun reportsNonNumericArithmeticInput() {
+        val transform = ReadTransform.Pipeline(
+            listOf(ReadTransformStep.Arithmetic(Operator.DIVIDE, 10.0)),
+        )
+
+        val result = transform.apply(RawVehicleValue("not-a-number"))
+
+        assertEquals(
+            TransformResult.Failure("Step 1: Arithmetic input is not numeric"),
+            result,
+        )
+    }
+
+    @Test
+    fun executesEveryStepInOrder() {
+        val transform = ReadTransform.Pipeline(
+            listOf(
+                ReadTransformStep.Arithmetic(Operator.DIVIDE, 10.0),
+                ReadTransformStep.Arithmetic(Operator.ADD, 2.0),
+                ReadTransformStep.Arithmetic(Operator.MULTIPLY, 3.0),
+                ReadTransformStep.Arithmetic(Operator.SUBTRACT, 1.0),
+            ),
+        )
+
+        assertEquals(
+            TransformResult.Success(TransformValue.NumberValue(35.0)),
+            transform.apply(RawVehicleValue("100", 100.0)),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsUnknownTransformType() {
+        ReadTransformParser.parse(
+            JSONObject("""{"steps":[{"type":"script","code":"anything"}]}"""),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsArbitraryExpressionLanguage() {
+        ReadTransformParser.parse(
+            JSONObject("""{"steps":[{"type":"expression","expression":"eval(x)"}]}"""),
+        )
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsDivisionByZeroAtLoadTime() {
         ReadTransformParser.parse(

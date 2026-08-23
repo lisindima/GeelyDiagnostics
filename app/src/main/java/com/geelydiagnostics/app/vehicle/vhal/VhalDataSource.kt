@@ -3,6 +3,8 @@ package com.geelydiagnostics.app.vehicle.vhal
 import android.content.Context
 import com.geelydiagnostics.app.vehicle.mapping.VehicleMetadataStore
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.mapping.VehicleProfileMapping
+import com.geelydiagnostics.app.vehicle.property.CarPropertyCatalog
 import com.geelydiagnostics.app.vehicle.property.CarPropertyPresentations
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.MappedPropertyDecoder
@@ -24,25 +26,42 @@ internal enum class SourceReadStatus {
     ERROR,
 }
 
-internal class VhalDataSource(
-    context: Context,
+internal class VhalDataSource private constructor(
     private val profile: VehicleProfile,
     private val listener: VhalDataListener,
-    gatewayFactory: ((String, Throwable?) -> Unit) -> VhalGateway = ::HidlVhalGateway,
+    dependencies: Dependencies,
 ) : Closeable {
     private val executor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "VhalDataSource").apply { isDaemon = true }
     }
-    private val metadata = VehicleMetadataStore(context)
-    private val mapping = metadata.mapping(profile)
-    private val decoder = MappedPropertyDecoder(metadata.properties)
-    private val gateway = gatewayFactory(listener::onVehicleLog)
+    private val mapping = dependencies.mapping
+    private val decoder = MappedPropertyDecoder(dependencies.catalog)
+    private val gateway = dependencies.gateway
     private val configsById = mutableMapOf<Int, VhalPropertyConfig>()
     private val lastRawByKey = mutableMapOf<Pair<Int, Int>, String>()
     private var subscribedIds = emptySet<Int>()
 
     @Volatile
     private var closed = false
+
+    constructor(
+        context: Context,
+        profile: VehicleProfile,
+        listener: VhalDataListener,
+        gatewayFactory: ((String, Throwable?) -> Unit) -> VhalGateway = ::HidlVhalGateway,
+    ) : this(
+        profile = profile,
+        listener = listener,
+        dependencies = productionDependencies(context, profile, listener, gatewayFactory),
+    )
+
+    internal constructor(
+        profile: VehicleProfile,
+        listener: VhalDataListener,
+        mapping: VehicleProfileMapping,
+        catalog: CarPropertyCatalog,
+        gateway: VhalGateway,
+    ) : this(profile, listener, Dependencies(mapping, catalog, gateway))
 
     fun start() {
         listener.onVhalStatus(
@@ -217,6 +236,20 @@ internal class VhalDataSource(
         private const val TYPE_BYTES = 0x00700000
         private const val TYPE_MIXED = 0x00e00000
 
+        private fun productionDependencies(
+            context: Context,
+            profile: VehicleProfile,
+            listener: VhalDataListener,
+            gatewayFactory: ((String, Throwable?) -> Unit) -> VhalGateway,
+        ): Dependencies {
+            val metadata = VehicleMetadataStore(context)
+            return Dependencies(
+                mapping = metadata.mapping(profile),
+                catalog = metadata.properties,
+                gateway = gatewayFactory(listener::onVehicleLog),
+            )
+        }
+
         private fun propertyType(propertyId: Int): String = when (propertyId and PROPERTY_TYPE_MASK) {
             TYPE_STRING -> "string"
             TYPE_BOOLEAN -> "boolean"
@@ -231,6 +264,12 @@ internal class VhalDataSource(
             else -> "raw"
         }
     }
+
+    private data class Dependencies(
+        val mapping: VehicleProfileMapping,
+        val catalog: CarPropertyCatalog,
+        val gateway: VhalGateway,
+    )
 }
 
 private fun Int.hex(): String = "0x${toUInt().toString(16).padStart(8, '0')}"
