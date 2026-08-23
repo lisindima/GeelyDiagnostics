@@ -44,7 +44,6 @@ class CatalogFilteringTest {
             listOf(mapped),
             filterSensors(
                 records,
-                SensorSourceFilter.ALL,
                 SensorValueFilter.FAVORITES,
                 "",
                 setOf(mapped.favoriteKey),
@@ -57,6 +56,27 @@ class CatalogFilteringTest {
         val records = listOf(mapped, raw, changed)
         assertEquals(listOf(mapped), filtered(records, SensorValueFilter.ALL, "топливо 41700"))
         assertEquals(listOf(raw), filtered(records, SensorValueFilter.ALL, "0x21400401"))
+    }
+
+    @Test
+    fun unifiedCatalogKeepsEcarxAndVhalRecordsTogether() {
+        val ecarx = sensor(
+            id = 1050112,
+            title = "ECARX топливо",
+            value = ApiValue("63 %", "63"),
+            source = VehicleDataSource.ECARX,
+        )
+        val vhal = sensor(
+            id = 0x2170901E,
+            title = "VHAL топливо",
+            value = ApiValue("41.7 л", "41700"),
+            sourceProfile = "G426",
+        )
+
+        assertEquals(
+            listOf(ecarx, vhal),
+            filtered(listOf(vhal, ecarx), SensorValueFilter.ALL),
+        )
     }
 
     @Test
@@ -106,7 +126,7 @@ class CatalogFilteringTest {
         records: List<SensorRecord>,
         filter: SensorValueFilter,
         query: String = "",
-    ) = filterSensors(records, SensorSourceFilter.ALL, filter, query, emptySet())
+    ) = filterSensors(records, filter, query, emptySet())
 
     private fun sensor(
         id: Int,
@@ -117,6 +137,7 @@ class CatalogFilteringTest {
         support: ApiSupportStatus = ApiSupportStatus.ACTIVE,
         error: String = "",
         decoded: Boolean? = null,
+        source: VehicleDataSource = VehicleDataSource.VHAL,
     ) = SensorRecord(
         id = id,
         apiName = "VHAL_0x${id.toUInt().toString(16)}",
@@ -125,7 +146,7 @@ class CatalogFilteringTest {
         valueKind = "raw",
         support = support,
         error = error,
-        source = VehicleDataSource.VHAL,
+        source = source,
         sourceProfile = sourceProfile,
         changedSinceScan = changedSinceScan,
         decoded = decoded,

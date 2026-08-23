@@ -39,7 +39,7 @@ private const val MIN_HEAD_UNIT_FONT_SCALE = 1.5f
 
 internal enum class AppTab(val title: String) {
     DIAGNOSTICS("Диагностика"),
-    SENSORS("Сенсоры"),
+    PARAMETERS("Параметры"),
     VEHICLE("Автомобиль"),
     FUNCTIONS("Функции"),
     LOG("Лог"),
@@ -105,7 +105,7 @@ internal fun GeelyDiagnosticsApp(
                                 ) { state }
                                 DiagnosticsTab.Content(tabState)
                             }
-                            AppTab.SENSORS -> SensorsTab.Content(
+                            AppTab.PARAMETERS -> ParametersTab.Content(
                                 state,
                                 onVhalProfileSelected,
                                 onFavoriteToggle,

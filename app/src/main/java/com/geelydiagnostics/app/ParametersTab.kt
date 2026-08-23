@@ -12,14 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 
-internal object SensorsTab {
+internal object ParametersTab {
 
     @Composable
     fun Content(
@@ -46,15 +42,12 @@ internal object SensorsTab {
     ) {
         var expandedSensorKey by rememberSaveable { mutableStateOf<String?>(null) }
         var query by rememberSaveable { mutableStateOf("") }
-        var selectedSourceIndex by rememberSaveable { mutableIntStateOf(SensorSourceFilter.ALL.ordinal) }
         var selectedValueFilterIndex by rememberSaveable { mutableIntStateOf(SensorValueFilter.ALL.ordinal) }
-        val selectedSource = SensorSourceFilter.entries[selectedSourceIndex]
         val selectedValueFilter = SensorValueFilter.entries[selectedValueFilterIndex]
         val nowMillis by rememberCurrentTimeMillis()
         val supported = state.sensors.filter { it.support.isVisibleAsSupported }
         val filtered = filterSensors(
             records = state.sensors,
-            sourceFilter = selectedSource,
             valueFilter = selectedValueFilter,
             query = query,
             favoriteKeys = state.favoriteKeys,
@@ -66,43 +59,36 @@ internal object SensorsTab {
             Triple("Ручное обновление", "Значения обновляются по запросу", manuallyUpdated),
         ).filter { (_, _, values) -> values.isNotEmpty() }
         val emptyText = when {
-            selectedSource == SensorSourceFilter.VHAL && state.vhalStatus == ReadStatus.ERROR ->
-                "VHAL недоступен: ${state.vhalDetail.ifBlank { "причина записана в журнале" }}"
-            selectedSource != SensorSourceFilter.ECARX &&
-                selectedValueFilter == SensorValueFilter.DECODED &&
+            state.sensorStatus == ReadStatus.ERROR && state.vhalStatus == ReadStatus.ERROR ->
+                "Источники данных недоступны. Подробности записаны в журнале."
+            selectedValueFilter == SensorValueFilter.DECODED &&
                 state.selectedVhalProfile == VehicleProfile.RAW ->
-                "В профиле RAW расшифровка отключена. Выберите фильтр RAW/Все значения или профиль автомобиля."
+                "Для VHAL выбран RAW. Здесь останутся только значения, расшифрованные другими источниками."
             else -> "По выбранному фильтру значения не найдены."
         }
 
-        Column(Modifier.fillMaxSize()) {
-            ProfileSelector(state.selectedVhalProfile, onVhalProfileSelected)
-            SensorSourceSelector(
-                selectedIndex = selectedSourceIndex,
-                onSelected = { selectedSourceIndex = it },
-            )
-            SensorList(
-                state = state,
-                supportedCount = supported.size,
-                displayedCount = filtered.size,
-                autoUpdatingCount = autoUpdating.size,
-                groups = groups,
-                emptyText = emptyText,
-                query = query,
-                onQueryChange = { query = it },
-                selectedValueFilterIndex = selectedValueFilterIndex,
-                onValueFilterSelected = { selectedValueFilterIndex = it },
-                favoriteKeys = state.favoriteKeys,
-                nowMillis = nowMillis,
-                onFavoriteToggle = onFavoriteToggle,
-                onSensorSelected = { expandedSensorKey = it.selectionKey },
-            )
-        }
+        SensorList(
+            state = state,
+            supportedCount = supported.size,
+            displayedCount = filtered.size,
+            autoUpdatingCount = autoUpdating.size,
+            groups = groups,
+            emptyText = emptyText,
+            query = query,
+            onQueryChange = { query = it },
+            selectedValueFilterIndex = selectedValueFilterIndex,
+            onValueFilterSelected = { selectedValueFilterIndex = it },
+            favoriteKeys = state.favoriteKeys,
+            nowMillis = nowMillis,
+            onVhalProfileSelected = onVhalProfileSelected,
+            onFavoriteToggle = onFavoriteToggle,
+            onSensorSelected = { expandedSensorKey = it.selectionKey },
+        )
         state.sensors.firstOrNull { it.selectionKey == expandedSensorKey }?.let { sensor ->
             FullscreenValueDialog(
                 title = sensor.title,
                 apiName = sensor.apiName,
-                idText = "id ${sensor.id}",
+                idText = sensor.cardIdLabel,
                 value = sensor.value,
                 sourceLabel = sensor.sourceLabel,
                 modeLabel = if (sensor.autoUpdates) {
@@ -138,47 +124,34 @@ internal object SensorsTab {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            color = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
+                .padding(top = 2.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             shape = MaterialTheme.shapes.medium,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "Профиль VHAL",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                    )
-                    Text(
-                        text = selected.vehicle,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = if (selected == VehicleProfile.RAW) {
-                            "Без расшифровки: все свойства показаны как RAW"
-                        } else {
-                            "Используется только для расшифровки; raw-свойства не скрываются"
-                        },
+                        text = "Расшифровка VHAL",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                     )
+                    Text(
+                        text = "${selected.key} · ${selected.vehicle}",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
                 Box {
-                    Button(
+                    OutlinedButton(
                         onClick = { expanded = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
                     ) {
-                        Text(selected.key, fontSize = 16.sp)
+                        Text("Изменить", fontSize = 13.sp)
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         VehicleProfile.entries.forEach { profile ->
@@ -197,41 +170,6 @@ internal object SensorsTab {
     }
 
     @Composable
-    private fun SensorSourceSelector(selectedIndex: Int, onSelected: (Int) -> Unit) {
-        val filters = SensorSourceFilter.entries
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 2.dp),
-        ) {
-            filters.forEachIndexed { index, filter ->
-                val selected = selectedIndex == index
-                SegmentedButton(
-                    selected = selected,
-                    onClick = { onSelected(index) },
-                    shape = SegmentedButtonDefaults.itemShape(index, filters.size),
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        activeBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        inactiveContainerColor = MaterialTheme.colorScheme.surface,
-                        inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    ),
-                    icon = {},
-                    label = {
-                        Text(
-                            text = filter.title,
-                            fontSize = 14.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        )
-                    },
-                )
-            }
-        }
-    }
-
-    @Composable
     private fun SensorList(
         state: AppUiState,
         supportedCount: Int,
@@ -245,6 +183,7 @@ internal object SensorsTab {
         onValueFilterSelected: (Int) -> Unit,
         favoriteKeys: Set<String>,
         nowMillis: Long,
+        onVhalProfileSelected: (VehicleProfile) -> Unit,
         onFavoriteToggle: (String) -> Unit,
         onSensorSelected: (SensorRecord) -> Unit,
     ) {
@@ -265,17 +204,20 @@ internal object SensorsTab {
             item {
                 StatusCard(
                     modifier = Modifier.fillMaxWidth(),
-                    title = "Live Data",
-                    description = "Показаны все доступные VHAL-свойства. Профиль только расшифровывает известные значения; live-данные обновляются только по подписке.",
+                    title = "Параметры автомобиля",
+                    description = "Единый каталог данных ECARX и VHAL. Источник указан на каждой карточке; значения по подписке обновляются автоматически.",
                     status = combinedStatus,
                     detail = combinedDetail,
                 )
             }
             item {
+                ProfileSelector(state.selectedVhalProfile, onVhalProfileSelected)
+            }
+            item {
                 CatalogSearchField(
                     query = query,
                     onQueryChange = onQueryChange,
-                    placeholder = "Название, API name, ID или значение",
+                    placeholder = "Название, property ID, API name или значение",
                 )
             }
             item {
@@ -399,7 +341,7 @@ internal object SensorsTab {
                 ValueLine("Area ID", String.format(Locale.US, "0x%08X", sensor.areaId))
             }
         }
-        sensor.profilePropertyId?.let { ValueLine("Поле профиля", it.toString()) }
+        sensor.profilePropertyId?.let { ValueLine("Property ID", it.toString()) }
         if (sensor.error.isNotBlank()) ValueLine("Ошибка", sensor.error)
     }
 
@@ -409,25 +351,26 @@ internal object SensorsTab {
     private val SensorRecord.sourceLabel: String
         get() = when {
             source == VehicleDataSource.VHAL && sourceProfile != null ->
-                "VHAL · маппинг $sourceProfile"
+                "VHAL · $sourceProfile"
             source == VehicleDataSource.VHAL -> "VHAL · RAW"
             else -> source.label
         }
 
     private val SensorRecord.cardIdLabel: String
-        get() = if (source == VehicleDataSource.VHAL) {
-            buildString {
-                append(String.format(Locale.US, "0x%08X", id))
-                if (areaId != 0) append(String.format(Locale.US, " · area 0x%08X", areaId))
-            }
-        } else {
-            "id $id"
+        get() = when {
+            profilePropertyId != null -> "property $profilePropertyId" + areaSuffix
+            source == VehicleDataSource.VHAL ->
+                "signal ${String.format(Locale.US, "0x%08X", id)}" + areaSuffix
+            else -> "signal $id"
         }
 
+    private val SensorRecord.areaSuffix: String
+        get() = if (areaId == 0) "" else String.format(Locale.US, " · area 0x%08X", areaId)
+
     private fun combineReadStatus(first: ReadStatus, second: ReadStatus): ReadStatus = when {
-        first == ReadStatus.ERROR || second == ReadStatus.ERROR -> ReadStatus.ERROR
-        first == ReadStatus.CHECKING || second == ReadStatus.CHECKING -> ReadStatus.CHECKING
         first == ReadStatus.AVAILABLE || second == ReadStatus.AVAILABLE -> ReadStatus.AVAILABLE
+        first == ReadStatus.CHECKING || second == ReadStatus.CHECKING -> ReadStatus.CHECKING
+        first == ReadStatus.ERROR || second == ReadStatus.ERROR -> ReadStatus.ERROR
         else -> ReadStatus.NOT_CHECKED
     }
 

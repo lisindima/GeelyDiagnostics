@@ -2,12 +2,6 @@ package com.geelydiagnostics.app
 
 import java.util.Locale
 
-internal enum class SensorSourceFilter(val title: String) {
-    ALL("Все"),
-    ECARX("ECARX"),
-    VHAL("VHAL"),
-}
-
 internal enum class SensorValueFilter(val title: String) {
     ALL("Все значения"),
     DECODED("Расшифровано"),
@@ -25,18 +19,10 @@ internal enum class CatalogListFilter(val title: String) {
 
 internal fun filterSensors(
     records: List<SensorRecord>,
-    sourceFilter: SensorSourceFilter,
     valueFilter: SensorValueFilter,
     query: String,
     favoriteKeys: Set<String>,
 ): List<SensorRecord> = records.asSequence()
-    .filter { record ->
-        when (sourceFilter) {
-            SensorSourceFilter.ALL -> true
-            SensorSourceFilter.ECARX -> record.source == VehicleDataSource.ECARX
-            SensorSourceFilter.VHAL -> record.source == VehicleDataSource.VHAL
-        }
-    }
     .filter { record ->
         when (valueFilter) {
             SensorValueFilter.ALL -> record.support.isVisibleAsSupported

@@ -27,14 +27,14 @@ private const val SAMPLE_TICK_TIME = 1786695380305L
 private fun DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
 @Preview(
-    name = "ГУ · Сенсоры",
+    name = "ГУ · Параметры",
     group = "1440×1920",
     device = "spec:width=1440px,height=1920px,dpi=160",
     locale = "ru",
     showSystemUi = false,
 )
 @Composable
-private fun SensorsPreview() = PreviewApp(AppTab.SENSORS)
+private fun ParametersPreview() = PreviewApp(AppTab.PARAMETERS)
 
 @Preview(
     name = "ГУ · Значение + график",
@@ -54,9 +54,9 @@ private fun FullscreenSensorPreview() {
             FullscreenValueScreen(
                 title = "Оставшееся топливо",
                 apiName = "pafulvlindcdfulvlvalfromfutbl",
-                idText = "id 561025054",
+                idText = "property 10012",
                 value = ApiValue(display = "41.7 л", raw = "41700"),
-                sourceLabel = "VHAL · маппинг G426",
+                sourceLabel = "VHAL · G426",
                 modeLabel = "АВТООБНОВЛЕНИЕ",
                 isFavorite = true,
                 onFavoriteToggle = {},
@@ -72,7 +72,7 @@ private fun FullscreenSensorPreview() {
                 ValueLine("Обновлено", "17:26:16 · только что")
                 ValueLine("Расшифровка", "профиль G426")
                 ValueLine("VHAL ID", "0x2170901E")
-                ValueLine("Поле профиля", "10012")
+                ValueLine("Property ID", "10012")
             }
         }
     }
