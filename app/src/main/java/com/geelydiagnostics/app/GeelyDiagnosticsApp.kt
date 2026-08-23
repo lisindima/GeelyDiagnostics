@@ -21,7 +21,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -74,7 +73,11 @@ internal fun GeelyDiagnosticsApp(
                         .fillMaxSize()
                         .padding(horizontal = 24.dp),
                 ) {
-                    AppHeader(onRefresh = onRefresh, onExport = onExport)
+                    AppHeader(
+                        onRefresh = onRefresh,
+                        onExport = onExport,
+                        isRefreshInProgress = state.isScanInProgress,
+                    )
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         if (maxWidth < 1000.dp) {
                             PrimaryScrollableTabRow(
@@ -91,29 +94,13 @@ internal fun GeelyDiagnosticsApp(
                         }
                     }
                     val selectedTab = AppTab.entries[selectedTabIndex]
-                    if (selectedTab == AppTab.LOG) {
-                        AppTabContent(
-                            tab = selectedTab,
-                            state = state,
-                            onVhalProfileSelected = onVhalProfileSelected,
-                            onFavoriteToggle = onFavoriteToggle,
-                            onClearLog = onClearLog,
-                        )
-                    } else {
-                        PullToRefreshBox(
-                            isRefreshing = state.isScanInProgress,
-                            onRefresh = { if (!state.isScanInProgress) onRefresh() },
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            AppTabContent(
-                                tab = selectedTab,
-                                state = state,
-                                onVhalProfileSelected = onVhalProfileSelected,
-                                onFavoriteToggle = onFavoriteToggle,
-                                onClearLog = onClearLog,
-                            )
-                        }
-                    }
+                    AppTabContent(
+                        tab = selectedTab,
+                        state = state,
+                        onVhalProfileSelected = onVhalProfileSelected,
+                        onFavoriteToggle = onFavoriteToggle,
+                        onClearLog = onClearLog,
+                    )
                 }
             }
         }
@@ -197,7 +184,11 @@ private val AppUiState.isScanInProgress: Boolean
     ).any { it == ReadStatus.CHECKING }
 
 @Composable
-private fun AppHeader(onRefresh: () -> Unit, onExport: () -> Unit) {
+private fun AppHeader(
+    onRefresh: () -> Unit,
+    onExport: () -> Unit,
+    isRefreshInProgress: Boolean,
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -214,7 +205,11 @@ private fun AppHeader(onRefresh: () -> Unit, onExport: () -> Unit) {
                 ) {
                     HeaderTitle()
                     ReadOnlyBadge()
-                    HeaderActions(onRefresh = onRefresh, onExport = onExport)
+                    HeaderActions(
+                        onRefresh = onRefresh,
+                        onExport = onExport,
+                        isRefreshInProgress = isRefreshInProgress,
+                    )
                 }
             } else {
                 Row(
@@ -224,7 +219,11 @@ private fun AppHeader(onRefresh: () -> Unit, onExport: () -> Unit) {
                     HeaderTitle(Modifier.weight(1f))
                     ReadOnlyBadge()
                     Spacer(Modifier.width(10.dp))
-                    HeaderActions(onRefresh = onRefresh, onExport = onExport)
+                    HeaderActions(
+                        onRefresh = onRefresh,
+                        onExport = onExport,
+                        isRefreshInProgress = isRefreshInProgress,
+                    )
                 }
             }
         }
@@ -264,7 +263,11 @@ private fun ReadOnlyBadge() {
 }
 
 @Composable
-private fun HeaderActions(onRefresh: () -> Unit, onExport: () -> Unit) {
+private fun HeaderActions(
+    onRefresh: () -> Unit,
+    onExport: () -> Unit,
+    isRefreshInProgress: Boolean,
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(
             onClick = onExport,
@@ -277,12 +280,16 @@ private fun HeaderActions(onRefresh: () -> Unit, onExport: () -> Unit) {
         }
         Button(
             onClick = onRefresh,
+            enabled = !isRefreshInProgress,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 contentColor = MaterialTheme.colorScheme.primaryContainer,
             ),
         ) {
-            Text("Обновить", fontSize = 17.sp)
+            Text(
+                text = if (isRefreshInProgress) "Обновление…" else "Обновить",
+                fontSize = 17.sp,
+            )
         }
     }
 }
