@@ -1,6 +1,7 @@
 package com.geelydiagnostics.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogFilteringTest {
@@ -59,6 +60,22 @@ class CatalogFilteringTest {
     }
 
     @Test
+    fun mappingFailureRemainsVisibleAsRawAndIsAlsoMarkedAsError() {
+        val mappingFailure = sensor(
+            id = 0x21400404,
+            title = "Неизвестное значение enum",
+            value = ApiValue.raw("99"),
+            sourceProfile = "G426",
+            error = "No mapping for 99",
+            decoded = false,
+        )
+
+        assertTrue(mappingFailure in filtered(listOf(mappingFailure), SensorValueFilter.ALL))
+        assertTrue(mappingFailure in filtered(listOf(mappingFailure), SensorValueFilter.RAW))
+        assertTrue(mappingFailure in filtered(listOf(mappingFailure), SensorValueFilter.ERRORS))
+    }
+
+    @Test
     fun vehicleAndFunctionCatalogsSupportFavoritesAndErrors() {
         val info = VehicleInfoRecord(
             id = 1,
@@ -99,6 +116,7 @@ class CatalogFilteringTest {
         changedSinceScan: Boolean = false,
         support: ApiSupportStatus = ApiSupportStatus.ACTIVE,
         error: String = "",
+        decoded: Boolean? = null,
     ) = SensorRecord(
         id = id,
         apiName = "VHAL_0x${id.toUInt().toString(16)}",
@@ -110,5 +128,6 @@ class CatalogFilteringTest {
         source = VehicleDataSource.VHAL,
         sourceProfile = sourceProfile,
         changedSinceScan = changedSinceScan,
+        decoded = decoded,
     )
 }

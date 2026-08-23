@@ -1,5 +1,7 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,7 +41,7 @@ internal object SensorsTab {
     @Composable
     fun Content(
         state: AppUiState,
-        onVhalProfileSelected: (VhalProfile) -> Unit,
+        onVhalProfileSelected: (VehicleProfile) -> Unit,
         onFavoriteToggle: (String) -> Unit,
     ) {
         var expandedSensorKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -68,7 +70,7 @@ internal object SensorsTab {
                 "VHAL недоступен: ${state.vhalDetail.ifBlank { "причина записана в журнале" }}"
             selectedSource != SensorSourceFilter.ECARX &&
                 selectedValueFilter == SensorValueFilter.DECODED &&
-                state.selectedVhalProfile == VhalProfile.RAW ->
+                state.selectedVhalProfile == VehicleProfile.RAW ->
                 "В профиле RAW расшифровка отключена. Выберите фильтр RAW/Все значения или профиль автомобиля."
             else -> "По выбранному фильтру значения не найдены."
         }
@@ -129,8 +131,8 @@ internal object SensorsTab {
 
     @Composable
     private fun ProfileSelector(
-        selected: VhalProfile,
-        onSelected: (VhalProfile) -> Unit,
+        selected: VehicleProfile,
+        onSelected: (VehicleProfile) -> Unit,
     ) {
         var expanded by remember { mutableStateOf(false) }
         Surface(
@@ -159,7 +161,7 @@ internal object SensorsTab {
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = if (selected == VhalProfile.RAW) {
+                        text = if (selected == VehicleProfile.RAW) {
                             "Без расшифровки: все свойства показаны как RAW"
                         } else {
                             "Используется только для расшифровки; raw-свойства не скрываются"
@@ -179,7 +181,7 @@ internal object SensorsTab {
                         Text(selected.key, fontSize = 16.sp)
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        VhalProfile.entries.forEach { profile ->
+                        VehicleProfile.entries.forEach { profile ->
                             DropdownMenuItem(
                                 text = { Text("${profile.key} · ${profile.vehicle}") },
                                 onClick = {
@@ -382,9 +384,17 @@ internal object SensorsTab {
         if (sensor.source == VehicleDataSource.VHAL) {
             ValueLine(
                 "Расшифровка",
-                sensor.sourceProfile?.let { "профиль $it" } ?: "нет — показан raw VHAL",
+                when {
+                    sensor.decoded == true -> "профиль ${sensor.sourceProfile}"
+                    sensor.sourceProfile != null ->
+                        "профиль ${sensor.sourceProfile} не смог преобразовать значение · показан raw"
+                    else -> "нет — показан raw VHAL"
+                },
             )
             ValueLine("VHAL ID", String.format(Locale.US, "0x%08X", sensor.id))
+            sensor.sourceTimestampNanos?.let {
+                ValueLine("VHAL timestamp", "$it нс от запуска системы")
+            }
             if (sensor.areaId != 0) {
                 ValueLine("Area ID", String.format(Locale.US, "0x%08X", sensor.areaId))
             }

@@ -1,5 +1,7 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -18,12 +20,14 @@ class DiagnosticsReportExporterTest {
             support = ApiSupportStatus.ACTIVE,
             source = VehicleDataSource.VHAL,
             sourceProfile = "G426",
+            profilePropertyId = 10012,
             updatedAtMillis = 1_700_000_000_000L,
+            sourceTimestampNanos = 42L,
             changedSinceScan = true,
             autoUpdates = true,
         )
         val state = AppUiState(
-            selectedVhalProfile = VhalProfile.G426,
+            selectedVhalProfile = VehicleProfile.G426,
             sensors = listOf(sensor),
             favoriteKeys = setOf(sensor.favoriteKey),
             logLines = listOf("12:00:00.000  test"),
@@ -36,10 +40,13 @@ class DiagnosticsReportExporterTest {
         val exported = report.getJSONArray("sensors").getJSONObject(0)
 
         assertTrue(report.getBoolean("readOnly"))
+        assertEquals(2, report.getInt("schemaVersion"))
         assertEquals("0.11.0", report.getString("appVersion"))
         assertEquals("G426", report.getString("vhalProfile"))
         assertEquals("1", exported.getString("raw"))
         assertEquals("G426", exported.getString("mappingProfile"))
+        assertEquals(10012, exported.getInt("normalizedPropertyId"))
+        assertEquals(42L, exported.getLong("sourceTimestampNanos"))
         assertTrue(exported.getBoolean("changedSinceScan"))
         assertTrue(exported.getBoolean("autoUpdates"))
         assertTrue(exported.getBoolean("favorite"))

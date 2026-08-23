@@ -24,9 +24,9 @@ import java.util.concurrent.Executors
  * It uses getters, support checks and listener registration only. It deliberately has no
  * vehicle setters, DTC clearing, shell/CAN access or diagnostic monitor activation.
  */
-class EcarxReadOnlyClient(
+internal class EcarxDataSource(
     context: Context,
-    private val sink: ReadOnlySink,
+    private val sink: EcarxDataListener,
 ) : Closeable {
 
     private val appContext = context.applicationContext

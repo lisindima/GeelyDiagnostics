@@ -3,20 +3,15 @@ package com.geelydiagnostics.app
 import android.app.Application
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import java.io.Closeable
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.repository.UnifiedVehicleRepository
+import com.geelydiagnostics.app.vehicle.repository.VehicleRepositoryState
 
-internal class DiagnosticsViewModel(application: Application) :
-    AndroidViewModel(application),
-    ReadOnlySink {
-
+internal class DiagnosticsViewModel(application: Application) : AndroidViewModel(application) {
     var uiState by mutableStateOf(
         AppUiState(
             selectedVhalProfile = loadVhalProfile(application),
@@ -25,21 +20,20 @@ internal class DiagnosticsViewModel(application: Application) :
     )
         private set
 
-    private val clients = mutableListOf<Closeable>()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+    private val repository = UnifiedVehicleRepository(application, ::onRepositoryState)
 
     init {
-        startReadOnlyScan()
+        startScan()
     }
 
-    fun refresh() = startReadOnlyScan()
+    fun refresh() = startScan()
 
-    fun selectVhalProfile(profile: VhalProfile) {
+    fun selectVhalProfile(profile: VehicleProfile) {
         if (profile == uiState.selectedVhalProfile) return
         preferences().edit().putString(KEY_VHAL_PROFILE, profile.name).apply()
         uiState = uiState.copy(selectedVhalProfile = profile)
-        startReadOnlyScan()
+        startScan()
     }
 
     fun toggleFavorite(key: String) {
@@ -50,149 +44,42 @@ internal class DiagnosticsViewModel(application: Application) :
         uiState = uiState.copy(favoriteKeys = favorites)
     }
 
-    private fun startReadOnlyScan() {
-        closeClients()
-        uiState = AppUiState(
-            carStatus = ReadStatus.CHECKING,
-            diagnosticsStatus = ReadStatus.CHECKING,
-            dtcManagerStatus = ReadStatus.CHECKING,
-            sensorStatus = ReadStatus.CHECKING,
-            vhalStatus = ReadStatus.CHECKING,
-            carInfoStatus = ReadStatus.CHECKING,
-            functionStatus = ReadStatus.CHECKING,
-            selectedVhalProfile = uiState.selectedVhalProfile,
-            logLines = uiState.logLines,
-            favoriteKeys = uiState.favoriteKeys,
-            scanStartedAtMillis = System.currentTimeMillis(),
-        )
-        onLog("=== New multi-source read-only scan ===")
-        val application = getApplication<Application>()
-        try {
-            clients += EcarxReadOnlyClient(application, this).also { it.start() }
-        } catch (error: Throwable) {
-            onCarStatus(ReadStatus.ERROR, describe(error))
-            onDiagnosticsStatus(ReadStatus.ERROR, "ECARX API unavailable")
-            onDtcManagerStatus(ReadStatus.ERROR, "ECARX API unavailable")
-            onSensorStatus(ReadStatus.ERROR, "ECARX API unavailable")
-            onCarInfoStatus(ReadStatus.ERROR, "ECARX API unavailable")
-            onFunctionStatus(ReadStatus.ERROR, "ECARX API unavailable")
-            onLog("Initialization failed: ${describe(error)}", error)
-        }
-        try {
-            clients += VhalReadOnlyClient(uiState.selectedVhalProfile, this)
-                .also { it.start() }
-        } catch (error: Throwable) {
-            onVhalStatus(ReadStatus.ERROR, describe(error))
-            onLog("VHAL initialization failed: ${describe(error)}", error)
-        }
+    fun clearLog() = repository.clearLog()
+
+    fun onLog(message: String, error: Throwable? = null) = repository.onLog(message, error)
+
+    private fun startScan() {
+        repository.start(uiState.selectedVhalProfile)
     }
 
-    private fun closeClients() {
-        clients.forEach { client -> runCatching { client.close() } }
-        clients.clear()
-    }
-
-    override fun onCarStatus(status: ReadStatus, detail: String) = onMain {
-        uiState = uiState.copy(carStatus = status, carDetail = detail)
-    }
-
-    override fun onDiagnosticsStatus(status: ReadStatus, detail: String) = onMain {
-        uiState = uiState.copy(diagnosticsStatus = status, diagnosticsDetail = detail)
-    }
-
-    override fun onDtcManagerStatus(status: ReadStatus, detail: String) = onMain {
-        uiState = uiState.copy(dtcManagerStatus = status, dtcManagerDetail = detail)
-    }
-
-    override fun onSensorStatus(status: ReadStatus, detail: String) = onMain {
-        uiState = uiState.copy(sensorStatus = status, sensorDetail = detail)
-    }
-
-    override fun onVhalStatus(status: ReadStatus, detail: String) = onMain {
-        uiState = uiState.copy(vhalStatus = status, vhalDetail = detail)
-    }
-
-    override fun onCarInfoStatus(status: ReadStatus, detail: String) = onMain {
-        uiState = uiState.copy(carInfoStatus = status, carInfoDetail = detail)
-    }
-
-    override fun onFunctionStatus(status: ReadStatus, detail: String) = onMain {
-        uiState = uiState.copy(functionStatus = status, functionDetail = detail)
-    }
-
-    override fun onDtcsChanged(dtcs: List<DtcRecord>) = onMain {
-        uiState = uiState.copy(dtcs = dtcs)
-    }
-
-    override fun onSensorsChanged(source: VehicleDataSource, sensors: List<SensorRecord>) = onMain {
+    private fun onRepositoryState(repositoryState: VehicleRepositoryState) = onMain {
         var history = uiState.sensorHistory
-        sensors.forEach { sensor ->
+        repositoryState.sensors.forEach { sensor ->
             history = history.withSample(sensor, sensor.updatedAtMillis ?: System.currentTimeMillis())
         }
         uiState = uiState.copy(
-            sensors = uiState.sensors.filterNot { it.source == source } + sensors,
+            carStatus = repositoryState.carStatus,
+            carDetail = repositoryState.carDetail,
+            diagnosticsStatus = repositoryState.diagnostics.diagnosticsStatus,
+            diagnosticsDetail = repositoryState.diagnostics.diagnosticsDetail,
+            dtcManagerStatus = repositoryState.diagnostics.dtcManagerStatus,
+            dtcManagerDetail = repositoryState.diagnostics.dtcManagerDetail,
+            sensorStatus = repositoryState.sensorStatus,
+            sensorDetail = repositoryState.sensorDetail,
+            vhalStatus = repositoryState.vhalStatus,
+            vhalDetail = repositoryState.vhalDetail,
+            carInfoStatus = repositoryState.carInfoStatus,
+            carInfoDetail = repositoryState.carInfoDetail,
+            functionStatus = repositoryState.functionStatus,
+            functionDetail = repositoryState.functionDetail,
+            dtcs = repositoryState.diagnostics.dtcs,
+            sensors = repositoryState.sensors,
             sensorHistory = history,
+            vehicleInfo = repositoryState.vehicleInfo,
+            functions = repositoryState.functions,
+            logLines = repositoryState.logLines,
+            scanStartedAtMillis = repositoryState.scanStartedAtMillis,
         )
-    }
-
-    override fun onSensorValueChanged(
-        source: VehicleDataSource,
-        id: Int,
-        value: ApiValue,
-        areaId: Int,
-    ) = onMain {
-        val now = System.currentTimeMillis()
-        var updatedSensor: SensorRecord? = null
-        val sensors = uiState.sensors.map { sensor ->
-            if (sensor.source == source && sensor.id == id && sensor.areaId == areaId) {
-                sensor.copy(
-                    value = value,
-                    error = "",
-                    updatedAtMillis = now,
-                    changedSinceScan = sensor.changedSinceScan || sensor.value.raw != value.raw,
-                ).also { updatedSensor = it }
-            } else {
-                sensor
-            }
-        }
-        val history = updatedSensor?.let { uiState.sensorHistory.withSample(it, now) }
-            ?: uiState.sensorHistory
-        uiState = uiState.copy(
-            sensors = sensors,
-            sensorHistory = history,
-        )
-    }
-
-    override fun onSensorSupportChanged(
-        source: VehicleDataSource,
-        id: Int,
-        support: ApiSupportStatus,
-    ) = onMain {
-        uiState = uiState.copy(
-            sensors = uiState.sensors.map { sensor ->
-                if (sensor.source == source && sensor.id == id) sensor.copy(support = support) else sensor
-            },
-        )
-    }
-
-    override fun onVehicleInfoChanged(items: List<VehicleInfoRecord>) = onMain {
-        uiState = uiState.copy(vehicleInfo = items)
-    }
-
-    override fun onFunctionsChanged(functions: List<VehicleFunctionRecord>) = onMain {
-        uiState = uiState.copy(functions = functions)
-    }
-
-    override fun onLog(message: String, error: Throwable?) = onMain {
-        if (error == null) Log.i(LOG_TAG, message) else Log.e(LOG_TAG, message, error)
-        val timestamp = timeFormat.format(Date())
-        uiState = uiState.copy(
-            logLines = (uiState.logLines + "$timestamp  $message").takeLast(MAX_LOG_LINES),
-        )
-    }
-
-    fun clearLog() {
-        uiState = uiState.copy(logLines = emptyList())
     }
 
     private fun onMain(action: () -> Unit) {
@@ -201,9 +88,6 @@ internal class DiagnosticsViewModel(application: Application) :
 
     private fun preferences() = getApplication<Application>()
         .getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
-
-    private fun describe(error: Throwable): String =
-        error.javaClass.name + (error.message?.let { ": $it" } ?: "")
 
     private fun Map<String, List<SensorSample>>.withSample(
         sensor: SensorRecord,
@@ -224,22 +108,21 @@ internal class DiagnosticsViewModel(application: Application) :
     }
 
     override fun onCleared() {
-        closeClients()
+        repository.close()
         super.onCleared()
     }
 
     companion object {
-        private const val MAX_LOG_LINES = 300
         private const val MAX_SENSOR_HISTORY_SAMPLES = 360
         private const val SENSOR_HISTORY_WINDOW_MILLIS = 120_000L
-        private const val LOG_TAG = "GeelyDiagnostics"
         private const val PREFERENCES = "geely_diagnostics"
         private const val KEY_VHAL_PROFILE = "vhal_profile"
         private const val KEY_FAVORITES = "favorite_keys"
-        private fun loadVhalProfile(application: Application): VhalProfile {
+
+        private fun loadVhalProfile(application: Application): VehicleProfile {
             val saved = application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
                 .getString(KEY_VHAL_PROFILE, null)
-            return VhalProfile.entries.firstOrNull { it.name == saved } ?: VhalProfile.RAW
+            return VehicleProfile.entries.firstOrNull { it.name == saved } ?: VehicleProfile.RAW
         }
 
         private fun loadFavorites(application: Application): Set<String> =

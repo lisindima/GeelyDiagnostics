@@ -89,8 +89,8 @@ internal fun filterFunctions(
     .toList()
 
 private val SensorRecord.isDecoded: Boolean
-    get() = if (source == VehicleDataSource.VHAL) {
-        sourceProfile != null
+    get() = decoded ?: if (source == VehicleDataSource.VHAL) {
+        sourceProfile != null && error.isBlank()
     } else {
         value.display != value.raw
     }

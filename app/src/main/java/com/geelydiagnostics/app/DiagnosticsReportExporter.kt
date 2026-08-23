@@ -14,7 +14,7 @@ internal object DiagnosticsReportExporter {
         generatedAtMillis: Long,
         appVersion: String,
     ): String = JSONObject().apply {
-        put("schemaVersion", 1)
+        put("schemaVersion", 2)
         put("application", "Geely Diagnostics")
         put("appVersion", appVersion)
         put("generatedAt", isoTime(generatedAtMillis))
@@ -50,9 +50,12 @@ internal object DiagnosticsReportExporter {
                     put("areaId", record.areaId)
                     put("mappingProfile", record.sourceProfile ?: JSONObject.NULL)
                     put("profilePropertyId", record.profilePropertyId ?: JSONObject.NULL)
+                    put("normalizedPropertyId", record.profilePropertyId ?: JSONObject.NULL)
+                    put("sourceTimestampNanos", record.sourceTimestampNanos ?: JSONObject.NULL)
                     put("updatedAt", record.updatedAtMillis.jsonTime())
                     put("changedSinceScan", record.changedSinceScan)
                     put("autoUpdates", record.autoUpdates)
+                    put("decoded", record.decoded ?: (record.value.display != record.value.raw))
                     put("favorite", record.favoriteKey in state.favoriteKeys)
                     put("error", record.error)
                 })

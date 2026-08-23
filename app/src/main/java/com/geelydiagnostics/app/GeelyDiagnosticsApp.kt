@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 
 private const val MIN_HEAD_UNIT_FONT_SCALE = 1.5f
 
@@ -50,7 +51,7 @@ internal fun GeelyDiagnosticsApp(
     state: AppUiState,
     onRefresh: () -> Unit,
     onExport: () -> Unit,
-    onVhalProfileSelected: (VhalProfile) -> Unit,
+    onVhalProfileSelected: (VehicleProfile) -> Unit,
     onFavoriteToggle: (String) -> Unit,
     onClearLog: () -> Unit,
     initialTab: AppTab = AppTab.DIAGNOSTICS,

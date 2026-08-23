@@ -1,6 +1,7 @@
 package com.geelydiagnostics.app
 
 import androidx.compose.runtime.Immutable
+import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 
 enum class ReadStatus {
     NOT_CHECKED,
@@ -59,10 +60,12 @@ data class SensorRecord(
     val profilePropertyId: Int? = null,
     val areaId: Int = 0,
     val updatedAtMillis: Long? = null,
+    val sourceTimestampNanos: Long? = null,
     val expectedUpdateIntervalMillis: Long? = null,
     val changedSinceScan: Boolean = false,
     val autoUpdates: Boolean = false,
     val chartable: Boolean = false,
+    val decoded: Boolean? = null,
 )
 
 data class VehicleInfoRecord(
@@ -101,7 +104,7 @@ data class AppUiState(
     val sensorDetail: String = "",
     val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val vhalDetail: String = "",
-    val selectedVhalProfile: VhalProfile = VhalProfile.RAW,
+    val selectedVhalProfile: VehicleProfile = VehicleProfile.RAW,
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carInfoDetail: String = "",
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
@@ -124,20 +127,3 @@ internal val VehicleInfoRecord.favoriteKey: String
 
 internal val VehicleFunctionRecord.favoriteKey: String
     get() = "function:${source.name}:$id"
-
-interface ReadOnlySink {
-    fun onCarStatus(status: ReadStatus, detail: String = "")
-    fun onDiagnosticsStatus(status: ReadStatus, detail: String = "")
-    fun onDtcManagerStatus(status: ReadStatus, detail: String = "")
-    fun onSensorStatus(status: ReadStatus, detail: String = "")
-    fun onVhalStatus(status: ReadStatus, detail: String = "")
-    fun onCarInfoStatus(status: ReadStatus, detail: String = "")
-    fun onFunctionStatus(status: ReadStatus, detail: String = "")
-    fun onDtcsChanged(dtcs: List<DtcRecord>)
-    fun onSensorsChanged(source: VehicleDataSource, sensors: List<SensorRecord>)
-    fun onSensorValueChanged(source: VehicleDataSource, id: Int, value: ApiValue, areaId: Int = 0)
-    fun onSensorSupportChanged(source: VehicleDataSource, id: Int, support: ApiSupportStatus)
-    fun onVehicleInfoChanged(items: List<VehicleInfoRecord>)
-    fun onFunctionsChanged(functions: List<VehicleFunctionRecord>)
-    fun onLog(message: String, error: Throwable? = null)
-}
