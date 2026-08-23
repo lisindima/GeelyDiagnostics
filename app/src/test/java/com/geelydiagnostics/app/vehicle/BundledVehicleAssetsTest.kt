@@ -147,7 +147,7 @@ class BundledVehicleAssetsTest {
         }
 
     private fun locateAssets(): File {
-        val workingDirectory = File(System.getProperty("user.dir"))
+        val workingDirectory = File(System.getProperty("user.dir") ?: ".")
         return sequenceOf(
             File(workingDirectory, "src/main/assets"),
             File(workingDirectory, "app/src/main/assets"),

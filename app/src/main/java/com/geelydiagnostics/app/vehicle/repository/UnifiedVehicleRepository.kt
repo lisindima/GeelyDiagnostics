@@ -101,19 +101,19 @@ internal class UnifiedVehicleRepository(
     @Synchronized
     override fun onDiagnosticsStatus(status: ReadStatus, detail: String) {
         diagnostics.updateDiagnostics(status, detail)
-        update { copy(diagnostics = diagnostics.snapshot()) }
+        update { copy(diagnostics = this@UnifiedVehicleRepository.diagnostics.snapshot()) }
     }
 
     @Synchronized
     override fun onDtcManagerStatus(status: ReadStatus, detail: String) {
         diagnostics.updateManager(status, detail)
-        update { copy(diagnostics = diagnostics.snapshot()) }
+        update { copy(diagnostics = this@UnifiedVehicleRepository.diagnostics.snapshot()) }
     }
 
     @Synchronized
     override fun onDtcsChanged(dtcs: List<DtcRecord>) {
         diagnostics.updateDtcs(dtcs)
-        update { copy(diagnostics = diagnostics.snapshot()) }
+        update { copy(diagnostics = this@UnifiedVehicleRepository.diagnostics.snapshot()) }
     }
 
     @Synchronized

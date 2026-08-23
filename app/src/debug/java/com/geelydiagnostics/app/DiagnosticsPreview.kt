@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
 
@@ -187,7 +188,7 @@ private fun previewState() = AppUiState(
     carInfoDetail = "18 из 34",
     functionStatus = ReadStatus.AVAILABLE,
     functionDetail = "37 из 272",
-    selectedVhalProfile = VhalProfile.G426,
+    selectedVhalProfile = VehicleProfile.G426,
     dtcs = listOf(
         sampleDtc(ecuType = 1, id = "1-1", code = "P0016", status = 1),
         sampleDtc(ecuType = 1, id = "1-2", code = "P0300", status = 1),
@@ -297,7 +298,7 @@ private fun vhalSensor(
     valueKind = kind,
     support = ApiSupportStatus.ACTIVE,
     source = VehicleDataSource.VHAL,
-    sourceProfile = VhalProfile.G426.key,
+    sourceProfile = VehicleProfile.G426.key,
     profilePropertyId = propertyId,
     updatedAtMillis = System.currentTimeMillis(),
     expectedUpdateIntervalMillis = 15_000L,
