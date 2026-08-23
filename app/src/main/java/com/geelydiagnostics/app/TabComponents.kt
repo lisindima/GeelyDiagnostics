@@ -366,6 +366,7 @@ internal fun StatusCard(
     description: String,
     status: ReadStatus,
     detail: String,
+    supportingContent: (@Composable () -> Unit)? = null,
 ) {
     val (statusContainer, statusContent) = statusColors(status)
     Card(
@@ -404,6 +405,7 @@ internal fun StatusCard(
                     }
                 }
             }
+            supportingContent?.invoke()
         }
     }
 }

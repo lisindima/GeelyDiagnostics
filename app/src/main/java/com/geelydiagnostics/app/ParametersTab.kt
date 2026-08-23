@@ -224,15 +224,14 @@ internal object ParametersTab {
                     description = "Нормализованные параметры автомобиля и неизвестные исходные сигналы. Источники указаны на карточках.",
                     status = combinedStatus,
                     detail = combinedDetail,
-                )
-            }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    SourceStateBadge("ECARX", state.sensorStatus, Modifier.weight(1f))
-                    SourceStateBadge("VHAL", state.vhalStatus, Modifier.weight(1f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        SourceStateBadge("ECARX", state.sensorStatus, Modifier.weight(1f))
+                        SourceStateBadge("VHAL", state.vhalStatus, Modifier.weight(1f))
+                    }
                 }
             }
             item {
