@@ -1,6 +1,7 @@
 package com.geelydiagnostics.app.vehicle.vhal
 
 import android.content.Context
+import com.geelydiagnostics.app.ReadStatus
 import com.geelydiagnostics.app.vehicle.mapping.VehicleMetadataStore
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfileMapping
@@ -10,27 +11,16 @@ import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.MappedPropertyDecoder
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
-import java.io.Closeable
+import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
+import com.geelydiagnostics.app.vehicle.source.VehicleParameterSink
 import java.util.concurrent.Executors
-
-internal interface VhalDataListener {
-    fun onVhalStatus(status: SourceReadStatus, detail: String)
-    fun onVhalSnapshot(values: List<CarPropertySnapshot>)
-    fun onVhalValue(value: CarPropertySnapshot)
-    fun onVehicleLog(message: String, error: Throwable? = null)
-}
-
-internal enum class SourceReadStatus {
-    CHECKING,
-    AVAILABLE,
-    ERROR,
-}
 
 internal class VhalDataSource private constructor(
     private val profile: VehicleProfile,
-    private val listener: VhalDataListener,
+    private val listener: VehicleParameterSink,
     dependencies: Dependencies,
-) : Closeable {
+) : VehicleParameterDataSource {
+    override val source: VehiclePropertySource = VehiclePropertySource.VHAL
     private val executor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "VhalDataSource").apply { isDaemon = true }
     }
@@ -47,7 +37,7 @@ internal class VhalDataSource private constructor(
     constructor(
         context: Context,
         profile: VehicleProfile,
-        listener: VhalDataListener,
+        listener: VehicleParameterSink,
         gatewayFactory: ((String, Throwable?) -> Unit) -> VhalGateway = ::HidlVhalGateway,
     ) : this(
         profile = profile,
@@ -57,15 +47,16 @@ internal class VhalDataSource private constructor(
 
     internal constructor(
         profile: VehicleProfile,
-        listener: VhalDataListener,
+        listener: VehicleParameterSink,
         mapping: VehicleProfileMapping,
         catalog: CarPropertyCatalog,
         gateway: VhalGateway,
     ) : this(profile, listener, Dependencies(mapping, catalog, gateway))
 
-    fun start() {
-        listener.onVhalStatus(
-            SourceReadStatus.CHECKING,
+    override fun start() {
+        listener.onParameterStatus(
+            source,
+            ReadStatus.CHECKING,
             "VHAL: полный каталог · профиль ${profile.key}",
         )
         executor.execute(::load)
@@ -84,27 +75,28 @@ internal class VhalDataSource private constructor(
             if (closed) return
             subscribedIds = runCatching {
                 gateway.subscribe(configs, ::queueValue)
-            }.onFailure { listener.onVehicleLog("VHAL subscriptions unavailable: ${describe(it)}") }
+            }.onFailure { listener.onParameterLog(source, "subscriptions unavailable: ${describe(it)}") }
                 .getOrDefault(emptySet())
             val classified = initial.map { value ->
                 value.copy(autoUpdates = value.sourceSignalId in subscribedIds)
             }
             classified.forEach(::logInitial)
-            listener.onVhalSnapshot(classified)
-            val mappedCount = classified.count { it.id != null }
+            listener.onParameterSnapshot(source, classified)
+            val mappedCount = classified.count { it.propertyId != null }
             val mappingDetail = if (profile == VehicleProfile.RAW) {
                 "RAW без расшифровки"
             } else {
                 "$mappedCount расшифровано ${profile.key}"
             }
-            listener.onVhalStatus(
-                SourceReadStatus.AVAILABLE,
+            listener.onParameterStatus(
+                source,
+                ReadStatus.AVAILABLE,
                 "${classified.size} значений · $mappingDetail · подписки: ${subscribedIds.size}",
             )
         } catch (error: Throwable) {
             if (!closed) {
-                listener.onVhalStatus(SourceReadStatus.ERROR, describe(error))
-                listener.onVehicleLog("VHAL: ${describe(error)}", error)
+                listener.onParameterStatus(source, ReadStatus.ERROR, describe(error))
+                listener.onParameterLog(source, describe(error), error)
             }
         }
     }
@@ -133,7 +125,7 @@ internal class VhalDataSource private constructor(
                 val config = configsById[value.propertyId] ?: return@execute
                 val decoded = decode(value, config, autoUpdates = true)
                 logChanged(decoded)
-                listener.onVhalValue(decoded)
+                listener.onParameterValue(decoded)
             }
         }
     }
@@ -167,7 +159,7 @@ internal class VhalDataSource private constructor(
     ): CarPropertySnapshot {
         val signalMapping = mapping.forSignal(config.propertyId)
         return CarPropertySnapshot(
-            id = signalMapping?.propertyId,
+            propertyId = signalMapping?.propertyId,
             value = null,
             displayValue = "—",
             rawValue = null,
@@ -188,8 +180,9 @@ internal class VhalDataSource private constructor(
     private fun logInitial(value: CarPropertySnapshot) {
         val raw = value.rawValue?.text ?: "—"
         lastRawByKey[value.sourceSignalId to value.areaId] = raw
-        listener.onVehicleLog(
-            "VHAL initial ${value.identity()} display=${value.displayValue.logText()} raw=${raw.logText()}",
+        listener.onParameterLog(
+            source,
+            "initial ${value.identity()} display=${value.displayValue.logText()} raw=${raw.logText()}",
         )
     }
 
@@ -197,8 +190,9 @@ internal class VhalDataSource private constructor(
         val raw = value.rawValue?.text ?: "—"
         val key = value.sourceSignalId to value.areaId
         if (lastRawByKey.put(key, raw) == raw) return
-        listener.onVehicleLog(
-            "VHAL event ${value.identity()} display=${value.displayValue.logText()} raw=${raw.logText()}",
+        listener.onParameterLog(
+            source,
+            "event ${value.identity()} display=${value.displayValue.logText()} raw=${raw.logText()}",
         )
     }
 
@@ -208,7 +202,7 @@ internal class VhalDataSource private constructor(
         if (areaId != 0) append(" area=${areaId.hex()}")
         append(" mapping=")
         append(profileKey ?: "RAW")
-        id?.let {
+        propertyId?.let {
             append(" property=")
             append(it.rawValue)
             append(" title=")
@@ -239,14 +233,16 @@ internal class VhalDataSource private constructor(
         private fun productionDependencies(
             context: Context,
             profile: VehicleProfile,
-            listener: VhalDataListener,
+            listener: VehicleParameterSink,
             gatewayFactory: ((String, Throwable?) -> Unit) -> VhalGateway,
         ): Dependencies {
             val metadata = VehicleMetadataStore(context)
             return Dependencies(
                 mapping = metadata.mapping(profile),
                 catalog = metadata.properties,
-                gateway = gatewayFactory(listener::onVehicleLog),
+                gateway = gatewayFactory { message, error ->
+                    listener.onParameterLog(VehiclePropertySource.VHAL, message, error)
+                },
             )
         }
 

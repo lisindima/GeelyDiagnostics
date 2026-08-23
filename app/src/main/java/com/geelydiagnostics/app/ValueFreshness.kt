@@ -3,6 +3,7 @@ package com.geelydiagnostics.app
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,7 +31,7 @@ internal fun formatUpdateTime(updatedAtMillis: Long?, nowMillis: Long): String {
     return "$clock · $age"
 }
 
-internal fun SensorRecord.isStale(nowMillis: Long): Boolean {
+internal fun VehicleParameter.isStale(nowMillis: Long): Boolean {
     val updatedAt = updatedAtMillis ?: return expectedUpdateIntervalMillis != null
     val limit = expectedUpdateIntervalMillis ?: return false
     return nowMillis - updatedAt > limit

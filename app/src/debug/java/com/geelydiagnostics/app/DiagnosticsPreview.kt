@@ -13,8 +13,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.property.CarPropertyId
+import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
+import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.EcarxNormalizedPropertyRegistry
-import com.geelydiagnostics.app.vehicle.repository.NormalizedParameterMerger
+import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.repository.UnifiedParameterCache
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
 
@@ -50,8 +58,8 @@ private fun ParametersPartialPreview() {
     PreviewApp(
         AppTab.PARAMETERS,
         previewState().copy(
-            sensorStatus = ReadStatus.ERROR,
-            sensorDetail = "ECARX API недоступен",
+            ecarxParameterStatus = ReadStatus.ERROR,
+            ecarxParameterDetail = "ECARX API недоступен",
             vhalStatus = ReadStatus.AVAILABLE,
         ),
     )
@@ -81,11 +89,11 @@ private fun ParametersErrorPreview() {
     PreviewApp(
         AppTab.PARAMETERS,
         previewState().copy(
-            sensorStatus = ReadStatus.ERROR,
-            sensorDetail = "ECARX API недоступен",
+            ecarxParameterStatus = ReadStatus.ERROR,
+            ecarxParameterDetail = "ECARX API недоступен",
             vhalStatus = ReadStatus.ERROR,
             vhalDetail = "VHAL недоступен",
-            sensors = emptyList(),
+            parameters = emptyList(),
         ),
     )
 }
@@ -119,7 +127,7 @@ private fun FullscreenSensorPreview() {
                 title = "Оставшееся топливо",
                 apiName = "pafulvlindcdfulvlvalfromfutbl",
                 idText = "свойство 10012",
-                value = ApiValue(display = "41.7 л", raw = "41700"),
+                value = VehicleDisplayValue(display = "41.7 л", raw = "41700"),
                 sourceLabels = listOf("VHAL · G426", "ECARX"),
                 modeLabel = "АВТООБНОВЛЕНИЕ",
                 isFavorite = true,
@@ -163,10 +171,10 @@ private fun SensorChartPreview() {
     }
 }
 
-private fun previewChartSamples(): List<SensorSample> = listOf(
+private fun previewChartSamples(): List<VehicleParameterSample> = listOf(
     41.2, 41.3, 41.3, 41.5, 41.4, 41.6, 41.7,
 ).mapIndexed { index, value ->
-    SensorSample(
+    VehicleParameterSample(
         timestampMillis = SAMPLE_TICK_TIME + index * 10_000L,
         value = value,
     )
@@ -244,8 +252,8 @@ private fun previewState() = AppUiState(
     diagnosticsDetail = "AVAILABLE",
     dtcManagerStatus = ReadStatus.AVAILABLE,
     dtcManagerDetail = "AVAILABLE",
-    sensorStatus = ReadStatus.AVAILABLE,
-    sensorDetail = "21 из 102; live-подписок: 21",
+    ecarxParameterStatus = ReadStatus.AVAILABLE,
+    ecarxParameterDetail = "21 из 102; live-подписок: 21",
     vhalStatus = ReadStatus.AVAILABLE,
     vhalDetail = "84 значения · 48 расшифровано G426 · auto: 36 (callback)",
     carInfoStatus = ReadStatus.AVAILABLE,
@@ -264,21 +272,7 @@ private fun previewState() = AppUiState(
         sampleDtc(ecuType = 7, id = "7", status = 1),
         sampleDtc(ecuType = 8, id = "8", status = 0),
     ),
-    sensors = NormalizedParameterMerger.merge(listOf(
-        sensor(1048832, "SENSOR_TYPE_CAR_SPEED", "Скорость автомобиля", "0", "float"),
-        sensor(1050880, "SENSOR_TYPE_RPM", "Обороты двигателя", "748", "float"),
-        sensor(1050368, "SENSOR_TYPE_ODOMETER", "Пробег", "18432.7", "float"),
-        sensor(1050112, "SENSOR_TYPE_FUEL_LEVEL", "Уровень топлива", "63", "float"),
-        sensor(1050624, "SENSOR_TYPE_ENDURANCE_MILEAGE", "Запас хода", "481", "float"),
-        sensor(1052416, "SENSOR_TYPE_ENGINE_COOLANT_TEMPERATURE", "Температура охлаждающей жидкости", "91", "float"),
-        sensor(1051392, "SENSOR_TYPE_TEMPERATURE_AMBIENT", "Температура снаружи", "18.5", "float"),
-        sensor(2097664, "SENSOR_TYPE_GEAR", "Передача", "2097696", "event/int"),
-        vhalSensor(557874334, 10003, "GearLvrIndcn", "Передача", "D", "3", "char"),
-        vhalSensor(561025054, 10012, "pafulvlindcdfulvlvalfromfutbl", "Оставшееся топливо", "41.7 л", "41700", "int"),
-        vhalSensor(561024410, 10013, "patirepressurefrontleft", "Давление в передней левой шине", "236 кПа", "2360", "float"),
-        vhalSensor(557850019, 10021, "CLUSTER_POWERFLOW_ENGSPDDISPD", "Обороты двигателя", "748 об/мин", "1496", "int"),
-        rawVhalSensor(557842947, "[1, 0, 42]", "int32[]"),
-    )),
+    parameters = previewParameters(parameterSnapshots()),
     vehicleInfo = listOf(
         info(1049088, "INT_INFO_VEHICLE_TYPES", "Тип силовой установки", "Бензин/ДВС", "1049089"),
         info(1049600, "INT_INFO_DRIVE_MODE", "Тип привода", "Передний привод", "1049601"),
@@ -318,41 +312,32 @@ private fun previewState() = AppUiState(
     scanStartedAtMillis = System.currentTimeMillis(),
 )
 
+private fun parameterSnapshots(vhalMapped: Boolean = true) = listOf(
+        sensor(1048832, "SENSOR_TYPE_CAR_SPEED", "Скорость автомобиля", "0", "float"),
+        sensor(1050880, "SENSOR_TYPE_RPM", "Обороты двигателя", "748", "float"),
+        sensor(1050368, "SENSOR_TYPE_ODOMETER", "Пробег", "18432.7", "float"),
+        sensor(1050112, "SENSOR_TYPE_FUEL_LEVEL", "Уровень топлива", "63", "float"),
+        sensor(1050624, "SENSOR_TYPE_ENDURANCE_MILEAGE", "Запас хода", "481", "float"),
+        sensor(1052416, "SENSOR_TYPE_ENGINE_COOLANT_TEMPERATURE", "Температура охлаждающей жидкости", "91", "float"),
+        sensor(1051392, "SENSOR_TYPE_TEMPERATURE_AMBIENT", "Температура снаружи", "18.5", "float"),
+        sensor(2097664, "SENSOR_TYPE_GEAR", "Передача", "2097696", "event/int"),
+        vhalSensor(557874334, 10003, "GearLvrIndcn", "Передача", "D", "3", "char", vhalMapped),
+        vhalSensor(561025054, 10012, "pafulvlindcdfulvlvalfromfutbl", "Оставшееся топливо", "41.7 л", "41700", "int", vhalMapped),
+        vhalSensor(561024410, 10013, "patirepressurefrontleft", "Давление в передней левой шине", "236 кПа", "2360", "float", vhalMapped),
+        vhalSensor(557850019, 10021, "CLUSTER_POWERFLOW_ENGSPDDISPD", "Обороты двигателя", "748 об/мин", "1496", "int", vhalMapped),
+        rawVhalSensor(557842947, "[1, 0, 42]", "int32[]"),
+)
+
+private fun previewParameters(values: List<CarPropertySnapshot>) = UnifiedParameterCache().apply {
+    replaceSource(VehiclePropertySource.ECARX, values.filter { it.source == VehiclePropertySource.ECARX })
+    replaceSource(VehiclePropertySource.VHAL, values.filter { it.source == VehiclePropertySource.VHAL })
+}.parameters()
+
 private fun rawProfilePreviewState(): AppUiState {
-    val state = previewState()
-    val splitReadings = state.sensors.flatMap { parameter ->
-        parameter.sourceReadings.map { reading ->
-            val propertyId = if (reading.source == VehicleDataSource.ECARX) {
-                EcarxNormalizedPropertyRegistry.sensorProperty(reading.signalName)?.rawValue
-            } else {
-                null
-            }
-            SensorRecord(
-                id = reading.signalId,
-                apiName = reading.signalName,
-                title = if (reading.source == VehicleDataSource.VHAL) {
-                    "Неизвестный VHAL-сигнал 0x${reading.signalId.toUInt().toString(16).uppercase()}"
-                } else {
-                    parameter.title
-                },
-                value = reading.value,
-                valueKind = parameter.valueKind,
-                support = reading.support,
-                error = reading.error,
-                source = reading.source,
-                propertyId = propertyId,
-                areaId = reading.areaId,
-                updatedAtMillis = reading.updatedAtMillis,
-                autoUpdates = reading.autoUpdates,
-                chartable = parameter.chartable,
-                decoded = propertyId != null,
-            )
-        }
-    }
-    return state.copy(
+    return previewState().copy(
         selectedVhalProfile = VehicleProfile.RAW,
         vhalDetail = "84 исходных сигнала · профиль не выбран",
-        sensors = NormalizedParameterMerger.merge(splitReadings),
+        parameters = previewParameters(parameterSnapshots(vhalMapped = false)),
     )
 }
 
@@ -363,25 +348,27 @@ private fun sampleDtc(
     status: Int,
 ) = DtcRecord(code, id, ecuType, status, SAMPLE_TICK_TIME)
 
-private fun sensor(id: Int, apiName: String, title: String, value: String, kind: String): SensorRecord {
-    val propertyId = EcarxNormalizedPropertyRegistry.sensorProperty(apiName)?.rawValue
-    return SensorRecord(
-        id,
-        apiName,
-        title,
-        if (kind == "event/int") {
+private fun sensor(id: Int, apiName: String, title: String, value: String, kind: String): CarPropertySnapshot {
+    val display = if (kind == "event/int") {
             VendorValueDecoder.sensor(apiName, value.toInt())
         } else {
             VendorValueDecoder.sensor(apiName, value.toFloat())
-        },
-        kind,
-        ApiSupportStatus.ACTIVE,
-        propertyId = propertyId,
-        updatedAtMillis = System.currentTimeMillis(),
+        }
+    val number = display.raw.toDoubleOrNull()
+    return CarPropertySnapshot(
+        propertyId = EcarxNormalizedPropertyRegistry.sensorProperty(apiName),
+        value = number?.let { if (kind == "float") CarValue.FloatValue(it) else CarValue.IntValue(it.toInt()) },
+        displayValue = display.display,
+        rawValue = RawVehicleValue(display.raw, number),
+        status = VehiclePropertyStatus.AVAILABLE,
+        source = VehiclePropertySource.ECARX,
+        sourceSignalId = id,
+        sourceSignalName = apiName,
+        sourceTitle = title,
+        receivedAtMillis = System.currentTimeMillis(),
         expectedUpdateIntervalMillis = if (kind == "float") 15_000L else null,
         autoUpdates = kind == "float",
-        chartable = kind == "float",
-        decoded = propertyId != null,
+        valueKind = kind,
     )
 }
 
@@ -390,7 +377,7 @@ private fun info(id: Int, apiName: String, title: String, value: String, raw: St
         id,
         apiName,
         title,
-        ApiValue(value, raw),
+        VehicleDisplayValue(value, raw),
         ApiSupportStatus.ACTIVE,
         updatedAtMillis = System.currentTimeMillis(),
     )
@@ -403,32 +390,36 @@ private fun vhalSensor(
     value: String,
     raw: String,
     kind: String,
-) = SensorRecord(
-    id = id,
-    apiName = apiName,
-    title = title,
-    value = ApiValue(value, raw),
-    valueKind = kind,
-    support = ApiSupportStatus.ACTIVE,
-    source = VehicleDataSource.VHAL,
-    sourceProfile = VehicleProfile.G426.key,
-    propertyId = propertyId,
-    updatedAtMillis = System.currentTimeMillis(),
+    mapped: Boolean,
+) = CarPropertySnapshot(
+    propertyId = CarPropertyId(propertyId).takeIf { mapped },
+    value = raw.toDoubleOrNull()?.let { CarValue.FloatValue(it) } ?: CarValue.StringValue(raw),
+    displayValue = value,
+    rawValue = RawVehicleValue(raw, raw.toDoubleOrNull()),
+    status = VehiclePropertyStatus.AVAILABLE,
+    source = VehiclePropertySource.VHAL,
+    sourceSignalId = id,
+    sourceSignalName = apiName,
+    sourceTitle = title,
+    profileKey = VehicleProfile.G426.key.takeIf { mapped },
+    receivedAtMillis = System.currentTimeMillis(),
     expectedUpdateIntervalMillis = 15_000L,
     autoUpdates = true,
-    chartable = kind == "float" || propertyId in setOf(10012, 10021),
-    decoded = true,
+    valueKind = kind,
 )
 
-private fun rawVhalSensor(id: Int, raw: String, kind: String) = SensorRecord(
-    id = id,
-    apiName = "VHAL_0x${id.toUInt().toString(16).uppercase()}",
-    title = "Неизвестный VHAL-сигнал 0x${id.toUInt().toString(16).uppercase()}",
-    value = ApiValue.raw(raw),
+private fun rawVhalSensor(id: Int, raw: String, kind: String) = CarPropertySnapshot(
+    propertyId = null,
+    value = CarValue.StringValue(raw),
+    displayValue = raw,
+    rawValue = RawVehicleValue(raw),
+    status = VehiclePropertyStatus.AVAILABLE,
+    source = VehiclePropertySource.VHAL,
+    sourceSignalId = id,
+    sourceSignalName = "VHAL_0x${id.toUInt().toString(16).uppercase()}",
+    sourceTitle = "Неизвестный VHAL-сигнал 0x${id.toUInt().toString(16).uppercase()}",
+    receivedAtMillis = System.currentTimeMillis(),
     valueKind = kind,
-    support = ApiSupportStatus.ACTIVE,
-    source = VehicleDataSource.VHAL,
-    updatedAtMillis = System.currentTimeMillis(),
 )
 
 private fun function(

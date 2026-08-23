@@ -2,25 +2,17 @@ package com.geelydiagnostics.app.vehicle.repository
 
 import android.content.Context
 import android.util.Log
-import com.geelydiagnostics.app.ApiSupportStatus
-import com.geelydiagnostics.app.ApiValue
 import com.geelydiagnostics.app.DtcRecord
 import com.geelydiagnostics.app.EcarxDataListener
 import com.geelydiagnostics.app.EcarxDataSource
 import com.geelydiagnostics.app.ReadStatus
-import com.geelydiagnostics.app.SensorRecord
-import com.geelydiagnostics.app.VehicleDataSource
 import com.geelydiagnostics.app.VehicleFunctionRecord
 import com.geelydiagnostics.app.VehicleInfoRecord
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
-import com.geelydiagnostics.app.vehicle.property.CarPropertyPresentations
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
-import com.geelydiagnostics.app.vehicle.property.CarValue
-import com.geelydiagnostics.app.vehicle.property.EcarxNormalizedPropertyRegistry
-import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
-import com.geelydiagnostics.app.vehicle.property.key
-import com.geelydiagnostics.app.vehicle.vhal.SourceReadStatus
-import com.geelydiagnostics.app.vehicle.vhal.VhalDataListener
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
 import com.geelydiagnostics.app.vehicle.vhal.VhalDataSource
 import java.io.Closeable
 import java.text.SimpleDateFormat
@@ -30,8 +22,8 @@ import java.util.Locale
 internal data class VehicleRepositoryState(
     val carStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carDetail: String = "",
-    val sensorStatus: ReadStatus = ReadStatus.NOT_CHECKED,
-    val sensorDetail: String = "",
+    val ecarxParameterStatus: ReadStatus = ReadStatus.NOT_CHECKED,
+    val ecarxParameterDetail: String = "",
     val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val vhalDetail: String = "",
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,
@@ -39,7 +31,7 @@ internal data class VehicleRepositoryState(
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val functionDetail: String = "",
     val diagnostics: DiagnosticsState = DiagnosticsState(),
-    val sensors: List<SensorRecord> = emptyList(),
+    val parameters: List<VehicleParameter> = emptyList(),
     val vehicleInfo: List<VehicleInfoRecord> = emptyList(),
     val functions: List<VehicleFunctionRecord> = emptyList(),
     val logLines: List<String> = emptyList(),
@@ -49,25 +41,23 @@ internal data class VehicleRepositoryState(
 internal class UnifiedVehicleRepository(
     context: Context,
     private val onState: (VehicleRepositoryState) -> Unit,
-) : Closeable, EcarxDataListener, VhalDataListener {
+) : Closeable, EcarxDataListener {
     private val appContext = context.applicationContext
     private val diagnostics = DiagnosticsRepository()
-    private val sources = mutableListOf<Closeable>()
+    private val sources = mutableListOf<VehicleParameterDataSource>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
     private var state = VehicleRepositoryState()
-    private val vhalCache = VehiclePropertyCache()
-    private var ecarxSensors: List<SensorRecord> = emptyList()
+    private val parameterCache = UnifiedParameterCache()
 
     @Synchronized
     fun start(profile: VehicleProfile) {
         sources.forEach { runCatching { it.close() } }
         sources.clear()
         diagnostics.reset()
-        vhalCache.clear()
-        ecarxSensors = emptyList()
+        parameterCache.clear()
         state = VehicleRepositoryState(
             carStatus = ReadStatus.CHECKING,
-            sensorStatus = ReadStatus.CHECKING,
+            ecarxParameterStatus = ReadStatus.CHECKING,
             vhalStatus = ReadStatus.CHECKING,
             carInfoStatus = ReadStatus.CHECKING,
             functionStatus = ReadStatus.CHECKING,
@@ -83,7 +73,11 @@ internal class UnifiedVehicleRepository(
             onCarStatus(ReadStatus.ERROR, describe(error))
             onDiagnosticsStatus(ReadStatus.ERROR, "ECARX API unavailable")
             onDtcManagerStatus(ReadStatus.ERROR, "ECARX API unavailable")
-            onSensorStatus(ReadStatus.ERROR, "ECARX API unavailable")
+            onParameterStatus(
+                VehiclePropertySource.ECARX,
+                ReadStatus.ERROR,
+                "ECARX API unavailable",
+            )
             onCarInfoStatus(ReadStatus.ERROR, "ECARX API unavailable")
             onFunctionStatus(ReadStatus.ERROR, "ECARX API unavailable")
             appendLog("ECARX", "initialization failed: ${describe(error)}", error)
@@ -91,7 +85,7 @@ internal class UnifiedVehicleRepository(
         try {
             sources += VhalDataSource(appContext, profile, this).also { it.start() }
         } catch (error: Throwable) {
-            onVhalStatus(SourceReadStatus.ERROR, describe(error))
+            onParameterStatus(VehiclePropertySource.VHAL, ReadStatus.ERROR, describe(error))
             appendLog("VHAL", "initialization failed: ${describe(error)}", error)
         }
     }
@@ -120,11 +114,6 @@ internal class UnifiedVehicleRepository(
     }
 
     @Synchronized
-    override fun onSensorStatus(status: ReadStatus, detail: String) = update {
-        copy(sensorStatus = status, sensorDetail = detail)
-    }
-
-    @Synchronized
     override fun onCarInfoStatus(status: ReadStatus, detail: String) = update {
         copy(carInfoStatus = status, carInfoDetail = detail)
     }
@@ -132,49 +121,6 @@ internal class UnifiedVehicleRepository(
     @Synchronized
     override fun onFunctionStatus(status: ReadStatus, detail: String) = update {
         copy(functionStatus = status, functionDetail = detail)
-    }
-
-    @Synchronized
-    override fun onSensorsChanged(source: VehicleDataSource, sensors: List<SensorRecord>) {
-        if (source == VehicleDataSource.ECARX) {
-            ecarxSensors = sensors.map { it.withNormalizedEcarxProperty() }
-            publishParameters()
-        }
-    }
-
-    @Synchronized
-    override fun onSensorValueChanged(
-        source: VehicleDataSource,
-        id: Int,
-        value: ApiValue,
-        areaId: Int,
-    ) {
-        val now = System.currentTimeMillis()
-        ecarxSensors = ecarxSensors.map { sensor ->
-            if (sensor.source == source && sensor.id == id && sensor.areaId == areaId) {
-                sensor.copy(
-                    value = value,
-                    error = "",
-                    updatedAtMillis = now,
-                    changedSinceScan = sensor.changedSinceScan || sensor.value.raw != value.raw,
-                )
-            } else {
-                sensor
-            }
-        }
-        publishParameters()
-    }
-
-    @Synchronized
-    override fun onSensorSupportChanged(
-        source: VehicleDataSource,
-        id: Int,
-        support: ApiSupportStatus,
-    ) {
-        ecarxSensors = ecarxSensors.map { sensor ->
-            if (sensor.source == source && sensor.id == id) sensor.copy(support = support) else sensor
-        }
-        publishParameters()
     }
 
     @Synchronized
@@ -188,23 +134,37 @@ internal class UnifiedVehicleRepository(
     }
 
     @Synchronized
-    override fun onVhalStatus(status: SourceReadStatus, detail: String) = update {
-        copy(vhalStatus = status.toReadStatus(), vhalDetail = detail)
+    override fun onParameterStatus(
+        source: VehiclePropertySource,
+        status: ReadStatus,
+        detail: String,
+    ) = update {
+        when (source) {
+            VehiclePropertySource.ECARX -> copy(ecarxParameterStatus = status, ecarxParameterDetail = detail)
+            VehiclePropertySource.VHAL -> copy(vhalStatus = status, vhalDetail = detail)
+        }
     }
 
     @Synchronized
-    override fun onVhalSnapshot(values: List<CarPropertySnapshot>) {
-        vhalCache.replace(values)
+    override fun onParameterSnapshot(
+        source: VehiclePropertySource,
+        values: List<CarPropertySnapshot>,
+    ) {
+        parameterCache.replaceSource(source, values)
         publishParameters()
     }
 
     @Synchronized
-    override fun onVhalValue(value: CarPropertySnapshot) {
-        vhalCache.update(value)
+    override fun onParameterValue(value: CarPropertySnapshot) {
+        parameterCache.update(value)
         publishParameters()
     }
 
-    override fun onVehicleLog(message: String, error: Throwable?) = appendLog("VHAL", message, error)
+    override fun onParameterLog(
+        source: VehiclePropertySource,
+        message: String,
+        error: Throwable?,
+    ) = appendLog(source.label, message, error)
 
     @Synchronized
     override fun onLog(message: String, error: Throwable?) = appendLog("ECARX", message, error)
@@ -230,49 +190,7 @@ internal class UnifiedVehicleRepository(
     fun clearLog() = update { copy(logLines = emptyList()) }
 
     private fun publishParameters() = update {
-        val vhalSensors = vhalCache.values().map { value ->
-            value.toSensorRecord(changedSinceScan = vhalCache.changedSinceSnapshot(value.key))
-        }
-        copy(sensors = NormalizedParameterMerger.merge(ecarxSensors + vhalSensors))
-    }
-
-    private fun CarPropertySnapshot.toSensorRecord(changedSinceScan: Boolean): SensorRecord {
-        val presentation = id?.let(CarPropertyPresentations::get)
-        val numeric = value is CarValue.IntValue || value is CarValue.FloatValue
-        val chartable = numeric && (autoUpdates || presentation?.unit != null)
-        return SensorRecord(
-            id = sourceSignalId,
-            apiName = sourceSignalName,
-            title = presentation?.title ?: "Неизвестный VHAL-сигнал ${sourceSignalId.hex()}",
-            value = ApiValue(displayValue, rawValue?.text ?: "—"),
-            valueKind = valueKind,
-            support = if (status == VehiclePropertyStatus.ERROR && rawValue == null) {
-                ApiSupportStatus.ERROR
-            } else {
-                ApiSupportStatus.ACTIVE
-            },
-            error = error,
-            source = VehicleDataSource.VHAL,
-            sourceProfile = profileKey,
-            propertyId = id?.rawValue,
-            areaId = areaId,
-            updatedAtMillis = receivedAtMillis,
-            sourceTimestampNanos = sourceTimestampNanos,
-            expectedUpdateIntervalMillis = expectedUpdateIntervalMillis,
-            changedSinceScan = changedSinceScan,
-            autoUpdates = autoUpdates,
-            chartable = chartable,
-            decoded = id != null && status == VehiclePropertyStatus.AVAILABLE,
-        )
-    }
-
-    private fun SensorRecord.withNormalizedEcarxProperty(): SensorRecord {
-        val normalizedId = EcarxNormalizedPropertyRegistry.sensorProperty(apiName)?.rawValue
-        return copy(
-            propertyId = normalizedId,
-            decoded = normalizedId != null &&
-                (support == ApiSupportStatus.ACTIVE || support == ApiSupportStatus.NOT_ACTIVE),
-        )
+        copy(parameters = parameterCache.parameters())
     }
 
     private fun update(block: VehicleRepositoryState.() -> VehicleRepositoryState) {
@@ -292,14 +210,6 @@ internal class UnifiedVehicleRepository(
         private const val LOG_TAG = "GeelyDiagnostics"
     }
 }
-
-private fun SourceReadStatus.toReadStatus(): ReadStatus = when (this) {
-    SourceReadStatus.CHECKING -> ReadStatus.CHECKING
-    SourceReadStatus.AVAILABLE -> ReadStatus.AVAILABLE
-    SourceReadStatus.ERROR -> ReadStatus.ERROR
-}
-
-private fun Int.hex(): String = "0x${toUInt().toString(16).padStart(8, '0')}"
 
 private fun describe(error: Throwable): String = error.javaClass.name +
     (error.message?.let { ": $it" } ?: "")

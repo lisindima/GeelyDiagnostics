@@ -23,13 +23,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
 import java.math.BigDecimal
 import kotlin.math.abs
 import kotlin.math.max
 
 private val LEADING_NUMBER = Regex("""^\s*([+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+))""")
 
-internal fun ApiValue.chartNumber(): Double? = LEADING_NUMBER
+internal fun VehicleDisplayValue.chartNumber(): Double? = LEADING_NUMBER
     .find(display)
     ?.groupValues
     ?.get(1)
@@ -39,11 +41,11 @@ internal fun ApiValue.chartNumber(): Double? = LEADING_NUMBER
 
 @Composable
 internal fun SensorHistoryChart(
-    samples: List<SensorSample>,
+    samples: List<VehicleParameterSample>,
     isLive: Boolean,
 ) {
     val finiteSamples = samples.filter { it.value.isFinite() }
-    val values = finiteSamples.map(SensorSample::value)
+    val values = finiteSamples.map(VehicleParameterSample::value)
     val minimum = values.minOrNull()
     val maximum = values.maxOrNull()
     val duration = finiteSamples.durationMillis()
@@ -127,7 +129,7 @@ internal fun SensorHistoryChart(
                         )
                     }
 
-                    fun point(sample: SensorSample): Offset {
+                    fun point(sample: VehicleParameterSample): Offset {
                         val x = inset + graphWidth *
                             ((sample.timestampMillis - startTime).toFloat() / timeRange.toFloat())
                         val normalized = ((sample.value - graphMinimum) / valueRange).toFloat()
@@ -187,7 +189,7 @@ internal fun SensorHistoryChart(
     }
 }
 
-private fun List<SensorSample>.durationMillis(): Long =
+private fun List<VehicleParameterSample>.durationMillis(): Long =
     if (size < 2) 0L else (last().timestampMillis - first().timestampMillis).coerceAtLeast(0L)
 
 private fun formatDuration(durationMillis: Long): String {

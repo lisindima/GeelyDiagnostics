@@ -1,6 +1,13 @@
 package com.geelydiagnostics.app
 
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.property.CarPropertyId
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
+import com.geelydiagnostics.app.vehicle.property.favoriteKey
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -11,28 +18,25 @@ class DiagnosticsReportExporterTest {
 
     @Test
     fun exportContainsRawValuesSourceProfileAndReadOnlyMarker() {
-        val sensor = SensorRecord(
-            id = 123,
-            apiName = "TEST_SENSOR",
+        val sensor = VehicleParameter(
+            propertyId = CarPropertyId(10012),
+            areaId = 0,
             title = "Тестовый сенсор",
-            value = ApiValue(display = "Включено", raw = "1"),
+            value = VehicleDisplayValue(display = "Включено", raw = "1"),
             valueKind = "int",
-            support = ApiSupportStatus.ACTIVE,
-            source = VehicleDataSource.VHAL,
-            sourceProfile = "G426",
-            propertyId = 10012,
+            status = VehiclePropertyStatus.AVAILABLE,
             updatedAtMillis = 1_700_000_000_000L,
             sourceTimestampNanos = 42L,
             changedSinceScan = true,
             autoUpdates = true,
             decoded = true,
             sourceReadings = listOf(
-                ParameterSourceReading(
-                    source = VehicleDataSource.VHAL,
+                VehicleSourceReading(
+                    source = VehiclePropertySource.VHAL,
                     signalId = 123,
                     signalName = "TEST_SENSOR",
-                    value = ApiValue(display = "Включено", raw = "1"),
-                    support = ApiSupportStatus.ACTIVE,
+                    value = VehicleDisplayValue(display = "Включено", raw = "1"),
+                    status = VehiclePropertyStatus.AVAILABLE,
                     profile = "G426",
                     sourceTimestampNanos = 42L,
                     autoUpdates = true,
@@ -42,7 +46,7 @@ class DiagnosticsReportExporterTest {
         )
         val state = AppUiState(
             selectedVhalProfile = VehicleProfile.G426,
-            sensors = listOf(sensor),
+            parameters = listOf(sensor),
             favoriteKeys = setOf(sensor.favoriteKey),
             logLines = listOf("12:00:00.000  test"),
             scanStartedAtMillis = 1_700_000_000_000L,
@@ -54,12 +58,12 @@ class DiagnosticsReportExporterTest {
         val exported = report.getJSONArray("parameters").getJSONObject(0)
 
         assertTrue(report.getBoolean("readOnly"))
-        assertEquals(3, report.getInt("schemaVersion"))
+        assertEquals(4, report.getInt("schemaVersion"))
         assertEquals("0.11.0", report.getString("appVersion"))
         assertEquals("G426", report.getString("vhalProfile"))
         assertEquals("1", exported.getString("raw"))
-        assertEquals("G426", exported.getString("mappingProfile"))
         assertEquals(10012, exported.getInt("normalizedPropertyId"))
+        assertEquals("VHAL", exported.getString("primarySource"))
         assertEquals(42L, exported.getLong("sourceTimestampNanos"))
         assertTrue(exported.getBoolean("changedSinceScan"))
         assertTrue(exported.getBoolean("autoUpdates"))

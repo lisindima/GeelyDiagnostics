@@ -1,5 +1,10 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,14 +28,24 @@ class ValueFreshnessTest {
         assertTrue(formatUpdateTime(10_000L, 15_000L).endsWith("5 с назад"))
     }
 
-    private fun sensor(updatedAt: Long, staleAfter: Long?) = SensorRecord(
-        id = 1,
-        apiName = "TEST",
+    private fun sensor(updatedAt: Long, staleAfter: Long?) = VehicleParameter(
+        propertyId = null,
+        areaId = 0,
         title = "Тест",
-        value = ApiValue.raw("1"),
+        value = VehicleDisplayValue.raw("1"),
         valueKind = "int",
-        support = ApiSupportStatus.ACTIVE,
+        status = VehiclePropertyStatus.AVAILABLE,
         updatedAtMillis = updatedAt,
         expectedUpdateIntervalMillis = staleAfter,
+        sourceReadings = listOf(
+            VehicleSourceReading(
+                source = VehiclePropertySource.VHAL,
+                signalId = 1,
+                signalName = "TEST",
+                value = VehicleDisplayValue.raw("1"),
+                status = VehiclePropertyStatus.AVAILABLE,
+                updatedAtMillis = updatedAt,
+            ),
+        ),
     )
 }

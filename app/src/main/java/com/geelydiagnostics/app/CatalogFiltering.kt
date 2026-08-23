@@ -1,5 +1,9 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.favoriteKey
+import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKey
 import java.util.Locale
 
 internal enum class SensorValueFilter(val title: String) {
@@ -18,25 +22,29 @@ internal enum class CatalogListFilter(val title: String) {
 }
 
 internal fun filterSensors(
-    records: List<SensorRecord>,
+    records: List<VehicleParameter>,
     valueFilter: SensorValueFilter,
     query: String,
     favoriteKeys: Set<String>,
-): List<SensorRecord> = records.asSequence()
+): List<VehicleParameter> = records.asSequence()
     .filter { record ->
         when (valueFilter) {
-            SensorValueFilter.ALL -> record.support.isVisibleAsSupported
-            SensorValueFilter.DECODED -> record.support.isVisibleAsSupported && record.isDecoded
-            SensorValueFilter.RAW -> record.support.isVisibleAsSupported && !record.isDecoded
-            SensorValueFilter.CHANGED -> record.support.isVisibleAsSupported && record.changedSinceScan
-            SensorValueFilter.ERRORS -> record.support == ApiSupportStatus.ERROR ||
+            SensorValueFilter.ALL -> record.status == VehiclePropertyStatus.AVAILABLE
+            SensorValueFilter.DECODED -> record.status == VehiclePropertyStatus.AVAILABLE && record.isDecoded
+            SensorValueFilter.RAW -> record.status == VehiclePropertyStatus.AVAILABLE && !record.isDecoded
+            SensorValueFilter.CHANGED ->
+                record.status == VehiclePropertyStatus.AVAILABLE && record.changedSinceScan
+            SensorValueFilter.ERRORS -> record.status == VehiclePropertyStatus.ERROR ||
                 record.error.isNotBlank() || record.sourceReadings.any { it.error.isNotBlank() }
             SensorValueFilter.FAVORITES ->
-                record.support.isVisibleAsSupported && record.matchesFavorite(favoriteKeys)
+                record.status == VehiclePropertyStatus.AVAILABLE && record.matchesFavorite(favoriteKeys)
         }
     }
     .filter { record -> record.matchesQuery(query) }
-    .sortedWith(compareBy<SensorRecord> { it.title.lowercase(Locale.ROOT) }.thenBy { it.id })
+    .sortedWith(
+        compareBy<VehicleParameter> { it.title.lowercase(Locale.ROOT) }
+            .thenBy { it.propertyId?.rawValue ?: it.sourceReadings.first().signalId },
+    )
     .toList()
 
 internal fun filterVehicleInfo(
@@ -75,20 +83,12 @@ internal fun filterFunctions(
     .sortedBy { it.title.lowercase(Locale.ROOT) }
     .toList()
 
-private val SensorRecord.isDecoded: Boolean
-    get() = decoded == true
-
-private fun SensorRecord.matchesQuery(query: String): Boolean = matchesAllTokens(
+private fun VehicleParameter.matchesQuery(query: String): Boolean = matchesAllTokens(
     query,
     title,
-    apiName,
-    id.toString(),
-    "0x${id.toUInt().toString(16)}",
     value.display,
     value.raw,
-    source.label,
-    sourceProfile.orEmpty(),
-    propertyId?.toString().orEmpty(),
+    propertyId?.rawValue?.toString().orEmpty(),
     sourceReadings.joinToString(" ") { reading ->
         listOf(
             reading.source.label,
@@ -102,7 +102,7 @@ private fun SensorRecord.matchesQuery(query: String): Boolean = matchesAllTokens
     },
 )
 
-internal fun SensorRecord.matchesFavorite(favoriteKeys: Set<String>): Boolean =
+internal fun VehicleParameter.matchesFavorite(favoriteKeys: Set<String>): Boolean =
     favoriteKey in favoriteKeys || sourceReadings.any { it.legacyFavoriteKey in favoriteKeys }
 
 private fun VehicleInfoRecord.matchesQuery(query: String): Boolean = matchesAllTokens(

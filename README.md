@@ -109,7 +109,16 @@ VHAL-маппинг не привязан к одной модели. По ум�
   график числовых измерений;
 - `CatalogFiltering.kt`, `ValueFreshness.kt` — поиск, фильтры и свежесть данных;
 - `DiagnosticsReportExporter.kt` — read-only диагностический отчёт;
-- `AppModels.kt` — модели состояния и значений интерфейса.
+- `AppModels.kt` — состояние экранов и модели отдельных ECARX-каталогов;
+- `vehicle/property/VehicleParameter.kt` — единая модель параметра, где
+  `CarPropertyId` является основной идентичностью, а ECARX/VHAL представлены
+  вложенными исходными показаниями;
+- `vehicle/source/VehicleParameterDataSource.kt` — общий read-only контракт
+  источников;
+- `vehicle/repository/UnifiedParameterCache.kt` — единый кэш по
+  `propertyId + areaId` и отдельное хранение неизвестных raw-сигналов;
+- `vehicle/ecarx/` — независимые readers диагностики, параметров, заводских
+  сведений и возможностей поверх общего ECARX-подключения.
 
 ## Гарантия Read Only
 

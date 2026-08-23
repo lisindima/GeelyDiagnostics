@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 
 internal object FunctionsTab {
 
@@ -125,9 +126,9 @@ internal object FunctionsTab {
             ApiSupportStatus.UNKNOWN -> "Состояние неизвестно"
         }
 
-    private val VehicleFunctionRecord.cardValue: ApiValue
-        get() = if (value == ApiValue.unavailable && support.isVisibleAsSupported) {
-            ApiValue(display = supportLabel, raw = value.raw)
+    private val VehicleFunctionRecord.cardValue: VehicleDisplayValue
+        get() = if (value == VehicleDisplayValue.unavailable && support.isVisibleAsSupported) {
+            VehicleDisplayValue(display = supportLabel, raw = value.raw)
         } else {
             value
         }

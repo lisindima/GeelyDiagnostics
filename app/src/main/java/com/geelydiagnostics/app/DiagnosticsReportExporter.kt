@@ -1,5 +1,8 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.primaryReading
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -14,7 +17,7 @@ internal object DiagnosticsReportExporter {
         generatedAtMillis: Long,
         appVersion: String,
     ): String = JSONObject().apply {
-        put("schemaVersion", 3)
+        put("schemaVersion", 4)
         put("application", "Geely Diagnostics")
         put("appVersion", appVersion)
         put("generatedAt", isoTime(generatedAtMillis))
@@ -25,7 +28,7 @@ internal object DiagnosticsReportExporter {
             putStatus("ecarx", state.carStatus, state.carDetail)
             putStatus("diagnostics", state.diagnosticsStatus, state.diagnosticsDetail)
             putStatus("dtc", state.dtcManagerStatus, state.dtcManagerDetail)
-            putStatus("ecarxParameters", state.sensorStatus, state.sensorDetail)
+            putStatus("ecarxParameters", state.ecarxParameterStatus, state.ecarxParameterDetail)
             putStatus("vhal", state.vhalStatus, state.vhalDetail)
             putStatus("vehicleInfo", state.carInfoStatus, state.carInfoDetail)
             putStatus("functions", state.functionStatus, state.functionDetail)
@@ -42,19 +45,21 @@ internal object DiagnosticsReportExporter {
             }
         })
         put("parameters", JSONArray().apply {
-            state.sensors.forEach { record ->
+            state.parameters.forEach { record ->
                 put(JSONObject().apply {
-                    putCommonValue(record.id, record.apiName, record.title, record.value, record.source)
-                    put("support", record.support.name)
+                    put("normalizedPropertyId", record.propertyId?.rawValue ?: JSONObject.NULL)
+                    put("title", record.title)
+                    put("display", record.value.display)
+                    put("raw", record.value.raw)
+                    put("status", record.status.name)
+                    put("primarySource", record.primaryReading.source.name)
                     put("valueKind", record.valueKind)
                     put("areaId", record.areaId)
-                    put("mappingProfile", record.sourceProfile ?: JSONObject.NULL)
-                    put("normalizedPropertyId", record.propertyId ?: JSONObject.NULL)
                     put("sourceTimestampNanos", record.sourceTimestampNanos ?: JSONObject.NULL)
                     put("updatedAt", record.updatedAtMillis.jsonTime())
                     put("changedSinceScan", record.changedSinceScan)
                     put("autoUpdates", record.autoUpdates)
-                    put("decoded", record.decoded == true)
+                    put("decoded", record.decoded)
                     put("favorite", record.matchesFavorite(state.favoriteKeys))
                     put("error", record.error)
                     put("sources", JSONArray().apply {
@@ -67,7 +72,7 @@ internal object DiagnosticsReportExporter {
                                     reading.value,
                                     reading.source,
                                 )
-                                put("support", reading.support.name)
+                                put("status", reading.status.name)
                                 put("profile", reading.profile ?: JSONObject.NULL)
                                 put("areaId", reading.areaId)
                                 put("updatedAt", reading.updatedAtMillis.jsonTime())
@@ -119,8 +124,8 @@ internal object DiagnosticsReportExporter {
         id: Int,
         apiName: String,
         title: String,
-        value: ApiValue,
-        source: VehicleDataSource,
+        value: VehicleDisplayValue,
+        source: VehiclePropertySource,
     ) {
         put("id", id)
         put("apiName", apiName)

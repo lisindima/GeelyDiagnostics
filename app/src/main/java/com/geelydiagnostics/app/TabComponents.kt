@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import java.util.Locale
 
 @Composable
@@ -110,7 +111,7 @@ internal fun DataCard(
     title: String,
     apiName: String,
     id: Int,
-    value: ApiValue,
+    value: VehicleDisplayValue,
     sourceLabels: List<String>,
     modeLabel: String? = null,
     modeIsHighlighted: Boolean = false,

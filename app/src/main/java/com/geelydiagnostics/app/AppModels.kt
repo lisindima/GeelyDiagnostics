@@ -2,6 +2,10 @@ package com.geelydiagnostics.app
 
 import androidx.compose.runtime.Immutable
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 
 enum class ReadStatus {
     NOT_CHECKED,
@@ -19,11 +23,6 @@ enum class ApiSupportStatus {
     UNKNOWN,
 }
 
-enum class VehicleDataSource(val label: String) {
-    ECARX("ECARX"),
-    VHAL("VHAL"),
-}
-
 data class DtcRecord(
     val code: String,
     val id: String,
@@ -32,67 +31,14 @@ data class DtcRecord(
     val tickTime: Long,
 )
 
-data class ApiValue(
-    val display: String,
-    val raw: String,
-) {
-    companion object {
-        fun raw(value: String): ApiValue = ApiValue(display = value, raw = value)
-        val unavailable = raw("—")
-    }
-}
-
-@Immutable
-data class SensorSample(
-    val timestampMillis: Long,
-    val value: Double,
-)
-
-data class SensorRecord(
-    val id: Int,
-    val apiName: String,
-    val title: String,
-    val value: ApiValue,
-    val valueKind: String,
-    val support: ApiSupportStatus,
-    val error: String = "",
-    val source: VehicleDataSource = VehicleDataSource.ECARX,
-    val sourceProfile: String? = null,
-    val propertyId: Int? = null,
-    val areaId: Int = 0,
-    val updatedAtMillis: Long? = null,
-    val sourceTimestampNanos: Long? = null,
-    val expectedUpdateIntervalMillis: Long? = null,
-    val changedSinceScan: Boolean = false,
-    val autoUpdates: Boolean = false,
-    val chartable: Boolean = false,
-    val decoded: Boolean? = null,
-    val sourceReadings: List<ParameterSourceReading> = emptyList(),
-)
-
-data class ParameterSourceReading(
-    val source: VehicleDataSource,
-    val signalId: Int,
-    val signalName: String,
-    val value: ApiValue,
-    val support: ApiSupportStatus,
-    val error: String = "",
-    val profile: String? = null,
-    val areaId: Int = 0,
-    val updatedAtMillis: Long? = null,
-    val sourceTimestampNanos: Long? = null,
-    val autoUpdates: Boolean = false,
-    val decoded: Boolean = false,
-)
-
 data class VehicleInfoRecord(
     val id: Int,
     val apiName: String,
     val title: String,
-    val value: ApiValue,
+    val value: VehicleDisplayValue,
     val support: ApiSupportStatus,
     val error: String = "",
-    val source: VehicleDataSource = VehicleDataSource.ECARX,
+    val source: VehiclePropertySource = VehiclePropertySource.ECARX,
     val updatedAtMillis: Long? = null,
 )
 
@@ -100,12 +46,12 @@ data class VehicleFunctionRecord(
     val id: Int,
     val apiName: String,
     val title: String,
-    val value: ApiValue = ApiValue.unavailable,
+    val value: VehicleDisplayValue = VehicleDisplayValue.unavailable,
     val supportedValues: String = "",
     val zones: String = "",
     val support: ApiSupportStatus,
     val error: String = "",
-    val source: VehicleDataSource = VehicleDataSource.ECARX,
+    val source: VehiclePropertySource = VehiclePropertySource.ECARX,
     val updatedAtMillis: Long? = null,
 )
 
@@ -117,8 +63,8 @@ data class AppUiState(
     val diagnosticsDetail: String = "",
     val dtcManagerStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val dtcManagerDetail: String = "",
-    val sensorStatus: ReadStatus = ReadStatus.NOT_CHECKED,
-    val sensorDetail: String = "",
+    val ecarxParameterStatus: ReadStatus = ReadStatus.NOT_CHECKED,
+    val ecarxParameterDetail: String = "",
     val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val vhalDetail: String = "",
     val selectedVhalProfile: VehicleProfile = VehicleProfile.RAW,
@@ -127,21 +73,14 @@ data class AppUiState(
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val functionDetail: String = "",
     val dtcs: List<DtcRecord> = emptyList(),
-    val sensors: List<SensorRecord> = emptyList(),
-    val sensorHistory: Map<String, List<SensorSample>> = emptyMap(),
+    val parameters: List<VehicleParameter> = emptyList(),
+    val parameterHistory: Map<String, List<VehicleParameterSample>> = emptyMap(),
     val vehicleInfo: List<VehicleInfoRecord> = emptyList(),
     val functions: List<VehicleFunctionRecord> = emptyList(),
     val logLines: List<String> = emptyList(),
     val favoriteKeys: Set<String> = emptySet(),
     val scanStartedAtMillis: Long? = null,
 )
-
-internal val SensorRecord.favoriteKey: String
-    get() = propertyId?.let { "property:$it:$areaId" }
-        ?: "signal:${source.name}:$id:$areaId"
-
-internal val ParameterSourceReading.legacyFavoriteKey: String
-    get() = "sensor:${source.name}:$signalId:$areaId"
 
 internal val VehicleInfoRecord.favoriteKey: String
     get() = "vehicle:${source.name}:$id"

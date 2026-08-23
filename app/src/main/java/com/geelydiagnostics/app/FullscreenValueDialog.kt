@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.util.Locale
@@ -39,7 +40,7 @@ internal fun FullscreenValueDialog(
     title: String,
     apiName: String,
     idText: String,
-    value: ApiValue,
+    value: VehicleDisplayValue,
     sourceLabels: List<String>,
     modeLabel: String,
     isFavorite: Boolean = false,
@@ -78,7 +79,7 @@ internal fun FullscreenValueScreen(
     title: String,
     apiName: String,
     idText: String,
-    value: ApiValue,
+    value: VehicleDisplayValue,
     sourceLabels: List<String>,
     modeLabel: String,
     isFavorite: Boolean = false,

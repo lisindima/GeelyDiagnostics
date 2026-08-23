@@ -1,6 +1,12 @@
 package com.geelydiagnostics.app
 
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
+import com.geelydiagnostics.app.vehicle.property.favoriteKey
+import com.geelydiagnostics.app.vehicle.property.primaryReading
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -45,22 +51,22 @@ internal object ParametersTab {
         var selectedValueFilterIndex by rememberSaveable { mutableIntStateOf(SensorValueFilter.ALL.ordinal) }
         val selectedValueFilter = SensorValueFilter.entries[selectedValueFilterIndex]
         val nowMillis by rememberCurrentTimeMillis()
-        val supported = state.sensors.filter { it.support.isVisibleAsSupported }
+        val supported = state.parameters.filter { it.status == VehiclePropertyStatus.AVAILABLE }
         val filtered = filterSensors(
-            records = state.sensors,
+            records = state.parameters,
             valueFilter = selectedValueFilter,
             query = query,
             favoriteKeys = state.favoriteKeys,
         )
-        val autoUpdating = filtered.filter(SensorRecord::autoUpdates)
-        val manuallyUpdated = filtered.filterNot(SensorRecord::autoUpdates)
-        val unmappedCount = filtered.count { it.propertyId == null || it.decoded != true }
+        val autoUpdating = filtered.filter(VehicleParameter::autoUpdates)
+        val manuallyUpdated = filtered.filterNot(VehicleParameter::autoUpdates)
+        val unmappedCount = filtered.count { it.propertyId == null || !it.decoded }
         val groups = listOf(
             Triple("Автообновление", "Новые значения приходят по подписке", autoUpdating),
             Triple("Ручное обновление", "Значения обновляются по запросу", manuallyUpdated),
         ).filter { (_, _, values) -> values.isNotEmpty() }
         val emptyText = when {
-            state.sensorStatus == ReadStatus.ERROR && state.vhalStatus == ReadStatus.ERROR ->
+            state.ecarxParameterStatus == ReadStatus.ERROR && state.vhalStatus == ReadStatus.ERROR ->
                 "Источники данных недоступны. Подробности записаны в журнале."
             selectedValueFilter == SensorValueFilter.DECODED &&
                 state.selectedVhalProfile == VehicleProfile.RAW ->
@@ -87,10 +93,10 @@ internal object ParametersTab {
             onFavoriteToggle = onFavoriteToggle,
             onSensorSelected = { expandedSensorKey = it.selectionKey },
         )
-        state.sensors.firstOrNull { it.selectionKey == expandedSensorKey }?.let { sensor ->
+        state.parameters.firstOrNull { it.selectionKey == expandedSensorKey }?.let { sensor ->
             FullscreenValueDialog(
                 title = sensor.title,
-                apiName = sensor.apiName,
+                apiName = sensor.fieldName,
                 idText = sensor.cardIdLabel,
                 value = sensor.value,
                 sourceLabels = sensor.sourceLabels,
@@ -105,7 +111,7 @@ internal object ParametersTab {
                 chart = if (sensor.chartable) {
                     {
                         SensorHistoryChart(
-                            samples = state.sensorHistory[sensor.favoriteKey].orEmpty(),
+                            samples = state.parameterHistory[sensor.favoriteKey].orEmpty(),
                             isLive = sensor.autoUpdates,
                         )
                     }
@@ -191,7 +197,7 @@ internal object ParametersTab {
         autoUpdatingCount: Int,
         manuallyUpdatedCount: Int,
         unmappedCount: Int,
-        groups: List<Triple<String, String, List<SensorRecord>>>,
+        groups: List<Triple<String, String, List<VehicleParameter>>>,
         emptyText: String,
         query: String,
         onQueryChange: (String) -> Unit,
@@ -201,15 +207,15 @@ internal object ParametersTab {
         nowMillis: Long,
         onVhalProfileSelected: (VehicleProfile) -> Unit,
         onFavoriteToggle: (String) -> Unit,
-        onSensorSelected: (SensorRecord) -> Unit,
+        onSensorSelected: (VehicleParameter) -> Unit,
     ) {
-        val combinedStatus = aggregateReadStatus(listOf(state.sensorStatus, state.vhalStatus))
+        val combinedStatus = aggregateReadStatus(listOf(state.ecarxParameterStatus, state.vhalStatus))
         val combinedDetail = listOf(
-            "ECARX: ${state.sensorDetail.ifBlank { state.sensorStatus.labelForSource }}",
+            "ECARX: ${state.ecarxParameterDetail.ifBlank { state.ecarxParameterStatus.labelForSource }}",
             "VHAL ${state.selectedVhalProfile.key}: ${state.vhalDetail.ifBlank { state.vhalStatus.labelForSource }}",
         ).joinToString(" · ")
-        val vhalReadings = state.sensors.flatMap { it.effectiveReadings }
-            .filter { it.source == VehicleDataSource.VHAL }
+        val vhalReadings = state.parameters.flatMap(VehicleParameter::sourceReadings)
+            .filter { it.source == VehiclePropertySource.VHAL }
         val decodedVhalCount = vhalReadings.count { it.decoded }
 
         LazyColumn(
@@ -229,7 +235,7 @@ internal object ParametersTab {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        SourceStateBadge("ECARX", state.sensorStatus, Modifier.weight(1f))
+                        SourceStateBadge("ECARX", state.ecarxParameterStatus, Modifier.weight(1f))
                         SourceStateBadge("VHAL", state.vhalStatus, Modifier.weight(1f))
                     }
                 }
@@ -267,15 +273,15 @@ internal object ParametersTab {
             if (groups.isEmpty()) {
                 item { EmptyMessage(emptyText) }
             } else {
-                groups.forEach { (groupTitle, groupSubtitle, sensors) ->
+                groups.forEach { (groupTitle, groupSubtitle, parameters) ->
                     item {
                         SensorGroupHeader(
                             title = groupTitle,
                             subtitle = groupSubtitle,
-                            count = sensors.size,
+                            count = parameters.size,
                         )
                     }
-                    sensors.chunked(2).forEach { row ->
+                    parameters.chunked(2).forEach { row ->
                         item {
                             TwoColumnRow(row) { sensor ->
                                 SensorCard(
@@ -334,7 +340,7 @@ internal object ParametersTab {
 
     @Composable
     private fun SensorCard(
-        sensor: SensorRecord,
+        sensor: VehicleParameter,
         nowMillis: Long,
         isFavorite: Boolean,
         onFavoriteToggle: () -> Unit,
@@ -343,8 +349,8 @@ internal object ParametersTab {
         val stale = sensor.isStale(nowMillis)
         DataCard(
             title = sensor.title,
-            apiName = sensor.apiName,
-            id = sensor.id,
+            apiName = sensor.fieldName,
+            id = sensor.propertyId?.rawValue ?: sensor.primaryReading.signalId,
             idLabel = sensor.cardIdLabel,
             value = sensor.value,
             sourceLabels = sensor.sourceLabels,
@@ -357,7 +363,7 @@ internal object ParametersTab {
             onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            sensor.effectiveReadings.filter { it.error.isNotBlank() }.forEach { reading ->
+            sensor.sourceReadings.filter { it.error.isNotBlank() }.forEach { reading ->
                 Text(
                     text = "${reading.badgeLabel}: ${reading.error}",
                     color = MaterialTheme.colorScheme.error,
@@ -369,7 +375,7 @@ internal object ParametersTab {
     }
 
     @Composable
-    private fun SensorDetails(sensor: SensorRecord, nowMillis: Long) {
+    private fun SensorDetails(sensor: VehicleParameter, nowMillis: Long) {
         ValueLine("Тип", sensor.valueKind)
         ValueLine(
             "Обновлено",
@@ -384,9 +390,9 @@ internal object ParametersTab {
         sensor.propertyId?.let { ValueLine("ID свойства", it.toString()) }
         ValueLine(
             "Расшифровка",
-            if (sensor.decoded == true) "нормализованное свойство" else "нет — показано исходное значение",
+            if (sensor.decoded) "нормализованное свойство" else "нет — показано исходное значение",
         )
-        sensor.effectiveReadings.forEach { reading ->
+        sensor.sourceReadings.forEach { reading ->
             val label = reading.badgeLabel
             ValueLine("$label · сигнал", reading.signalLabel)
             ValueLine("$label · raw", reading.value.raw)
@@ -397,21 +403,24 @@ internal object ParametersTab {
         }
     }
 
-    private val SensorRecord.selectionKey: String
+    private val VehicleParameter.selectionKey: String
         get() = favoriteKey
 
-    private val SensorRecord.sourceLabels: List<String>
-        get() = effectiveReadings.map { it.badgeLabel }.distinct()
+    private val VehicleParameter.sourceLabels: List<String>
+        get() = sourceReadings.map { it.badgeLabel }.distinct()
 
-    private val SensorRecord.cardIdLabel: String
+    private val VehicleParameter.fieldName: String
+        get() = propertyId?.let { "property_${it.rawValue}" } ?: primaryReading.signalName
+
+    private val VehicleParameter.cardIdLabel: String
         get() = when {
-            propertyId != null -> "свойство $propertyId" + areaSuffix
-            source == VehicleDataSource.VHAL ->
-                "сигнал ${String.format(Locale.US, "0x%08X", id)}" + areaSuffix
-            else -> "сигнал $id"
+            propertyId != null -> "свойство ${propertyId.rawValue}" + areaSuffix
+            primaryReading.source == VehiclePropertySource.VHAL ->
+                "сигнал ${String.format(Locale.US, "0x%08X", primaryReading.signalId)}" + areaSuffix
+            else -> "сигнал ${primaryReading.signalId}"
         }
 
-    private val SensorRecord.areaSuffix: String
+    private val VehicleParameter.areaSuffix: String
         get() = if (areaId == 0) "" else String.format(Locale.US, " · area 0x%08X", areaId)
 
     private val ReadStatus.labelForSource: String
@@ -423,36 +432,16 @@ internal object ParametersTab {
             ReadStatus.ERROR -> "ошибка"
         }
 
-    private val SensorRecord.effectiveReadings: List<ParameterSourceReading>
-        get() = sourceReadings.ifEmpty {
-            listOf(
-                ParameterSourceReading(
-                    source = source,
-                    signalId = id,
-                    signalName = apiName,
-                    value = value,
-                    support = support,
-                    error = error,
-                    profile = sourceProfile,
-                    areaId = areaId,
-                    updatedAtMillis = updatedAtMillis,
-                    sourceTimestampNanos = sourceTimestampNanos,
-                    autoUpdates = autoUpdates,
-                    decoded = decoded == true,
-                ),
-            )
-        }
-
-    private val ParameterSourceReading.badgeLabel: String
+    private val VehicleSourceReading.badgeLabel: String
         get() = when {
-            source == VehicleDataSource.VHAL && profile != null -> "VHAL · $profile"
-            source == VehicleDataSource.VHAL -> "VHAL · RAW"
+            source == VehiclePropertySource.VHAL && profile != null -> "VHAL · $profile"
+            source == VehiclePropertySource.VHAL -> "VHAL · RAW"
             else -> source.label
         }
 
-    private val ParameterSourceReading.signalLabel: String
+    private val VehicleSourceReading.signalLabel: String
         get() = buildString {
-            if (source == VehicleDataSource.VHAL) {
+            if (source == VehiclePropertySource.VHAL) {
                 append(String.format(Locale.US, "0x%08X", signalId))
             } else {
                 append(signalId)

@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app.vehicle.vhal
 
+import com.geelydiagnostics.app.ReadStatus
 import com.geelydiagnostics.app.vehicle.mapping.ReadSignalMapping
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfileMapping
@@ -10,6 +11,8 @@ import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.CarValueType
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.source.VehicleParameterSink
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
@@ -57,10 +60,10 @@ class VhalDataSourceTest {
             val mapped = listener.snapshot.single { it.sourceSignalId == SPEED_SIGNAL_ID }
             val unknown = listener.snapshot.single { it.sourceSignalId == UNKNOWN_SIGNAL_ID }
             val unreadable = listener.snapshot.single { it.sourceSignalId == UNREADABLE_SIGNAL_ID }
-            assertEquals(CarPropertyId.VEHICLE_SPEED, mapped.id)
+            assertEquals(CarPropertyId.VEHICLE_SPEED, mapped.propertyId)
             assertEquals("36 км/ч", mapped.displayValue)
             assertTrue(mapped.autoUpdates)
-            assertNull(unknown.id)
+            assertNull(unknown.propertyId)
             assertEquals("[1, 2]", unknown.rawValue?.text)
             assertFalse(unknown.autoUpdates)
             assertEquals(VehiclePropertyStatus.ERROR, unreadable.status)
@@ -110,25 +113,36 @@ class VhalDataSourceTest {
         }
     }
 
-    private class RecordingListener : VhalDataListener {
+    private class RecordingListener : VehicleParameterSink {
         val snapshotLatch = CountDownLatch(1)
         val valueLatch = CountDownLatch(1)
         var snapshot = emptyList<CarPropertySnapshot>()
         var liveValue: CarPropertySnapshot? = null
 
-        override fun onVhalStatus(status: SourceReadStatus, detail: String) = Unit
+        override fun onParameterStatus(
+            source: VehiclePropertySource,
+            status: ReadStatus,
+            detail: String,
+        ) = Unit
 
-        override fun onVhalSnapshot(values: List<CarPropertySnapshot>) {
+        override fun onParameterSnapshot(
+            source: VehiclePropertySource,
+            values: List<CarPropertySnapshot>,
+        ) {
             snapshot = values
             snapshotLatch.countDown()
         }
 
-        override fun onVhalValue(value: CarPropertySnapshot) {
+        override fun onParameterValue(value: CarPropertySnapshot) {
             liveValue = value
             valueLatch.countDown()
         }
 
-        override fun onVehicleLog(message: String, error: Throwable?) = Unit
+        override fun onParameterLog(
+            source: VehiclePropertySource,
+            message: String,
+            error: Throwable?,
+        ) = Unit
     }
 
     private class FakeGateway(

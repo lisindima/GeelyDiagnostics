@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,7 +20,7 @@ class EcarxMetadataTest {
     @Test
     fun confirmedSensorScaleAddsUnitsAndPreservesRaw() {
         assertEquals(
-            ApiValue(display = "36 км/ч", raw = "10"),
+            VehicleDisplayValue(display = "36 км/ч", raw = "10"),
             VendorValueDecoder.sensor("SENSOR_TYPE_CAR_SPEED", 10f),
         )
     }
@@ -27,7 +28,7 @@ class EcarxMetadataTest {
     @Test
     fun newlyImportedFunctionEnumIsDecoded() {
         assertEquals(
-            ApiValue(display = "Уровень 4", raw = "3"),
+            VehicleDisplayValue(display = "Уровень 4", raw = "3"),
             VendorValueDecoder.function(
                 apiName = "SETTING_FUNC_RAIN_SENSOR_SENSITIVITY",
                 rawValue = 3,
@@ -35,7 +36,7 @@ class EcarxMetadataTest {
             ),
         )
         assertEquals(
-            ApiValue(display = "Нет значения", raw = "254"),
+            VehicleDisplayValue(display = "Нет значения", raw = "254"),
             VendorValueDecoder.function(
                 apiName = "SETTING_FUNC_AUTO_HOLD",
                 rawValue = 254,
@@ -47,11 +48,11 @@ class EcarxMetadataTest {
     @Test
     fun carInfoEnumsAndUnitsAreDecoded() {
         assertEquals(
-            ApiValue(display = "Подключаемый гибрид PHEV", raw = "1049091"),
+            VehicleDisplayValue(display = "Подключаемый гибрид PHEV", raw = "1049091"),
             VendorValueDecoder.carInfo("INT_INFO_VEHICLE_TYPES", 1049091),
         )
         assertEquals(
-            ApiValue(display = "54 л", raw = "54"),
+            VehicleDisplayValue(display = "54 л", raw = "54"),
             VendorValueDecoder.carInfo("FLT_INFO_FUEL_CAPACITY", 54f),
         )
         assertTrue(EcarxCarInfoMetadata.field("INT_INFO_SPEAKER_TOTAL_COUNT") != null)

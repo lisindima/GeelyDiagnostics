@@ -1,16 +1,17 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import java.util.Locale
 
 /** Converts confirmed ECARX enum values while always preserving the value returned by the API. */
 internal object VendorValueDecoder {
 
-    fun sensor(apiName: String, rawValue: Int): ApiValue {
+    fun sensor(apiName: String, rawValue: Int): VehicleDisplayValue {
         val existing = SENSOR_VALUES[apiName]
         if (existing?.containsKey(rawValue) == true) return decoded(apiName, rawValue, existing)
         val metadata = EcarxSensorMetadata.fields[apiName]
         metadata?.values?.get(rawValue)?.let { label ->
-            return ApiValue(display = label, raw = rawValue.toString())
+            return VehicleDisplayValue(display = label, raw = rawValue.toString())
         }
         val legacy = decoded(apiName, rawValue, existing)
         return if (legacy.display != legacy.raw || metadata?.unit == null) {
@@ -20,25 +21,25 @@ internal object VendorValueDecoder {
         }
     }
 
-    fun sensor(apiName: String, rawValue: Float): ApiValue {
+    fun sensor(apiName: String, rawValue: Float): VehicleDisplayValue {
         val metadata = EcarxSensorMetadata.fields[apiName]
         val raw = formatNumber(rawValue.toDouble())
         val normalized = rawValue * (metadata?.rawToDisplayScale ?: 1f)
-        return ApiValue(
+        return VehicleDisplayValue(
             display = withUnit(formatNumber(normalized.toDouble()), metadata?.unit),
             raw = raw,
         )
     }
 
-    fun function(apiName: String, rawValue: Int, supportedValues: IntArray?): ApiValue {
+    fun function(apiName: String, rawValue: Int, supportedValues: IntArray?): VehicleDisplayValue {
         val known = FUNCTION_VALUES[apiName]
         if (known?.containsKey(rawValue) == true) return decoded(apiName, rawValue, known)
         EcarxFunctionMetadata.fields[apiName]?.values?.get(rawValue)?.let { label ->
-            return ApiValue(display = label, raw = rawValue.toString())
+            return VehicleDisplayValue(display = label, raw = rawValue.toString())
         }
         if (apiName in EcarxFunctionMetadata.commonValueKeys) {
             COMMON_FUNCTION_VALUES[rawValue]?.let { label ->
-                return ApiValue(display = label, raw = rawValue.toString())
+                return VehicleDisplayValue(display = label, raw = rawValue.toString())
             }
         }
 
@@ -52,39 +53,39 @@ internal object VendorValueDecoder {
         } else {
             null
         }
-        return ApiValue(display = booleanLabel ?: rawValue.toString(), raw = rawValue.toString())
+        return VehicleDisplayValue(display = booleanLabel ?: rawValue.toString(), raw = rawValue.toString())
     }
 
-    fun carInfo(apiName: String, rawValue: Int, fallbackLabel: String? = null): ApiValue {
+    fun carInfo(apiName: String, rawValue: Int, fallbackLabel: String? = null): VehicleDisplayValue {
         val metadata = EcarxCarInfoMetadata.field(apiName)
         val label = metadata?.values?.get(rawValue) ?: fallbackLabel
         val raw = rawValue.toString()
-        return ApiValue(
+        return VehicleDisplayValue(
             display = label ?: withUnit(raw, metadata?.unit),
             raw = raw,
         )
     }
 
-    fun carInfo(apiName: String, rawValues: IntArray): ApiValue {
+    fun carInfo(apiName: String, rawValues: IntArray): VehicleDisplayValue {
         val metadata = EcarxCarInfoMetadata.field(apiName)
         val raw = rawValues.joinToString()
         val display = rawValues.joinToString { value ->
             metadata?.values?.get(value) ?: value.toString()
         }
-        return ApiValue(display = display, raw = raw)
+        return VehicleDisplayValue(display = display, raw = raw)
     }
 
-    fun carInfo(apiName: String, rawValue: Float): ApiValue {
+    fun carInfo(apiName: String, rawValue: Float): VehicleDisplayValue {
         val raw = formatNumber(rawValue.toDouble())
-        return ApiValue(
+        return VehicleDisplayValue(
             display = withUnit(raw, EcarxCarInfoMetadata.field(apiName)?.unit),
             raw = raw,
         )
     }
 
-    private fun decoded(apiName: String, rawValue: Int, values: Map<Int, String>?): ApiValue {
+    private fun decoded(apiName: String, rawValue: Int, values: Map<Int, String>?): VehicleDisplayValue {
         val symbol = values?.get(rawValue)
-        return ApiValue(
+        return VehicleDisplayValue(
             display = symbol?.let { displayName(apiName, it) } ?: rawValue.toString(),
             raw = rawValue.toString(),
         )

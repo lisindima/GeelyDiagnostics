@@ -1,5 +1,12 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.property.CarPropertyId
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
+import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,7 +16,7 @@ class CatalogFilteringTest {
     private val mapped = sensor(
         id = 0x2170901E,
         title = "Оставшееся топливо",
-        value = ApiValue("41.7 л", "41700"),
+        value = VehicleDisplayValue("41.7 л", "41700"),
         sourceProfile = "G426",
         propertyId = 10012,
         decoded = true,
@@ -17,12 +24,12 @@ class CatalogFilteringTest {
     private val raw = sensor(
         id = 0x21400401,
         title = "Неизвестное свойство",
-        value = ApiValue.raw("[1, 2]"),
+        value = VehicleDisplayValue.raw("[1, 2]"),
     )
     private val changed = sensor(
         id = 0x21400402,
         title = "Передача",
-        value = ApiValue("D", "3"),
+        value = VehicleDisplayValue("D", "3"),
         sourceProfile = "G426",
         propertyId = 10003,
         changedSinceScan = true,
@@ -31,8 +38,8 @@ class CatalogFilteringTest {
     private val error = sensor(
         id = 0x21400403,
         title = "Ошибочное свойство",
-        value = ApiValue.unavailable,
-        support = ApiSupportStatus.ERROR,
+        value = VehicleDisplayValue.unavailable,
+        status = VehiclePropertyStatus.ERROR,
         error = "timeout",
     )
 
@@ -67,21 +74,21 @@ class CatalogFilteringTest {
     fun searchIncludesAllReadingsOfUnifiedParameter() {
         val combined = mapped.copy(
             sourceReadings = listOf(
-                ParameterSourceReading(
-                    source = VehicleDataSource.VHAL,
-                    signalId = mapped.id,
-                    signalName = mapped.apiName,
+                VehicleSourceReading(
+                    source = VehiclePropertySource.VHAL,
+                    signalId = mapped.sourceReadings.single().signalId,
+                    signalName = mapped.sourceReadings.single().signalName,
                     value = mapped.value,
-                    support = ApiSupportStatus.ACTIVE,
+                    status = VehiclePropertyStatus.AVAILABLE,
                     profile = "G426",
                     decoded = true,
                 ),
-                ParameterSourceReading(
-                    source = VehicleDataSource.ECARX,
+                VehicleSourceReading(
+                    source = VehiclePropertySource.ECARX,
                     signalId = 1050112,
                     signalName = "SENSOR_TYPE_FUEL_LEVEL",
-                    value = ApiValue("63 %", "63"),
-                    support = ApiSupportStatus.ACTIVE,
+                    value = VehicleDisplayValue("63 %", "63"),
+                    status = VehiclePropertyStatus.AVAILABLE,
                     decoded = true,
                 ),
             ),
@@ -95,7 +102,7 @@ class CatalogFilteringTest {
         val mappingFailure = sensor(
             id = 0x21400404,
             title = "Неизвестное значение enum",
-            value = ApiValue.raw("99"),
+            value = VehicleDisplayValue.raw("99"),
             sourceProfile = "G426",
             error = "No mapping for 99",
             decoded = false,
@@ -112,7 +119,7 @@ class CatalogFilteringTest {
             id = 1,
             apiName = "STRING_INFO_VIN",
             title = "VIN",
-            value = ApiValue.raw("TEST"),
+            value = VehicleDisplayValue.raw("TEST"),
             support = ApiSupportStatus.ACTIVE,
         )
         val functionError = VehicleFunctionRecord(
@@ -134,7 +141,7 @@ class CatalogFilteringTest {
     }
 
     private fun filtered(
-        records: List<SensorRecord>,
+        records: List<VehicleParameter>,
         filter: SensorValueFilter,
         query: String = "",
     ) = filterSensors(records, filter, query, emptySet())
@@ -142,26 +149,35 @@ class CatalogFilteringTest {
     private fun sensor(
         id: Int,
         title: String,
-        value: ApiValue,
+        value: VehicleDisplayValue,
         sourceProfile: String? = null,
         changedSinceScan: Boolean = false,
-        support: ApiSupportStatus = ApiSupportStatus.ACTIVE,
+        status: VehiclePropertyStatus = VehiclePropertyStatus.AVAILABLE,
         error: String = "",
         decoded: Boolean? = null,
-        source: VehicleDataSource = VehicleDataSource.VHAL,
+        source: VehiclePropertySource = VehiclePropertySource.VHAL,
         propertyId: Int? = null,
-    ) = SensorRecord(
-        id = id,
-        apiName = "VHAL_0x${id.toUInt().toString(16)}",
+    ) = VehicleParameter(
+        propertyId = propertyId?.let(::CarPropertyId),
+        areaId = 0,
         title = title,
         value = value,
         valueKind = "raw",
-        support = support,
+        status = status,
         error = error,
-        source = source,
-        sourceProfile = sourceProfile,
-        propertyId = propertyId,
         changedSinceScan = changedSinceScan,
-        decoded = decoded,
+        decoded = decoded ?: (propertyId != null),
+        sourceReadings = listOf(
+            VehicleSourceReading(
+                source = source,
+                signalId = id,
+                signalName = "VHAL_0x${id.toUInt().toString(16)}",
+                value = value,
+                status = status,
+                error = error,
+                profile = sourceProfile,
+                decoded = decoded ?: (propertyId != null),
+            ),
+        ),
     )
 }

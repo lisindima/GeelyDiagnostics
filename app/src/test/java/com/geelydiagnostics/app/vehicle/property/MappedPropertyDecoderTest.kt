@@ -68,7 +68,7 @@ class MappedPropertyDecoderTest {
             autoUpdates = false,
         )
 
-        assertNull(result.id)
+        assertNull(result.propertyId)
         assertEquals("[1, 2]", result.displayValue)
         assertEquals(VehiclePropertyStatus.AVAILABLE, result.status)
     }

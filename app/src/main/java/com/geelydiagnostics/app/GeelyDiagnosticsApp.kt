@@ -177,7 +177,7 @@ private val AppUiState.isScanInProgress: Boolean
         carStatus,
         diagnosticsStatus,
         dtcManagerStatus,
-        sensorStatus,
+        ecarxParameterStatus,
         vhalStatus,
         carInfoStatus,
         functionStatus,

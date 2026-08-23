@@ -21,7 +21,7 @@ internal class MappedPropertyDecoder(
     ): CarPropertySnapshot {
         if (mapping == null) {
             return CarPropertySnapshot(
-                id = null,
+                propertyId = null,
                 value = raw.number?.let { CarValue.FloatValue(it) }
                     ?: CarValue.StringValue(raw.text),
                 displayValue = raw.text,
@@ -57,7 +57,7 @@ internal class MappedPropertyDecoder(
                         receivedAtMillis, autoUpdates,
                         "Значение не соответствует типу ${definition.valueType}")
                 CarPropertySnapshot(
-                    id = mapping.propertyId,
+                    propertyId = mapping.propertyId,
                     value = typed,
                     displayValue = format(mapping.propertyId, transformed.value),
                     rawValue = raw,
@@ -85,7 +85,7 @@ internal class MappedPropertyDecoder(
         autoUpdates: Boolean,
         error: String,
     ) = CarPropertySnapshot(
-        id = mapping.propertyId,
+        propertyId = mapping.propertyId,
         value = null,
         displayValue = raw.text,
         rawValue = raw,

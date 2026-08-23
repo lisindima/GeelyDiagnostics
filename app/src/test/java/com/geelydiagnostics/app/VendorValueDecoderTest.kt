@@ -1,5 +1,6 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -17,7 +18,7 @@ class VendorValueDecoderTest {
             2097728 to "R",
         ).forEach { (raw, display) ->
             assertEquals(
-                ApiValue(display = display, raw = raw.toString()),
+                VehicleDisplayValue(display = display, raw = raw.toString()),
                 VendorValueDecoder.sensor("SENSOR_TYPE_GEAR", raw),
             )
         }
@@ -26,7 +27,7 @@ class VendorValueDecoderTest {
     @Test
     fun chargingGearLevelIsNotMistakenForTransmissionGear() {
         assertEquals(
-            ApiValue(display = "609225730", raw = "609225730"),
+            VehicleDisplayValue(display = "609225730", raw = "609225730"),
             VendorValueDecoder.sensor("SENSOR_TYPE_GEAR", 609225730),
         )
     }
@@ -34,7 +35,7 @@ class VendorValueDecoderTest {
     @Test
     fun ignitionValueIsDecoded() {
         assertEquals(
-            ApiValue(display = "Движение", raw = "2097415"),
+            VehicleDisplayValue(display = "Движение", raw = "2097415"),
             VendorValueDecoder.sensor("SENSOR_TYPE_IGNITION_STATE", 2097415),
         )
     }
@@ -42,15 +43,15 @@ class VendorValueDecoderTest {
     @Test
     fun otherConfirmedSensorEnumsAreDecoded() {
         assertEquals(
-            ApiValue(display = "Под охраной", raw = "2122498"),
+            VehicleDisplayValue(display = "Под охраной", raw = "2122498"),
             VendorValueDecoder.sensor("SENSOR_TYPE_ALRM_STS", 2122498),
         )
         assertEquals(
-            ApiValue(display = "Пристёгнут", raw = "2101762"),
+            VehicleDisplayValue(display = "Пристёгнут", raw = "2101762"),
             VendorValueDecoder.sensor("SENSOR_TYPE_SAFE_BELT_DRIVER", 2101762),
         )
         assertEquals(
-            ApiValue(display = "Предупреждение 2", raw = "3149829"),
+            VehicleDisplayValue(display = "Предупреждение 2", raw = "3149829"),
             VendorValueDecoder.sensor("SENSOR_TYPE_DRIVER_TIREDNESS_STATUS", 3149829),
         )
     }
@@ -58,7 +59,7 @@ class VendorValueDecoderTest {
     @Test
     fun unknownSensorValueStaysRaw() {
         assertEquals(
-            ApiValue(display = "123456", raw = "123456"),
+            VehicleDisplayValue(display = "123456", raw = "123456"),
             VendorValueDecoder.sensor("SENSOR_TYPE_GEAR", 123456),
         )
     }
@@ -66,7 +67,7 @@ class VendorValueDecoderTest {
     @Test
     fun knownFunctionEnumIsDecoded() {
         assertEquals(
-            ApiValue(display = "Обычно", raw = "537133826"),
+            VehicleDisplayValue(display = "Обычно", raw = "537133826"),
             VendorValueDecoder.function("SETTING_FUNC_LAMP_AUTOLIGHT", 537133826, null),
         )
     }
@@ -74,7 +75,7 @@ class VendorValueDecoderTest {
     @Test
     fun confirmedBooleanFunctionIsDecoded() {
         assertEquals(
-            ApiValue(display = "Включено", raw = "1"),
+            VehicleDisplayValue(display = "Включено", raw = "1"),
             VendorValueDecoder.function("SETTING_FUNC_AUTO_HOLD", 1, intArrayOf(0, 1)),
         )
     }

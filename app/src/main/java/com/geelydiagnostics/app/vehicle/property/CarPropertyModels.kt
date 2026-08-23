@@ -61,9 +61,9 @@ enum class VehiclePropertyStatus {
     ERROR,
 }
 
-enum class VehiclePropertySource {
-    VHAL,
-    ECARX,
+enum class VehiclePropertySource(val label: String) {
+    VHAL("VHAL"),
+    ECARX("ECARX"),
 }
 
 /**
@@ -71,7 +71,7 @@ enum class VehiclePropertySource {
  * retained as raw data. Source timestamps and local receive timestamps have different clocks.
  */
 data class CarPropertySnapshot(
-    val id: CarPropertyId?,
+    val propertyId: CarPropertyId?,
     val value: CarValue?,
     val displayValue: String,
     val rawValue: RawVehicleValue?,
@@ -79,6 +79,7 @@ data class CarPropertySnapshot(
     val source: VehiclePropertySource,
     val sourceSignalId: Int,
     val sourceSignalName: String,
+    val sourceTitle: String? = null,
     val areaId: Int = 0,
     val profileKey: String? = null,
     val sourceTimestampNanos: Long? = null,

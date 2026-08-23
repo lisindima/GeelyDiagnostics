@@ -8,6 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
+import com.geelydiagnostics.app.vehicle.property.favoriteKey
+import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKey
 import com.geelydiagnostics.app.vehicle.repository.UnifiedVehicleRepository
 import com.geelydiagnostics.app.vehicle.repository.VehicleRepositoryState
 
@@ -59,12 +63,12 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         ) {
             emptyMap()
         } else {
-            uiState.sensorHistory
+            uiState.parameterHistory
         }
-        repositoryState.sensors.forEach { sensor ->
+        repositoryState.parameters.forEach { sensor ->
             history = history.withSample(sensor, sensor.updatedAtMillis ?: System.currentTimeMillis())
         }
-        val favoriteKeys = migrateSensorFavorites(uiState.favoriteKeys, repositoryState.sensors)
+        val favoriteKeys = migrateParameterFavorites(uiState.favoriteKeys, repositoryState.parameters)
         if (favoriteKeys != uiState.favoriteKeys) {
             preferences().edit().putStringSet(KEY_FAVORITES, favoriteKeys).apply()
         }
@@ -75,8 +79,8 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             diagnosticsDetail = repositoryState.diagnostics.diagnosticsDetail,
             dtcManagerStatus = repositoryState.diagnostics.dtcManagerStatus,
             dtcManagerDetail = repositoryState.diagnostics.dtcManagerDetail,
-            sensorStatus = repositoryState.sensorStatus,
-            sensorDetail = repositoryState.sensorDetail,
+            ecarxParameterStatus = repositoryState.ecarxParameterStatus,
+            ecarxParameterDetail = repositoryState.ecarxParameterDetail,
             vhalStatus = repositoryState.vhalStatus,
             vhalDetail = repositoryState.vhalDetail,
             carInfoStatus = repositoryState.carInfoStatus,
@@ -84,8 +88,8 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             functionStatus = repositoryState.functionStatus,
             functionDetail = repositoryState.functionDetail,
             dtcs = repositoryState.diagnostics.dtcs,
-            sensors = repositoryState.sensors,
-            sensorHistory = history,
+            parameters = repositoryState.parameters,
+            parameterHistory = history,
             vehicleInfo = repositoryState.vehicleInfo,
             functions = repositoryState.functions,
             logLines = repositoryState.logLines,
@@ -94,15 +98,14 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         )
     }
 
-    private fun migrateSensorFavorites(
+    private fun migrateParameterFavorites(
         current: Set<String>,
-        sensors: List<SensorRecord>,
+        parameters: List<VehicleParameter>,
     ): Set<String> {
         val migrated = current.toMutableSet()
-        sensors.filter { it.propertyId != null }.forEach { sensor ->
+        parameters.filter { it.propertyId != null }.forEach { sensor ->
             val legacyKeys = sensor.sourceReadings
                 .map { it.legacyFavoriteKey }
-                .ifEmpty { listOf("sensor:${sensor.source.name}:${sensor.id}:${sensor.areaId}") }
             if (legacyKeys.any(migrated::contains)) {
                 migrated.removeAll(legacyKeys.toSet())
                 migrated += sensor.favoriteKey
@@ -118,21 +121,21 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
     private fun preferences() = getApplication<Application>()
         .getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
 
-    private fun Map<String, List<SensorSample>>.withSample(
-        sensor: SensorRecord,
+    private fun Map<String, List<VehicleParameterSample>>.withSample(
+        sensor: VehicleParameter,
         timestampMillis: Long,
-    ): Map<String, List<SensorSample>> {
+    ): Map<String, List<VehicleParameterSample>> {
         if (!sensor.chartable) return this
         val numericValue = sensor.value.chartNumber() ?: return this
         val key = sensor.favoriteKey
-        val sample = SensorSample(timestampMillis = timestampMillis, value = numericValue)
+        val sample = VehicleParameterSample(timestampMillis = timestampMillis, value = numericValue)
         val existing = get(key).orEmpty()
         if (existing.lastOrNull() == sample) return this
-        val oldestAllowed = timestampMillis - SENSOR_HISTORY_WINDOW_MILLIS
+        val oldestAllowed = timestampMillis - PARAMETER_HISTORY_WINDOW_MILLIS
         val updated = (existing.asSequence()
             .dropWhile { it.timestampMillis < oldestAllowed }
             .toList() + sample)
-            .takeLast(MAX_SENSOR_HISTORY_SAMPLES)
+            .takeLast(MAX_PARAMETER_HISTORY_SAMPLES)
         return this + (key to updated)
     }
 
@@ -142,8 +145,8 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
     }
 
     companion object {
-        private const val MAX_SENSOR_HISTORY_SAMPLES = 360
-        private const val SENSOR_HISTORY_WINDOW_MILLIS = 120_000L
+        private const val MAX_PARAMETER_HISTORY_SAMPLES = 360
+        private const val PARAMETER_HISTORY_WINDOW_MILLIS = 120_000L
         private const val PREFERENCES = "geely_diagnostics"
         private const val KEY_VHAL_PROFILE = "vhal_profile"
         private const val KEY_FAVORITES = "favorite_keys"
