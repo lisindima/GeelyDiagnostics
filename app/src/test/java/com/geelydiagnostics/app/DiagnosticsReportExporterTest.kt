@@ -20,11 +20,25 @@ class DiagnosticsReportExporterTest {
             support = ApiSupportStatus.ACTIVE,
             source = VehicleDataSource.VHAL,
             sourceProfile = "G426",
-            profilePropertyId = 10012,
+            propertyId = 10012,
             updatedAtMillis = 1_700_000_000_000L,
             sourceTimestampNanos = 42L,
             changedSinceScan = true,
             autoUpdates = true,
+            decoded = true,
+            sourceReadings = listOf(
+                ParameterSourceReading(
+                    source = VehicleDataSource.VHAL,
+                    signalId = 123,
+                    signalName = "TEST_SENSOR",
+                    value = ApiValue(display = "Включено", raw = "1"),
+                    support = ApiSupportStatus.ACTIVE,
+                    profile = "G426",
+                    sourceTimestampNanos = 42L,
+                    autoUpdates = true,
+                    decoded = true,
+                ),
+            ),
         )
         val state = AppUiState(
             selectedVhalProfile = VehicleProfile.G426,
@@ -37,10 +51,10 @@ class DiagnosticsReportExporterTest {
         val report = JSONObject(
             DiagnosticsReportExporter.create(state, 1_700_000_001_000L, "0.11.0"),
         )
-        val exported = report.getJSONArray("sensors").getJSONObject(0)
+        val exported = report.getJSONArray("parameters").getJSONObject(0)
 
         assertTrue(report.getBoolean("readOnly"))
-        assertEquals(2, report.getInt("schemaVersion"))
+        assertEquals(3, report.getInt("schemaVersion"))
         assertEquals("0.11.0", report.getString("appVersion"))
         assertEquals("G426", report.getString("vhalProfile"))
         assertEquals("1", exported.getString("raw"))
@@ -50,6 +64,7 @@ class DiagnosticsReportExporterTest {
         assertTrue(exported.getBoolean("changedSinceScan"))
         assertTrue(exported.getBoolean("autoUpdates"))
         assertTrue(exported.getBoolean("favorite"))
+        assertEquals(1, exported.getJSONArray("sources").length())
         assertEquals(1, report.getJSONArray("log").length())
     }
 }

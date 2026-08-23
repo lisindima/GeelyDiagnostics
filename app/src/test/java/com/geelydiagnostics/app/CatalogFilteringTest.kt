@@ -11,6 +11,8 @@ class CatalogFilteringTest {
         title = "Оставшееся топливо",
         value = ApiValue("41.7 л", "41700"),
         sourceProfile = "G426",
+        propertyId = 10012,
+        decoded = true,
     )
     private val raw = sensor(
         id = 0x21400401,
@@ -22,7 +24,9 @@ class CatalogFilteringTest {
         title = "Передача",
         value = ApiValue("D", "3"),
         sourceProfile = "G426",
+        propertyId = 10003,
         changedSinceScan = true,
+        decoded = true,
     )
     private val error = sensor(
         id = 0x21400403,
@@ -56,27 +60,34 @@ class CatalogFilteringTest {
         val records = listOf(mapped, raw, changed)
         assertEquals(listOf(mapped), filtered(records, SensorValueFilter.ALL, "топливо 41700"))
         assertEquals(listOf(raw), filtered(records, SensorValueFilter.ALL, "0x21400401"))
+        assertEquals(listOf(mapped), filtered(records, SensorValueFilter.ALL, "10012"))
     }
 
     @Test
-    fun unifiedCatalogKeepsEcarxAndVhalRecordsTogether() {
-        val ecarx = sensor(
-            id = 1050112,
-            title = "ECARX топливо",
-            value = ApiValue("63 %", "63"),
-            source = VehicleDataSource.ECARX,
-        )
-        val vhal = sensor(
-            id = 0x2170901E,
-            title = "VHAL топливо",
-            value = ApiValue("41.7 л", "41700"),
-            sourceProfile = "G426",
+    fun searchIncludesAllReadingsOfUnifiedParameter() {
+        val combined = mapped.copy(
+            sourceReadings = listOf(
+                ParameterSourceReading(
+                    source = VehicleDataSource.VHAL,
+                    signalId = mapped.id,
+                    signalName = mapped.apiName,
+                    value = mapped.value,
+                    support = ApiSupportStatus.ACTIVE,
+                    profile = "G426",
+                    decoded = true,
+                ),
+                ParameterSourceReading(
+                    source = VehicleDataSource.ECARX,
+                    signalId = 1050112,
+                    signalName = "SENSOR_TYPE_FUEL_LEVEL",
+                    value = ApiValue("63 %", "63"),
+                    support = ApiSupportStatus.ACTIVE,
+                    decoded = true,
+                ),
+            ),
         )
 
-        assertEquals(
-            listOf(ecarx, vhal),
-            filtered(listOf(vhal, ecarx), SensorValueFilter.ALL),
-        )
+        assertEquals(listOf(combined), filtered(listOf(combined), SensorValueFilter.ALL, "ECARX 1050112"))
     }
 
     @Test
@@ -138,6 +149,7 @@ class CatalogFilteringTest {
         error: String = "",
         decoded: Boolean? = null,
         source: VehicleDataSource = VehicleDataSource.VHAL,
+        propertyId: Int? = null,
     ) = SensorRecord(
         id = id,
         apiName = "VHAL_0x${id.toUInt().toString(16)}",
@@ -148,6 +160,7 @@ class CatalogFilteringTest {
         error = error,
         source = source,
         sourceProfile = sourceProfile,
+        propertyId = propertyId,
         changedSinceScan = changedSinceScan,
         decoded = decoded,
     )

@@ -3,6 +3,7 @@ package com.geelydiagnostics.app
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -84,15 +85,23 @@ internal fun <T> CatalogScreen(
 
 @Composable
 internal fun <T> TwoColumnRow(items: List<T>, content: @Composable (T) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        items.forEach { item ->
-            Box(modifier = Modifier.weight(1f)) { content(item) }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth < 900.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                items.forEach { item -> content(item) }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                items.forEach { item ->
+                    Box(modifier = Modifier.weight(1f)) { content(item) }
+                }
+                if (items.size == 1) Spacer(Modifier.weight(1f))
+            }
         }
-        if (items.size == 1) Spacer(Modifier.weight(1f))
     }
 }
 
@@ -102,7 +111,7 @@ internal fun DataCard(
     apiName: String,
     id: Int,
     value: ApiValue,
-    sourceLabel: String,
+    sourceLabels: List<String>,
     modeLabel: String? = null,
     modeIsHighlighted: Boolean = false,
     idLabel: String = "id $id",
@@ -132,21 +141,7 @@ internal fun DataCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Text(
-                            text = sourceLabel,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    SourceBadges(sourceLabels)
                     if (modeLabel != null) {
                         Text(
                             text = modeLabel,
@@ -257,6 +252,33 @@ internal fun DataCard(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SourceBadges(labels: List<String>, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        labels.distinct().forEach { label ->
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -437,6 +459,7 @@ private val ReadStatus.label: String
     get() = when (this) {
         ReadStatus.NOT_CHECKED -> "НЕ ПРОВЕРЕНО"
         ReadStatus.CHECKING -> "ПРОВЕРКА"
+        ReadStatus.PARTIAL -> "ЧАСТИЧНО ДОСТУПЕН"
         ReadStatus.AVAILABLE -> "ДОСТУПЕН"
         ReadStatus.ERROR -> "ОШИБКА"
     }
@@ -447,10 +470,21 @@ private fun statusColors(status: ReadStatus): Pair<Color, Color> = when (status)
         MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     ReadStatus.CHECKING ->
         MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+    ReadStatus.PARTIAL ->
+        MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
     ReadStatus.AVAILABLE ->
         MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
     ReadStatus.ERROR ->
         MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+}
+
+internal fun aggregateReadStatus(statuses: Iterable<ReadStatus>): ReadStatus {
+    val values = statuses.toList()
+    if (values.isEmpty() || values.all { it == ReadStatus.NOT_CHECKED }) return ReadStatus.NOT_CHECKED
+    if (values.all { it == ReadStatus.AVAILABLE }) return ReadStatus.AVAILABLE
+    if (values.any { it == ReadStatus.AVAILABLE || it == ReadStatus.PARTIAL }) return ReadStatus.PARTIAL
+    if (values.any { it == ReadStatus.CHECKING }) return ReadStatus.CHECKING
+    return ReadStatus.ERROR
 }
 
 private val String.displayText: String

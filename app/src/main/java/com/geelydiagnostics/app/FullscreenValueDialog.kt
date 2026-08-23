@@ -40,7 +40,7 @@ internal fun FullscreenValueDialog(
     apiName: String,
     idText: String,
     value: ApiValue,
-    sourceLabel: String,
+    sourceLabels: List<String>,
     modeLabel: String,
     isFavorite: Boolean = false,
     onFavoriteToggle: () -> Unit = {},
@@ -61,7 +61,7 @@ internal fun FullscreenValueDialog(
             apiName = apiName,
             idText = idText,
             value = value,
-            sourceLabel = sourceLabel,
+            sourceLabels = sourceLabels,
             modeLabel = modeLabel,
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
@@ -79,7 +79,7 @@ internal fun FullscreenValueScreen(
     apiName: String,
     idText: String,
     value: ApiValue,
-    sourceLabel: String,
+    sourceLabels: List<String>,
     modeLabel: String,
     isFavorite: Boolean = false,
     onFavoriteToggle: () -> Unit = {},
@@ -103,13 +103,7 @@ internal fun FullscreenValueScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(
-                                text = sourceLabel,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
+                            SourceBadges(sourceLabels)
                             Text(
                                 text = modeLabel,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,

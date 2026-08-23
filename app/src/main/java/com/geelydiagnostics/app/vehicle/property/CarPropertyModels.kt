@@ -16,6 +16,11 @@ value class CarPropertyId(val rawValue: Int) {
         val REMAINING_FUEL_LITERS = CarPropertyId(10012)
         val ENGINE_RPM = CarPropertyId(10021)
         val REMAINING_RANGE = CarPropertyId(10022)
+        val ACCELERATOR_POSITION = CarPropertyId(10054)
+        val BRAKE_POSITION = CarPropertyId(10055)
+        val DRIVER_SEAT_BELT = CarPropertyId(10056)
+        val STEERING_WHEEL_ANGLE = CarPropertyId(10058)
+        val HIGH_VOLTAGE_BATTERY_RANGE = CarPropertyId(10060)
     }
 }
 

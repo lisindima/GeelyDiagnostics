@@ -25,8 +25,8 @@ internal object VehicleTab {
         CatalogScreen(
             status = state.carInfoStatus,
             detail = state.carInfoDetail,
-            title = "Автомобиль и комплектация",
-            subtitle = "Данные читаются из ICarInfo самой машины; неподдерживаемые поля скрыты.",
+            title = "Заводские сведения",
+            subtitle = "Статические сведения о машине и комплектации. Источник указан на каждой карточке.",
             totalCount = state.vehicleInfo.size,
             supportedCount = supportedCount,
             displayedCount = filtered.size,
@@ -37,7 +37,7 @@ internal object VehicleTab {
                     CatalogSearchField(
                         query = query,
                         onQueryChange = { query = it },
-                        placeholder = "Название, API name, ID или значение",
+                        placeholder = "Название, API, ID или значение",
                     )
                     CatalogFilterRow(
                         labels = CatalogListFilter.entries.map(CatalogListFilter::title),
@@ -61,10 +61,10 @@ internal object VehicleTab {
             FullscreenValueDialog(
                 title = item.title,
                 apiName = item.apiName,
-                idText = "id ${item.id}",
+                idText = "ECARX ID ${item.id}",
                 value = item.value,
-                sourceLabel = item.source.label,
-                modeLabel = "ПОДРОБНОЕ ЗНАЧЕНИЕ",
+                sourceLabels = listOf(item.source.label),
+                modeLabel = "СТАТИЧЕСКОЕ ЗНАЧЕНИЕ",
                 isFavorite = item.favoriteKey in state.favoriteKeys,
                 onFavoriteToggle = { onFavoriteToggle(item.favoriteKey) },
                 onDismiss = { expandedId = null },
@@ -86,9 +86,10 @@ internal object VehicleTab {
             title = item.title,
             apiName = item.apiName,
             id = item.id,
+            idLabel = "ECARX ID ${item.id}",
             value = item.value,
-            sourceLabel = item.source.label,
-            modeLabel = "СВЕДЕНИЯ ОБ АВТОМОБИЛЕ",
+            sourceLabels = listOf(item.source.label),
+            modeLabel = "СТАТИЧЕСКИЕ ДАННЫЕ",
             footerText = formatUpdateTime(item.updatedAtMillis, nowMillis),
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,

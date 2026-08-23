@@ -13,6 +13,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.property.EcarxNormalizedPropertyRegistry
+import com.geelydiagnostics.app.vehicle.repository.NormalizedParameterMerger
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
 
@@ -37,6 +39,68 @@ private fun DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS)
 private fun ParametersPreview() = PreviewApp(AppTab.PARAMETERS)
 
 @Preview(
+    name = "ГУ · Параметры · частичная доступность",
+    group = "Состояния параметров",
+    device = "spec:width=1440px,height=1920px,dpi=160",
+    locale = "ru",
+    showSystemUi = false,
+)
+@Composable
+private fun ParametersPartialPreview() {
+    PreviewApp(
+        AppTab.PARAMETERS,
+        previewState().copy(
+            sensorStatus = ReadStatus.ERROR,
+            sensorDetail = "ECARX API недоступен",
+            vhalStatus = ReadStatus.AVAILABLE,
+        ),
+    )
+}
+
+@Preview(
+    name = "ГУ · Параметры · RAW",
+    group = "Состояния параметров",
+    device = "spec:width=1440px,height=1920px,dpi=160",
+    locale = "ru",
+    showSystemUi = false,
+)
+@Composable
+private fun ParametersRawPreview() {
+    PreviewApp(AppTab.PARAMETERS, rawProfilePreviewState())
+}
+
+@Preview(
+    name = "ГУ · Параметры · источники недоступны",
+    group = "Состояния параметров",
+    device = "spec:width=1440px,height=1920px,dpi=160",
+    locale = "ru",
+    showSystemUi = false,
+)
+@Composable
+private fun ParametersErrorPreview() {
+    PreviewApp(
+        AppTab.PARAMETERS,
+        previewState().copy(
+            sensorStatus = ReadStatus.ERROR,
+            sensorDetail = "ECARX API недоступен",
+            vhalStatus = ReadStatus.ERROR,
+            vhalDetail = "VHAL недоступен",
+            sensors = emptyList(),
+        ),
+    )
+}
+
+@Preview(
+    name = "Компактный экран · Параметры",
+    group = "Адаптивность",
+    device = "spec:width=800px,height=1280px,dpi=160",
+    locale = "ru",
+    showSystemUi = false,
+)
+@Composable
+private fun CompactParametersPreview() = PreviewApp(AppTab.PARAMETERS)
+
+@Preview(
     name = "ГУ · Значение + график",
     group = "1440×1920",
     device = "spec:width=1440px,height=1920px,dpi=160",
@@ -54,9 +118,9 @@ private fun FullscreenSensorPreview() {
             FullscreenValueScreen(
                 title = "Оставшееся топливо",
                 apiName = "pafulvlindcdfulvlvalfromfutbl",
-                idText = "property 10012",
+                idText = "свойство 10012",
                 value = ApiValue(display = "41.7 л", raw = "41700"),
-                sourceLabel = "VHAL · G426",
+                sourceLabels = listOf("VHAL · G426", "ECARX"),
                 modeLabel = "АВТООБНОВЛЕНИЕ",
                 isFavorite = true,
                 onFavoriteToggle = {},
@@ -71,15 +135,15 @@ private fun FullscreenSensorPreview() {
                 ValueLine("Тип", "int")
                 ValueLine("Обновлено", "17:26:16 · только что")
                 ValueLine("Расшифровка", "профиль G426")
-                ValueLine("VHAL ID", "0x2170901E")
-                ValueLine("Property ID", "10012")
+                ValueLine("VHAL-сигнал", "0x2170901E")
+                ValueLine("ID свойства", "10012")
             }
         }
     }
 }
 
 @Preview(
-    name = "Компонент · График сенсора",
+    name = "Компонент · График параметра",
     group = "Компоненты",
     device = "spec:width=1100px,height=700px,dpi=160",
     locale = "ru",
@@ -119,7 +183,7 @@ private fun previewChartSamples(): List<SensorSample> = listOf(
 private fun VehiclePreview() = PreviewApp(AppTab.VEHICLE)
 
 @Preview(
-    name = "ГУ · Функции",
+    name = "ГУ · Возможности",
     group = "1440×1920",
     device = "spec:width=1440px,height=1920px,dpi=160",
     locale = "ru",
@@ -161,9 +225,9 @@ private fun LightThemePreview() = PreviewApp(AppTab.DIAGNOSTICS)
 private fun DarkThemePreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
 @Composable
-private fun PreviewApp(tab: AppTab) {
+private fun PreviewApp(tab: AppTab, state: AppUiState = previewState()) {
     GeelyDiagnosticsApp(
-        state = previewState(),
+        state = state,
         onRefresh = {},
         onExport = {},
         onVhalProfileSelected = {},
@@ -200,7 +264,7 @@ private fun previewState() = AppUiState(
         sampleDtc(ecuType = 7, id = "7", status = 1),
         sampleDtc(ecuType = 8, id = "8", status = 0),
     ),
-    sensors = listOf(
+    sensors = NormalizedParameterMerger.merge(listOf(
         sensor(1048832, "SENSOR_TYPE_CAR_SPEED", "Скорость автомобиля", "0", "float"),
         sensor(1050880, "SENSOR_TYPE_RPM", "Обороты двигателя", "748", "float"),
         sensor(1050368, "SENSOR_TYPE_ODOMETER", "Пробег", "18432.7", "float"),
@@ -214,7 +278,7 @@ private fun previewState() = AppUiState(
         vhalSensor(561024410, 10013, "patirepressurefrontleft", "Давление в передней левой шине", "236 кПа", "2360", "float"),
         vhalSensor(557850019, 10021, "CLUSTER_POWERFLOW_ENGSPDDISPD", "Обороты двигателя", "748 об/мин", "1496", "int"),
         rawVhalSensor(557842947, "[1, 0, 42]", "int32[]"),
-    ),
+    )),
     vehicleInfo = listOf(
         info(1049088, "INT_INFO_VEHICLE_TYPES", "Тип силовой установки", "Бензин/ДВС", "1049089"),
         info(1049600, "INT_INFO_DRIVE_MODE", "Тип привода", "Передний привод", "1049601"),
@@ -227,7 +291,14 @@ private fun previewState() = AppUiState(
     ),
     functions = listOf(
         function(537265152, "SETTING_FUNC_AUTO_HOLD", "Auto Hold", "1", "0, 1"),
-        function(537002240, "SETTING_FUNC_ENGINE_STOP_START", "Старт-стоп двигателя", "0", "0, 1"),
+        function(
+            537002240,
+            "SETTING_FUNC_ENGINE_STOP_START",
+            "Старт-стоп двигателя",
+            "0",
+            "0, 1",
+            ApiSupportStatus.NOT_ACTIVE,
+        ),
         function(537921792, "SETTING_FUNC_CENTRAL_LOCK", "Центральный замок", "1", "0, 1"),
         function(537461248, "SETTING_FUNC_MIRROR_AUTO_FOLDING", "Автоскладывание зеркал", "1", "0, 1"),
         function(537133824, "SETTING_FUNC_LAMP_AUTOLIGHT", "Автоматический свет", "537133826", "537133825, 537133826, 537133827"),
@@ -236,16 +307,54 @@ private fun previewState() = AppUiState(
         function(537723136, "SETTING_FUNC_PARK_ASSIST_SYS_ACTIVATED", "Система помощи при парковке", "1", "0, 1"),
     ),
     logLines = listOf(
-        "17:26:14.108  Read-only scan started on Android 11 (API 30)",
-        "17:26:14.170  Car.create(): OK",
-        "17:26:14.206  getDtcInfos(): 9 records",
-        "17:26:14.420  Sensors: 21 supported of 102",
+        "17:26:14.108  СИСТЕМА · Новый опрос источников",
+        "17:26:14.170  ECARX · Car.create(): OK",
+        "17:26:14.206  ECARX · getDtcInfos(): 9 records",
+        "17:26:14.420  ECARX · Sensors: 21 supported of 102",
         "17:26:14.512  VHAL initial id=0x2170901E mapping=G426 display=41.7 л raw=41700",
         "17:26:16.034  VHAL live id=0x21400400 mapping=G426 display=D raw=3",
     ),
-    favoriteKeys = setOf("sensor:ECARX:1048832:0", "sensor:VHAL:561025054:0"),
+    favoriteKeys = setOf("property:10001:0", "property:10012:0"),
     scanStartedAtMillis = System.currentTimeMillis(),
 )
+
+private fun rawProfilePreviewState(): AppUiState {
+    val state = previewState()
+    val splitReadings = state.sensors.flatMap { parameter ->
+        parameter.sourceReadings.map { reading ->
+            val propertyId = if (reading.source == VehicleDataSource.ECARX) {
+                EcarxNormalizedPropertyRegistry.sensorProperty(reading.signalName)?.rawValue
+            } else {
+                null
+            }
+            SensorRecord(
+                id = reading.signalId,
+                apiName = reading.signalName,
+                title = if (reading.source == VehicleDataSource.VHAL) {
+                    "Неизвестный VHAL-сигнал 0x${reading.signalId.toUInt().toString(16).uppercase()}"
+                } else {
+                    parameter.title
+                },
+                value = reading.value,
+                valueKind = parameter.valueKind,
+                support = reading.support,
+                error = reading.error,
+                source = reading.source,
+                propertyId = propertyId,
+                areaId = reading.areaId,
+                updatedAtMillis = reading.updatedAtMillis,
+                autoUpdates = reading.autoUpdates,
+                chartable = parameter.chartable,
+                decoded = propertyId != null,
+            )
+        }
+    }
+    return state.copy(
+        selectedVhalProfile = VehicleProfile.RAW,
+        vhalDetail = "84 исходных сигнала · профиль не выбран",
+        sensors = NormalizedParameterMerger.merge(splitReadings),
+    )
+}
 
 private fun sampleDtc(
     ecuType: Int,
@@ -254,8 +363,9 @@ private fun sampleDtc(
     status: Int,
 ) = DtcRecord(code, id, ecuType, status, SAMPLE_TICK_TIME)
 
-private fun sensor(id: Int, apiName: String, title: String, value: String, kind: String) =
-    SensorRecord(
+private fun sensor(id: Int, apiName: String, title: String, value: String, kind: String): SensorRecord {
+    val propertyId = EcarxNormalizedPropertyRegistry.sensorProperty(apiName)?.rawValue
+    return SensorRecord(
         id,
         apiName,
         title,
@@ -266,11 +376,14 @@ private fun sensor(id: Int, apiName: String, title: String, value: String, kind:
         },
         kind,
         ApiSupportStatus.ACTIVE,
+        propertyId = propertyId,
         updatedAtMillis = System.currentTimeMillis(),
         expectedUpdateIntervalMillis = if (kind == "float") 15_000L else null,
         autoUpdates = kind == "float",
         chartable = kind == "float",
+        decoded = propertyId != null,
     )
+}
 
 private fun info(id: Int, apiName: String, title: String, value: String, raw: String = value) =
     VehicleInfoRecord(
@@ -299,17 +412,18 @@ private fun vhalSensor(
     support = ApiSupportStatus.ACTIVE,
     source = VehicleDataSource.VHAL,
     sourceProfile = VehicleProfile.G426.key,
-    profilePropertyId = propertyId,
+    propertyId = propertyId,
     updatedAtMillis = System.currentTimeMillis(),
     expectedUpdateIntervalMillis = 15_000L,
     autoUpdates = true,
     chartable = kind == "float" || propertyId in setOf(10012, 10021),
+    decoded = true,
 )
 
 private fun rawVhalSensor(id: Int, raw: String, kind: String) = SensorRecord(
     id = id,
     apiName = "VHAL_0x${id.toUInt().toString(16).uppercase()}",
-    title = "VHAL property 0x${id.toUInt().toString(16).uppercase()}",
+    title = "Неизвестный VHAL-сигнал 0x${id.toUInt().toString(16).uppercase()}",
     value = ApiValue.raw(raw),
     valueKind = kind,
     support = ApiSupportStatus.ACTIVE,
@@ -323,6 +437,7 @@ private fun function(
     title: String,
     value: String,
     supportedValues: String,
+    support: ApiSupportStatus = ApiSupportStatus.ACTIVE,
 ) = VehicleFunctionRecord(
     id = id,
     apiName = apiName,
@@ -333,6 +448,6 @@ private fun function(
         supportedValues.split(',').mapNotNull { it.trim().toIntOrNull() }.toIntArray(),
     ),
     supportedValues = supportedValues,
-    support = ApiSupportStatus.ACTIVE,
+    support = support,
     updatedAtMillis = System.currentTimeMillis(),
 )

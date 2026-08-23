@@ -177,12 +177,12 @@ internal object EcarxFunctionMetadata {
         "HVAC_FUNC_AUTOMATIC_VENTILATION_DRY" to EcarxFieldMetadata("Автоматический ventilation dry"),
         "HVAC_FUNC_AUTO_CLOSE_WINDOW_REMIND" to EcarxFieldMetadata("Автоматический закрытие окно remind"),
         "HVAC_FUNC_AUTO_CLOSE_WINDOW_REMIND_REQUEST" to EcarxFieldMetadata("Автоматический закрытие окно remind запрос"),
-        "HVAC_FUNC_AUTO_CONTROL" to EcarxFieldMetadata("Автоматический управление"),
-        "HVAC_FUNC_AUTO_CZIS" to EcarxFieldMetadata("Автоматический czis"),
-        "HVAC_FUNC_AUTO_DEFROST_CONFIRM" to EcarxFieldMetadata("Автоматический defrost confirm"),
-        "HVAC_FUNC_AUTO_DEFROST_FRONT" to EcarxFieldMetadata("Автоматический defrost передний"),
-        "HVAC_FUNC_AUTO_DEFROST_REAR" to EcarxFieldMetadata("Автоматический defrost задний"),
-        "HVAC_FUNC_AUTO_DEFROST_REQUEST" to EcarxFieldMetadata("Автоматический defrost запрос"),
+        "HVAC_FUNC_AUTO_CONTROL" to EcarxFieldMetadata("Автоматическое управление климатом"),
+        "HVAC_FUNC_AUTO_CZIS" to EcarxFieldMetadata("Автоматический режим CZIS"),
+        "HVAC_FUNC_AUTO_DEFROST_CONFIRM" to EcarxFieldMetadata("Подтверждение автообогрева стёкол"),
+        "HVAC_FUNC_AUTO_DEFROST_FRONT" to EcarxFieldMetadata("Автообогрев лобового стекла"),
+        "HVAC_FUNC_AUTO_DEFROST_REAR" to EcarxFieldMetadata("Автообогрев заднего стекла"),
+        "HVAC_FUNC_AUTO_DEFROST_REQUEST" to EcarxFieldMetadata("Запрос автообогрева стёкол"),
         "HVAC_FUNC_AUTO_FAN_SETTING" to EcarxFieldMetadata(
             title = "Интенсивность вентилятора в AUTO",
             values = mapOf(
@@ -193,13 +193,13 @@ internal object EcarxFunctionMetadata {
                 268567045 to "Очень интенсивно",
             )
         ),
-        "HVAC_FUNC_AUTO_FAN_SPEED_HARD_KEY" to EcarxFieldMetadata("Автоматический fan speed hard ключ"),
-        "HVAC_FUNC_AUTO_ION" to EcarxFieldMetadata("Автоматический ion"),
-        "HVAC_FUNC_AUTO_ION_CONFIRM" to EcarxFieldMetadata("Автоматический ion confirm"),
-        "HVAC_FUNC_AUTO_ION_REQUEST" to EcarxFieldMetadata("Автоматический ion запрос"),
-        "HVAC_FUNC_AUTO_REFRESHING_FRAGRANCE" to EcarxFieldMetadata("Автоматический refreshing fragrance"),
+        "HVAC_FUNC_AUTO_FAN_SPEED_HARD_KEY" to EcarxFieldMetadata("Кнопка скорости вентилятора в AUTO"),
+        "HVAC_FUNC_AUTO_ION" to EcarxFieldMetadata("Автоматическая ионизация"),
+        "HVAC_FUNC_AUTO_ION_CONFIRM" to EcarxFieldMetadata("Подтверждение автоматической ионизации"),
+        "HVAC_FUNC_AUTO_ION_REQUEST" to EcarxFieldMetadata("Запрос автоматической ионизации"),
+        "HVAC_FUNC_AUTO_REFRESHING_FRAGRANCE" to EcarxFieldMetadata("Автоматическое освежение ароматом"),
         "HVAC_FUNC_AUTO_SEAT_HEATING" to EcarxFieldMetadata(
-            title = "Автоматический сиденье heating",
+            title = "Автоматический обогрев сиденья",
             values = mapOf(
                 0 to "Выключено",
                 268764417 to "Уровень 1",
@@ -208,7 +208,7 @@ internal object EcarxFunctionMetadata {
             )
         ),
         "HVAC_FUNC_AUTO_SEAT_HEATING_TIME" to EcarxFieldMetadata(
-            title = "Автоматический сиденье heating время",
+            title = "Время автоматического обогрева сиденья",
             values = mapOf(
                 0 to "Выключено",
                 268764673 to "Время 1",
@@ -218,7 +218,7 @@ internal object EcarxFunctionMetadata {
             )
         ),
         "HVAC_FUNC_AUTO_SEAT_MASSAGE_TIME" to EcarxFieldMetadata(
-            title = "Автоматический сиденье massage время",
+            title = "Время автоматического массажа сиденья",
             values = mapOf(
                 0 to "Выключено",
                 268765441 to "Время 1",
@@ -227,7 +227,7 @@ internal object EcarxFunctionMetadata {
             )
         ),
         "HVAC_FUNC_AUTO_SEAT_VENTILATION_TIME" to EcarxFieldMetadata(
-            title = "Автоматический сиденье ventilation время",
+            title = "Время автоматической вентиляции сиденья",
             values = mapOf(
                 0 to "Выключено",
                 268764161 to "Время 1",
@@ -237,16 +237,16 @@ internal object EcarxFunctionMetadata {
             )
         ),
         "HVAC_FUNC_AUTO_STEERING_WHEEL_HEAT" to EcarxFieldMetadata(
-            title = "Автоматический рулевое управление руль нагрев",
+            title = "Автоматический обогрев руля",
             values = mapOf(
                 269025793 to "Низкий",
                 269025794 to "Средний",
                 269025795 to "Высокий",
             )
         ),
-        "HVAC_FUNC_AUTO_STEERING_WHEEL_HEAT_SWITCH" to EcarxFieldMetadata("Автоматический рулевое управление руль нагрев переключатель"),
+        "HVAC_FUNC_AUTO_STEERING_WHEEL_HEAT_SWITCH" to EcarxFieldMetadata("Автоматический обогрев руля"),
         "HVAC_FUNC_AUTO_STEERING_WHEEL_HEAT_TIME" to EcarxFieldMetadata(
-            title = "Автоматический рулевое управление руль нагрев время",
+            title = "Время автоматического обогрева руля",
             values = mapOf(
                 0 to "Выключено",
                 269026049 to "Время 1",
@@ -373,12 +373,12 @@ internal object EcarxFunctionMetadata {
         ),
         "SETTING_FUNC_AUTO_HOLD" to EcarxFieldMetadata("Auto Hold"),
         "SETTING_FUNC_AUTO_REAR_WIPING" to EcarxFieldMetadata("Автоматический задний дворник"),
-        "SETTING_FUNC_AUTO_SHOW_MODE" to EcarxFieldMetadata("Автоматический показ режим"),
-        "SETTING_FUNC_AUTO_SHOW_MODE_ENTER_CONDITIONS" to EcarxFieldMetadata("Автоматический показ режим вход условия"),
-        "SETTING_FUNC_AUTO_SHOW_MODE_ICON" to EcarxFieldMetadata("Автоматический показ режим значок"),
-        "SETTING_FUNC_AUTO_SHOW_MODE_POPUP" to EcarxFieldMetadata("Автоматический показ режим всплывающее окно"),
+        "SETTING_FUNC_AUTO_SHOW_MODE" to EcarxFieldMetadata("Автоматический показ режима"),
+        "SETTING_FUNC_AUTO_SHOW_MODE_ENTER_CONDITIONS" to EcarxFieldMetadata("Условия автоматического показа режима"),
+        "SETTING_FUNC_AUTO_SHOW_MODE_ICON" to EcarxFieldMetadata("Значок автоматического показа режима"),
+        "SETTING_FUNC_AUTO_SHOW_MODE_POPUP" to EcarxFieldMetadata("Всплывающее окно автоматического режима"),
         "SETTING_FUNC_AUTO_SHOW_MODE_TEXT" to EcarxFieldMetadata(
-            title = "Автоматический показ режим текст",
+            title = "Текст автоматического показа режима",
             values = mapOf(
                 0 to "Обычный текст",
                 1 to "Скрыть / false",
@@ -525,7 +525,7 @@ internal object EcarxFunctionMetadata {
         "SETTING_FUNC_FRONT_CROSS_TRAFFIC_ALERT" to EcarxFieldMetadata("Предупреждение о поперечном движении спереди"),
         "SETTING_FUNC_FRONT_WIPER_IDLE" to EcarxFieldMetadata("Передний wiper idle"),
         "SETTING_FUNC_GLOVEBOX_LOCK" to EcarxFieldMetadata(
-            title = "Бардачок замок",
+            title = "Замок бардачка",
             values = mapOf(
                 537854720 to "Ожидание",
                 537854721 to "Заблокировать",
@@ -533,8 +533,8 @@ internal object EcarxFunctionMetadata {
             )
         ),
         "SETTING_FUNC_HDC_SWITCH" to EcarxFieldMetadata("Система помощи при спуске (HDC)"),
-        "SETTING_FUNC_HEAD_RESTRAINT_AUDIO" to EcarxFieldMetadata("Подголовник подголовник аудио"),
-        "SETTING_FUNC_HEAD_RESTRAINT_AUDIO_TYPE" to EcarxFieldMetadata("Подголовник подголовник аудио тип"),
+        "SETTING_FUNC_HEAD_RESTRAINT_AUDIO" to EcarxFieldMetadata("Аудиосистема в подголовнике"),
+        "SETTING_FUNC_HEAD_RESTRAINT_AUDIO_TYPE" to EcarxFieldMetadata("Режим аудиосистемы в подголовнике"),
         "SETTING_FUNC_HILL_START_ASSIST" to EcarxFieldMetadata("Помощь при трогании на подъёме"),
         "SETTING_FUNC_HMI_THEMES_CHANGE" to EcarxFieldMetadata(
             title = "Тема интерфейса",

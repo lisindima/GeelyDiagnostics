@@ -4,8 +4,8 @@ import java.util.Locale
 
 internal enum class SensorValueFilter(val title: String) {
     ALL("Все значения"),
-    DECODED("Расшифровано"),
-    RAW("RAW"),
+    DECODED("Нормализовано"),
+    RAW("Без расшифровки"),
     CHANGED("Изменились"),
     ERRORS("Ошибки"),
     FAVORITES("Избранное"),
@@ -29,9 +29,10 @@ internal fun filterSensors(
             SensorValueFilter.DECODED -> record.support.isVisibleAsSupported && record.isDecoded
             SensorValueFilter.RAW -> record.support.isVisibleAsSupported && !record.isDecoded
             SensorValueFilter.CHANGED -> record.support.isVisibleAsSupported && record.changedSinceScan
-            SensorValueFilter.ERRORS -> record.support == ApiSupportStatus.ERROR || record.error.isNotBlank()
+            SensorValueFilter.ERRORS -> record.support == ApiSupportStatus.ERROR ||
+                record.error.isNotBlank() || record.sourceReadings.any { it.error.isNotBlank() }
             SensorValueFilter.FAVORITES ->
-                record.support.isVisibleAsSupported && record.favoriteKey in favoriteKeys
+                record.support.isVisibleAsSupported && record.matchesFavorite(favoriteKeys)
         }
     }
     .filter { record -> record.matchesQuery(query) }
@@ -75,11 +76,7 @@ internal fun filterFunctions(
     .toList()
 
 private val SensorRecord.isDecoded: Boolean
-    get() = decoded ?: if (source == VehicleDataSource.VHAL) {
-        sourceProfile != null && error.isBlank()
-    } else {
-        value.display != value.raw
-    }
+    get() = decoded == true
 
 private fun SensorRecord.matchesQuery(query: String): Boolean = matchesAllTokens(
     query,
@@ -91,7 +88,22 @@ private fun SensorRecord.matchesQuery(query: String): Boolean = matchesAllTokens
     value.raw,
     source.label,
     sourceProfile.orEmpty(),
+    propertyId?.toString().orEmpty(),
+    sourceReadings.joinToString(" ") { reading ->
+        listOf(
+            reading.source.label,
+            reading.signalId.toString(),
+            "0x${reading.signalId.toUInt().toString(16)}",
+            reading.signalName,
+            reading.value.display,
+            reading.value.raw,
+            reading.profile.orEmpty(),
+        ).joinToString(" ")
+    },
 )
+
+internal fun SensorRecord.matchesFavorite(favoriteKeys: Set<String>): Boolean =
+    favoriteKey in favoriteKeys || sourceReadings.any { it.legacyFavoriteKey in favoriteKeys }
 
 private fun VehicleInfoRecord.matchesQuery(query: String): Boolean = matchesAllTokens(
     query,

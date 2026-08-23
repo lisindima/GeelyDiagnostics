@@ -46,16 +46,27 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
 
     fun clearLog() = repository.clearLog()
 
-    fun onLog(message: String, error: Throwable? = null) = repository.onLog(message, error)
+    fun onLog(message: String, error: Throwable? = null) = repository.onSystemLog(message, error)
 
     private fun startScan() {
         repository.start(uiState.selectedVhalProfile)
     }
 
     private fun onRepositoryState(repositoryState: VehicleRepositoryState) = onMain {
-        var history = uiState.sensorHistory
+        var history = if (
+            repositoryState.scanStartedAtMillis != null &&
+            repositoryState.scanStartedAtMillis != uiState.scanStartedAtMillis
+        ) {
+            emptyMap()
+        } else {
+            uiState.sensorHistory
+        }
         repositoryState.sensors.forEach { sensor ->
             history = history.withSample(sensor, sensor.updatedAtMillis ?: System.currentTimeMillis())
+        }
+        val favoriteKeys = migrateSensorFavorites(uiState.favoriteKeys, repositoryState.sensors)
+        if (favoriteKeys != uiState.favoriteKeys) {
+            preferences().edit().putStringSet(KEY_FAVORITES, favoriteKeys).apply()
         }
         uiState = uiState.copy(
             carStatus = repositoryState.carStatus,
@@ -79,7 +90,25 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             functions = repositoryState.functions,
             logLines = repositoryState.logLines,
             scanStartedAtMillis = repositoryState.scanStartedAtMillis,
+            favoriteKeys = favoriteKeys,
         )
+    }
+
+    private fun migrateSensorFavorites(
+        current: Set<String>,
+        sensors: List<SensorRecord>,
+    ): Set<String> {
+        val migrated = current.toMutableSet()
+        sensors.filter { it.propertyId != null }.forEach { sensor ->
+            val legacyKeys = sensor.sourceReadings
+                .map { it.legacyFavoriteKey }
+                .ifEmpty { listOf("sensor:${sensor.source.name}:${sensor.id}:${sensor.areaId}") }
+            if (legacyKeys.any(migrated::contains)) {
+                migrated.removeAll(legacyKeys.toSet())
+                migrated += sensor.favoriteKey
+            }
+        }
+        return migrated
     }
 
     private fun onMain(action: () -> Unit) {

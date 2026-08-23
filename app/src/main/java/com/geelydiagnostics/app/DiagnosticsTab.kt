@@ -38,38 +38,27 @@ internal object DiagnosticsTab {
     fun Content(state: AppUiState) {
         val ecuCount = state.dtcs.map(DtcRecord::ecuType).distinct().size
         val dtcCodeCount = state.dtcs.count { it.code.isNotBlank() }
+        val diagnosticsStatus = aggregateReadStatus(
+            listOf(state.carStatus, state.diagnosticsStatus, state.dtcManagerStatus),
+        )
+        val diagnosticsDetail = listOf(
+            "подключение: ${state.carDetail.ifBlank { state.carStatus.detailLabel }}",
+            "сервис: ${state.diagnosticsDetail.ifBlank { state.diagnosticsStatus.detailLabel }}",
+            "DTC: ${state.dtcManagerDetail.ifBlank { state.dtcManagerStatus.detailLabel }}",
+        ).joinToString(" · ")
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                Row(
+                StatusCard(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    StatusCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Подключение",
-                        description = "Вход в ECARX API",
-                        status = state.carStatus,
-                        detail = state.carDetail,
-                    )
-                    StatusCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Диагностика",
-                        description = "Доступ к сервису",
-                        status = state.diagnosticsStatus,
-                        detail = state.diagnosticsDetail,
-                    )
-                    StatusCard(
-                        modifier = Modifier.weight(1f),
-                        title = "DTC",
-                        description = "Read-only чтение кодов",
-                        status = state.dtcManagerStatus,
-                        detail = state.dtcManagerDetail,
-                    )
-                }
+                    title = "Коды неисправностей",
+                    description = "Штатный сервис DTC · источник ECARX",
+                    status = diagnosticsStatus,
+                    detail = diagnosticsDetail,
+                )
             }
             item {
                 CountSummary(
@@ -140,7 +129,7 @@ internal object DiagnosticsTab {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "ECU type $ecuType",
+                            text = "Блок $ecuType",
                             modifier = Modifier.weight(1f),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -250,4 +239,13 @@ internal object DiagnosticsTab {
         return SimpleDateFormat("dd.MM.yyyy HH:mm:ss.SSS", Locale.getDefault())
             .format(Date(tickTime))
     }
+
+    private val ReadStatus.detailLabel: String
+        get() = when (this) {
+            ReadStatus.NOT_CHECKED -> "не проверено"
+            ReadStatus.CHECKING -> "проверка"
+            ReadStatus.PARTIAL -> "частично доступен"
+            ReadStatus.AVAILABLE -> "доступен"
+            ReadStatus.ERROR -> "ошибка"
+        }
 }

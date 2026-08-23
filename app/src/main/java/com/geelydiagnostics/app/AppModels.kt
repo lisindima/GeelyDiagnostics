@@ -6,6 +6,7 @@ import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 enum class ReadStatus {
     NOT_CHECKED,
     CHECKING,
+    PARTIAL,
     AVAILABLE,
     ERROR,
 }
@@ -57,7 +58,7 @@ data class SensorRecord(
     val error: String = "",
     val source: VehicleDataSource = VehicleDataSource.ECARX,
     val sourceProfile: String? = null,
-    val profilePropertyId: Int? = null,
+    val propertyId: Int? = null,
     val areaId: Int = 0,
     val updatedAtMillis: Long? = null,
     val sourceTimestampNanos: Long? = null,
@@ -66,6 +67,22 @@ data class SensorRecord(
     val autoUpdates: Boolean = false,
     val chartable: Boolean = false,
     val decoded: Boolean? = null,
+    val sourceReadings: List<ParameterSourceReading> = emptyList(),
+)
+
+data class ParameterSourceReading(
+    val source: VehicleDataSource,
+    val signalId: Int,
+    val signalName: String,
+    val value: ApiValue,
+    val support: ApiSupportStatus,
+    val error: String = "",
+    val profile: String? = null,
+    val areaId: Int = 0,
+    val updatedAtMillis: Long? = null,
+    val sourceTimestampNanos: Long? = null,
+    val autoUpdates: Boolean = false,
+    val decoded: Boolean = false,
 )
 
 data class VehicleInfoRecord(
@@ -120,7 +137,11 @@ data class AppUiState(
 )
 
 internal val SensorRecord.favoriteKey: String
-    get() = "sensor:${source.name}:$id:$areaId"
+    get() = propertyId?.let { "property:$it:$areaId" }
+        ?: "signal:${source.name}:$id:$areaId"
+
+internal val ParameterSourceReading.legacyFavoriteKey: String
+    get() = "sensor:${source.name}:$signalId:$areaId"
 
 internal val VehicleInfoRecord.favoriteKey: String
     get() = "vehicle:${source.name}:$id"

@@ -1,6 +1,8 @@
 package com.geelydiagnostics.app
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +15,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -41,7 +44,7 @@ internal enum class AppTab(val title: String) {
     DIAGNOSTICS("Диагностика"),
     PARAMETERS("Параметры"),
     VEHICLE("Автомобиль"),
-    FUNCTIONS("Функции"),
+    FUNCTIONS("Возможности"),
     LOG("Лог"),
 }
 
@@ -72,68 +75,113 @@ internal fun GeelyDiagnosticsApp(
                         .padding(horizontal = 24.dp),
                 ) {
                     AppHeader(onRefresh = onRefresh, onExport = onExport)
-                    PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                        AppTab.entries.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = {
-                                    Text(
-                                        text = tab.title,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                },
-                            )
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        if (maxWidth < 1000.dp) {
+                            PrimaryScrollableTabRow(
+                                selectedTabIndex = selectedTabIndex,
+                                edgePadding = 0.dp,
+                                minTabWidth = 150.dp,
+                            ) {
+                                AppTabs(selectedTabIndex) { selectedTabIndex = it }
+                            }
+                        } else {
+                            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                                AppTabs(selectedTabIndex) { selectedTabIndex = it }
+                            }
                         }
                     }
-                    PullToRefreshBox(
-                        isRefreshing = state.isScanInProgress,
-                        onRefresh = { if (!state.isScanInProgress) onRefresh() },
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        when (AppTab.entries[selectedTabIndex]) {
-                            AppTab.DIAGNOSTICS -> {
-                                val tabState = remember(
-                                    state.carStatus,
-                                    state.carDetail,
-                                    state.diagnosticsStatus,
-                                    state.diagnosticsDetail,
-                                    state.dtcManagerStatus,
-                                    state.dtcManagerDetail,
-                                    state.dtcs,
-                                ) { state }
-                                DiagnosticsTab.Content(tabState)
-                            }
-                            AppTab.PARAMETERS -> ParametersTab.Content(
-                                state,
-                                onVhalProfileSelected,
-                                onFavoriteToggle,
+                    val selectedTab = AppTab.entries[selectedTabIndex]
+                    if (selectedTab == AppTab.LOG) {
+                        AppTabContent(
+                            tab = selectedTab,
+                            state = state,
+                            onVhalProfileSelected = onVhalProfileSelected,
+                            onFavoriteToggle = onFavoriteToggle,
+                            onClearLog = onClearLog,
+                        )
+                    } else {
+                        PullToRefreshBox(
+                            isRefreshing = state.isScanInProgress,
+                            onRefresh = { if (!state.isScanInProgress) onRefresh() },
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            AppTabContent(
+                                tab = selectedTab,
+                                state = state,
+                                onVhalProfileSelected = onVhalProfileSelected,
+                                onFavoriteToggle = onFavoriteToggle,
+                                onClearLog = onClearLog,
                             )
-                            AppTab.VEHICLE -> {
-                                val tabState = remember(
-                                    state.carInfoStatus,
-                                    state.carInfoDetail,
-                                    state.vehicleInfo,
-                                    state.favoriteKeys,
-                                ) { state }
-                                VehicleTab.Content(tabState, onFavoriteToggle)
-                            }
-                            AppTab.FUNCTIONS -> {
-                                val tabState = remember(
-                                    state.functionStatus,
-                                    state.functionDetail,
-                                    state.functions,
-                                    state.favoriteKeys,
-                                ) { state }
-                                FunctionsTab.Content(tabState, onFavoriteToggle)
-                            }
-                            AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AppTabs(selectedTabIndex: Int, onSelected: (Int) -> Unit) {
+    AppTab.entries.forEachIndexed { index, tab ->
+        Tab(
+            selected = selectedTabIndex == index,
+            onClick = { onSelected(index) },
+            text = {
+                Text(
+                    text = tab.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun AppTabContent(
+    tab: AppTab,
+    state: AppUiState,
+    onVhalProfileSelected: (VehicleProfile) -> Unit,
+    onFavoriteToggle: (String) -> Unit,
+    onClearLog: () -> Unit,
+) {
+    when (tab) {
+        AppTab.DIAGNOSTICS -> {
+            val tabState = remember(
+                state.carStatus,
+                state.carDetail,
+                state.diagnosticsStatus,
+                state.diagnosticsDetail,
+                state.dtcManagerStatus,
+                state.dtcManagerDetail,
+                state.dtcs,
+            ) { state }
+            DiagnosticsTab.Content(tabState)
+        }
+        AppTab.PARAMETERS -> ParametersTab.Content(
+            state,
+            onVhalProfileSelected,
+            onFavoriteToggle,
+        )
+        AppTab.VEHICLE -> {
+            val tabState = remember(
+                state.carInfoStatus,
+                state.carInfoDetail,
+                state.vehicleInfo,
+                state.favoriteKeys,
+            ) { state }
+            VehicleTab.Content(tabState, onFavoriteToggle)
+        }
+        AppTab.FUNCTIONS -> {
+            val tabState = remember(
+                state.functionStatus,
+                state.functionDetail,
+                state.functions,
+                state.favoriteKeys,
+            ) { state }
+            FunctionsTab.Content(tabState, onFavoriteToggle)
+        }
+        AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
     }
 }
 
@@ -158,42 +206,83 @@ private fun AppHeader(onRefresh: () -> Unit, onExport: () -> Unit) {
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shape = MaterialTheme.shapes.extraLarge,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        BoxWithConstraints {
+            if (maxWidth < 900.dp) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    HeaderTitle()
+                    ReadOnlyBadge()
+                    HeaderActions(onRefresh = onRefresh, onExport = onExport)
+                }
+            } else {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HeaderTitle(Modifier.weight(1f))
+                    ReadOnlyBadge()
+                    Spacer(Modifier.width(10.dp))
+                    HeaderActions(onRefresh = onRefresh, onExport = onExport)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderTitle(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Geely Diagnostics",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = "Диагностика и параметры автомобиля",
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            fontSize = 16.sp,
+        )
+    }
+}
+
+@Composable
+private fun ReadOnlyBadge() {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(
+            text = "ТОЛЬКО ЧТЕНИЕ",
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun HeaderActions(onRefresh: () -> Unit, onExport: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(
+            onClick = onExport,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                contentColor = MaterialTheme.colorScheme.primaryContainer,
+            ),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Geely Diagnostics",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "ECARX AdaptAPI + VHAL · строго только чтение",
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontSize = 16.sp,
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            Button(
-                onClick = onExport,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            ) {
-                Text("Экспорт", fontSize = 17.sp)
-            }
-            Spacer(Modifier.width(10.dp))
-            Button(
-                onClick = onRefresh,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            ) {
-                Text("Обновить", fontSize = 17.sp)
-            }
+            Text("Экспорт", fontSize = 17.sp)
+        }
+        Button(
+            onClick = onRefresh,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                contentColor = MaterialTheme.colorScheme.primaryContainer,
+            ),
+        ) {
+            Text("Обновить", fontSize = 17.sp)
         }
     }
 }

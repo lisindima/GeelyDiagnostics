@@ -25,8 +25,8 @@ internal object FunctionsTab {
         CatalogScreen(
             status = state.functionStatus,
             detail = state.functionDetail,
-            title = "Поддерживаемые функции",
-            subtitle = "Только чтение: известные значения расшифрованы, исходный raw сохранён. Управление функциями отсутствует.",
+            title = "Возможности автомобиля",
+            subtitle = "Возможности, о которых сообщает штатный каталог. Текущее значение показано, если API его возвращает.",
             totalCount = state.functions.size,
             supportedCount = supportedCount,
             displayedCount = filtered.size,
@@ -37,7 +37,7 @@ internal object FunctionsTab {
                     CatalogSearchField(
                         query = query,
                         onQueryChange = { query = it },
-                        placeholder = "Название, API name, ID или значение",
+                        placeholder = "Название, API, ID или значение",
                     )
                     CatalogFilterRow(
                         labels = CatalogListFilter.entries.map(CatalogListFilter::title),
@@ -61,10 +61,10 @@ internal object FunctionsTab {
             FullscreenValueDialog(
                 title = function.title,
                 apiName = function.apiName,
-                idText = "id ${function.id}",
-                value = function.value,
-                sourceLabel = function.source.label,
-                modeLabel = "ПОДРОБНОЕ ЗНАЧЕНИЕ",
+                idText = "ECARX ID ${function.id}",
+                value = function.cardValue,
+                sourceLabels = listOf(function.source.label),
+                modeLabel = function.supportLabel.uppercase(),
                 isFavorite = function.favoriteKey in state.favoriteKeys,
                 onFavoriteToggle = { onFavoriteToggle(function.favoriteKey) },
                 onDismiss = { expandedId = null },
@@ -86,9 +86,11 @@ internal object FunctionsTab {
             title = function.title,
             apiName = function.apiName,
             id = function.id,
-            value = function.value,
-            sourceLabel = function.source.label,
-            modeLabel = "ПОДДЕРЖИВАЕМАЯ ФУНКЦИЯ",
+            idLabel = "ECARX ID ${function.id}",
+            value = function.cardValue,
+            sourceLabels = listOf(function.source.label),
+            modeLabel = function.supportLabel.uppercase(),
+            modeIsHighlighted = function.support == ApiSupportStatus.ACTIVE,
             footerText = formatUpdateTime(function.updatedAtMillis, nowMillis),
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
@@ -100,6 +102,7 @@ internal object FunctionsTab {
 
     @Composable
     private fun FunctionDetails(function: VehicleFunctionRecord, nowMillis: Long) {
+        ValueLine("Доступность", function.supportLabel)
         ValueLine("Обновлено", formatUpdateTime(function.updatedAtMillis, nowMillis))
         FunctionMetadata(function)
     }
@@ -112,4 +115,20 @@ internal object FunctionsTab {
         if (function.zones.isNotBlank()) ValueLine("Зоны raw", function.zones)
         if (function.error.isNotBlank()) ValueLine("Примечание", function.error)
     }
+
+    private val VehicleFunctionRecord.supportLabel: String
+        get() = when (support) {
+            ApiSupportStatus.ACTIVE -> "Доступна"
+            ApiSupportStatus.NOT_ACTIVE -> "Поддерживается · неактивна"
+            ApiSupportStatus.NOT_AVAILABLE -> "Не поддерживается"
+            ApiSupportStatus.ERROR -> "Ошибка проверки"
+            ApiSupportStatus.UNKNOWN -> "Состояние неизвестно"
+        }
+
+    private val VehicleFunctionRecord.cardValue: ApiValue
+        get() = if (value == ApiValue.unavailable && support.isVisibleAsSupported) {
+            ApiValue(display = supportLabel, raw = value.raw)
+        } else {
+            value
+        }
 }

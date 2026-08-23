@@ -54,6 +54,7 @@ internal object ParametersTab {
         )
         val autoUpdating = filtered.filter(SensorRecord::autoUpdates)
         val manuallyUpdated = filtered.filterNot(SensorRecord::autoUpdates)
+        val unmappedCount = filtered.count { it.propertyId == null || it.decoded != true }
         val groups = listOf(
             Triple("Автообновление", "Новые значения приходят по подписке", autoUpdating),
             Triple("Ручное обновление", "Значения обновляются по запросу", manuallyUpdated),
@@ -72,6 +73,8 @@ internal object ParametersTab {
             supportedCount = supported.size,
             displayedCount = filtered.size,
             autoUpdatingCount = autoUpdating.size,
+            manuallyUpdatedCount = manuallyUpdated.size,
+            unmappedCount = unmappedCount,
             groups = groups,
             emptyText = emptyText,
             query = query,
@@ -90,7 +93,7 @@ internal object ParametersTab {
                 apiName = sensor.apiName,
                 idText = sensor.cardIdLabel,
                 value = sensor.value,
-                sourceLabel = sensor.sourceLabel,
+                sourceLabels = sensor.sourceLabels,
                 modeLabel = if (sensor.autoUpdates) {
                     "АВТООБНОВЛЕНИЕ · ПОДПИСКА"
                 } else {
@@ -118,6 +121,8 @@ internal object ParametersTab {
     @Composable
     private fun ProfileSelector(
         selected: VehicleProfile,
+        decodedCount: Int,
+        totalCount: Int,
         onSelected: (VehicleProfile) -> Unit,
     ) {
         var expanded by remember { mutableStateOf(false) }
@@ -145,6 +150,15 @@ internal object ParametersTab {
                         text = "${selected.key} · ${selected.vehicle}",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = if (selected == VehicleProfile.RAW) {
+                            "Исходные VHAL-сигналы без профильной расшифровки"
+                        } else {
+                            "Расшифровано $decodedCount из $totalCount VHAL-сигналов"
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
                     )
                 }
                 Box {
@@ -175,6 +189,8 @@ internal object ParametersTab {
         supportedCount: Int,
         displayedCount: Int,
         autoUpdatingCount: Int,
+        manuallyUpdatedCount: Int,
+        unmappedCount: Int,
         groups: List<Triple<String, String, List<SensorRecord>>>,
         emptyText: String,
         query: String,
@@ -187,14 +203,14 @@ internal object ParametersTab {
         onFavoriteToggle: (String) -> Unit,
         onSensorSelected: (SensorRecord) -> Unit,
     ) {
-        val combinedStatus = combineReadStatus(state.sensorStatus, state.vhalStatus)
+        val combinedStatus = aggregateReadStatus(listOf(state.sensorStatus, state.vhalStatus))
         val combinedDetail = listOf(
             "ECARX: ${state.sensorDetail.ifBlank { state.sensorStatus.labelForSource }}",
             "VHAL ${state.selectedVhalProfile.key}: ${state.vhalDetail.ifBlank { state.vhalStatus.labelForSource }}",
         ).joinToString(" · ")
-        val displayedSensors = groups.flatMap { (_, _, sensors) -> sensors }
-        val ecarxCount = displayedSensors.count { it.source == VehicleDataSource.ECARX }
-        val vhalCount = displayedSensors.count { it.source == VehicleDataSource.VHAL }
+        val vhalReadings = state.sensors.flatMap { it.effectiveReadings }
+            .filter { it.source == VehicleDataSource.VHAL }
+        val decodedVhalCount = vhalReadings.count { it.decoded }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -205,19 +221,33 @@ internal object ParametersTab {
                 StatusCard(
                     modifier = Modifier.fillMaxWidth(),
                     title = "Параметры автомобиля",
-                    description = "Единый каталог данных ECARX и VHAL. Источник указан на каждой карточке; значения по подписке обновляются автоматически.",
+                    description = "Нормализованные параметры автомобиля и неизвестные исходные сигналы. Источники указаны на карточках.",
                     status = combinedStatus,
                     detail = combinedDetail,
                 )
             }
             item {
-                ProfileSelector(state.selectedVhalProfile, onVhalProfileSelected)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SourceStateBadge("ECARX", state.sensorStatus, Modifier.weight(1f))
+                    SourceStateBadge("VHAL", state.vhalStatus, Modifier.weight(1f))
+                }
+            }
+            item {
+                ProfileSelector(
+                    selected = state.selectedVhalProfile,
+                    decodedCount = decodedVhalCount,
+                    totalCount = vhalReadings.size,
+                    onSelected = onVhalProfileSelected,
+                )
             }
             item {
                 CatalogSearchField(
                     query = query,
                     onQueryChange = onQueryChange,
-                    placeholder = "Название, property ID, API name или значение",
+                    placeholder = "Название, ID свойства, API или значение",
                 )
             }
             item {
@@ -231,8 +261,8 @@ internal object ParametersTab {
                 CountSummary(
                     title = "Показано",
                     count = displayedCount,
-                    detail = "Автообновление $autoUpdatingCount · ECARX $ecarxCount · " +
-                        "VHAL $vhalCount · доступно $supportedCount",
+                    detail = "По подписке $autoUpdatingCount · вручную $manuallyUpdatedCount · " +
+                        "без расшифровки $unmappedCount · доступно $supportedCount",
                 )
             }
             if (groups.isEmpty()) {
@@ -275,6 +305,35 @@ internal object ParametersTab {
     }
 
     @Composable
+    private fun SourceStateBadge(label: String, status: ReadStatus, modifier: Modifier = Modifier) {
+        val colors = when (status) {
+            ReadStatus.AVAILABLE -> MaterialTheme.colorScheme.primaryContainer to
+                MaterialTheme.colorScheme.onPrimaryContainer
+            ReadStatus.PARTIAL, ReadStatus.CHECKING -> MaterialTheme.colorScheme.tertiaryContainer to
+                MaterialTheme.colorScheme.onTertiaryContainer
+            ReadStatus.ERROR -> MaterialTheme.colorScheme.errorContainer to
+                MaterialTheme.colorScheme.onErrorContainer
+            ReadStatus.NOT_CHECKED -> MaterialTheme.colorScheme.surfaceVariant to
+                MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        Surface(
+            modifier = modifier,
+            color = colors.first,
+            contentColor = colors.second,
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(status.labelForSource, fontSize = 12.sp)
+            }
+        }
+    }
+
+    @Composable
     private fun SensorCard(
         sensor: SensorRecord,
         nowMillis: Long,
@@ -289,7 +348,7 @@ internal object ParametersTab {
             id = sensor.id,
             idLabel = sensor.cardIdLabel,
             value = sensor.value,
-            sourceLabel = sensor.sourceLabel,
+            sourceLabels = sensor.sourceLabels,
             modeLabel = if (sensor.autoUpdates) "● ПО ПОДПИСКЕ" else "РУЧНОЕ ОБНОВЛЕНИЕ",
             modeIsHighlighted = sensor.autoUpdates,
             footerText = formatUpdateTime(sensor.updatedAtMillis, nowMillis) +
@@ -299,9 +358,9 @@ internal object ParametersTab {
             onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            if (sensor.error.isNotBlank()) {
+            sensor.effectiveReadings.filter { it.error.isNotBlank() }.forEach { reading ->
                 Text(
-                    text = sensor.error,
+                    text = "${reading.badgeLabel}: ${reading.error}",
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp,
                     maxLines = 2,
@@ -323,62 +382,84 @@ internal object ParametersTab {
             if (sensor.autoUpdates) "автоматически по подписке" else "только вручную",
         )
         if (sensor.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
-        if (sensor.source == VehicleDataSource.VHAL) {
-            ValueLine(
-                "Расшифровка",
-                when {
-                    sensor.decoded == true -> "профиль ${sensor.sourceProfile}"
-                    sensor.sourceProfile != null ->
-                        "профиль ${sensor.sourceProfile} не смог преобразовать значение · показан raw"
-                    else -> "нет — показан raw VHAL"
-                },
-            )
-            ValueLine("VHAL ID", String.format(Locale.US, "0x%08X", sensor.id))
-            sensor.sourceTimestampNanos?.let {
-                ValueLine("VHAL timestamp", "$it нс от запуска системы")
+        sensor.propertyId?.let { ValueLine("ID свойства", it.toString()) }
+        ValueLine(
+            "Расшифровка",
+            if (sensor.decoded == true) "нормализованное свойство" else "нет — показано исходное значение",
+        )
+        sensor.effectiveReadings.forEach { reading ->
+            val label = reading.badgeLabel
+            ValueLine("$label · сигнал", reading.signalLabel)
+            ValueLine("$label · raw", reading.value.raw)
+            reading.sourceTimestampNanos?.let {
+                ValueLine("$label · timestamp", "$it нс от запуска системы")
             }
-            if (sensor.areaId != 0) {
-                ValueLine("Area ID", String.format(Locale.US, "0x%08X", sensor.areaId))
-            }
+            if (reading.error.isNotBlank()) ValueLine("$label · ошибка", reading.error)
         }
-        sensor.profilePropertyId?.let { ValueLine("Property ID", it.toString()) }
-        if (sensor.error.isNotBlank()) ValueLine("Ошибка", sensor.error)
     }
 
     private val SensorRecord.selectionKey: String
-        get() = "${source.name}:$id:$areaId"
+        get() = favoriteKey
 
-    private val SensorRecord.sourceLabel: String
-        get() = when {
-            source == VehicleDataSource.VHAL && sourceProfile != null ->
-                "VHAL · $sourceProfile"
-            source == VehicleDataSource.VHAL -> "VHAL · RAW"
-            else -> source.label
-        }
+    private val SensorRecord.sourceLabels: List<String>
+        get() = effectiveReadings.map { it.badgeLabel }.distinct()
 
     private val SensorRecord.cardIdLabel: String
         get() = when {
-            profilePropertyId != null -> "property $profilePropertyId" + areaSuffix
+            propertyId != null -> "свойство $propertyId" + areaSuffix
             source == VehicleDataSource.VHAL ->
-                "signal ${String.format(Locale.US, "0x%08X", id)}" + areaSuffix
-            else -> "signal $id"
+                "сигнал ${String.format(Locale.US, "0x%08X", id)}" + areaSuffix
+            else -> "сигнал $id"
         }
 
     private val SensorRecord.areaSuffix: String
         get() = if (areaId == 0) "" else String.format(Locale.US, " · area 0x%08X", areaId)
 
-    private fun combineReadStatus(first: ReadStatus, second: ReadStatus): ReadStatus = when {
-        first == ReadStatus.AVAILABLE || second == ReadStatus.AVAILABLE -> ReadStatus.AVAILABLE
-        first == ReadStatus.CHECKING || second == ReadStatus.CHECKING -> ReadStatus.CHECKING
-        first == ReadStatus.ERROR || second == ReadStatus.ERROR -> ReadStatus.ERROR
-        else -> ReadStatus.NOT_CHECKED
-    }
-
     private val ReadStatus.labelForSource: String
         get() = when (this) {
             ReadStatus.NOT_CHECKED -> "не проверено"
             ReadStatus.CHECKING -> "проверка"
+            ReadStatus.PARTIAL -> "частично доступен"
             ReadStatus.AVAILABLE -> "доступен"
             ReadStatus.ERROR -> "ошибка"
+        }
+
+    private val SensorRecord.effectiveReadings: List<ParameterSourceReading>
+        get() = sourceReadings.ifEmpty {
+            listOf(
+                ParameterSourceReading(
+                    source = source,
+                    signalId = id,
+                    signalName = apiName,
+                    value = value,
+                    support = support,
+                    error = error,
+                    profile = sourceProfile,
+                    areaId = areaId,
+                    updatedAtMillis = updatedAtMillis,
+                    sourceTimestampNanos = sourceTimestampNanos,
+                    autoUpdates = autoUpdates,
+                    decoded = decoded == true,
+                ),
+            )
+        }
+
+    private val ParameterSourceReading.badgeLabel: String
+        get() = when {
+            source == VehicleDataSource.VHAL && profile != null -> "VHAL · $profile"
+            source == VehicleDataSource.VHAL -> "VHAL · RAW"
+            else -> source.label
+        }
+
+    private val ParameterSourceReading.signalLabel: String
+        get() = buildString {
+            if (source == VehicleDataSource.VHAL) {
+                append(String.format(Locale.US, "0x%08X", signalId))
+            } else {
+                append(signalId)
+            }
+            append(" · ")
+            append(signalName)
+            if (areaId != 0) append(String.format(Locale.US, " · area 0x%08X", areaId))
         }
 }
