@@ -25,6 +25,7 @@ import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.repository.UnifiedParameterCache
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
+private const val CITYRAY_ATLAS_DEVICE = "spec:width=1440px,height=1920px,dpi=160"
 private const val MONJARO_2023_2025_DEVICE = "spec:width=1920px,height=720px,dpi=160"
 
 // The refreshed 15.4-inch Flyme Auto display is commonly specified as a 2.5K 2560x1600 panel.
@@ -32,29 +33,37 @@ private const val MONJARO_2023_2025_DEVICE = "spec:width=1920px,height=720px,dpi
 private const val MONJARO_2026_DEVICE = "spec:width=2560px,height=1600px,dpi=160"
 
 @Preview(
-    name = "ГУ · Диагностика",
-    group = "1440×1920",
-    device = "spec:width=1440px,height=1920px,dpi=160",
+    group = "Cityray / Atlas · 1440×1920",
+    device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     showSystemUi = false,
 )
+@Preview(
+    group = "Monjaro 2023–2025 · 1920×720",
+    device = MONJARO_2023_2025_DEVICE,
+    locale = "ru",
+    showSystemUi = false,
+)
+@Preview(
+    group = "Monjaro 2026+ · 2560×1600",
+    device = MONJARO_2026_DEVICE,
+    locale = "ru",
+    showSystemUi = false,
+)
+private annotation class HeadUnitPreviews
+
+@HeadUnitPreviews
 @Composable
 private fun DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
-@Preview(
-    name = "ГУ · Параметры",
-    group = "1440×1920",
-    device = "spec:width=1440px,height=1920px,dpi=160",
-    locale = "ru",
-    showSystemUi = false,
-)
+@HeadUnitPreviews
 @Composable
 private fun ParametersPreview() = PreviewApp(AppTab.PARAMETERS)
 
 @Preview(
-    name = "ГУ · Параметры · частичная доступность",
-    group = "Состояния параметров",
-    device = "spec:width=1440px,height=1920px,dpi=160",
+    name = "Cityray / Atlas · частичная доступность",
+    group = "Состояния параметров · Cityray / Atlas",
+    device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     showSystemUi = false,
 )
@@ -71,9 +80,9 @@ private fun ParametersPartialPreview() {
 }
 
 @Preview(
-    name = "ГУ · Параметры · RAW",
-    group = "Состояния параметров",
-    device = "spec:width=1440px,height=1920px,dpi=160",
+    name = "Cityray / Atlas · RAW",
+    group = "Состояния параметров · Cityray / Atlas",
+    device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     showSystemUi = false,
 )
@@ -83,9 +92,9 @@ private fun ParametersRawPreview() {
 }
 
 @Preview(
-    name = "ГУ · Параметры · источники недоступны",
-    group = "Состояния параметров",
-    device = "spec:width=1440px,height=1920px,dpi=160",
+    name = "Cityray / Atlas · источники недоступны",
+    group = "Состояния параметров · Cityray / Atlas",
+    device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     showSystemUi = false,
 )
@@ -113,34 +122,7 @@ private fun ParametersErrorPreview() {
 @Composable
 private fun CompactParametersPreview() = PreviewApp(AppTab.PARAMETERS)
 
-@Preview(
-    name = "Monjaro 2023–2025 · Параметры",
-    group = "Monjaro",
-    device = MONJARO_2023_2025_DEVICE,
-    locale = "ru",
-    showSystemUi = false,
-)
-@Composable
-private fun MonjaroLegacyParametersPreview() = PreviewApp(AppTab.PARAMETERS)
-
-@Preview(
-    name = "Monjaro 2026+ · Параметры",
-    group = "Monjaro",
-    device = MONJARO_2026_DEVICE,
-    locale = "ru",
-    showSystemUi = false,
-)
-@Composable
-private fun MonjaroFlymeParametersPreview() = PreviewApp(AppTab.PARAMETERS)
-
-@Preview(
-    name = "ГУ · Значение + график",
-    group = "1440×1920",
-    device = "spec:width=1440px,height=1920px,dpi=160",
-    locale = "ru",
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showSystemUi = false,
-)
+@HeadUnitPreviews
 @Composable
 private fun FullscreenSensorPreview() {
     val density = LocalDensity.current
@@ -205,40 +187,22 @@ private fun previewChartSamples(): List<VehicleParameterSample> = listOf(
     )
 }
 
-@Preview(
-    name = "ГУ · Автомобиль",
-    group = "1440×1920",
-    device = "spec:width=1440px,height=1920px,dpi=160",
-    locale = "ru",
-    showSystemUi = false,
-)
+@HeadUnitPreviews
 @Composable
 private fun VehiclePreview() = PreviewApp(AppTab.VEHICLE)
 
-@Preview(
-    name = "ГУ · Возможности",
-    group = "1440×1920",
-    device = "spec:width=1440px,height=1920px,dpi=160",
-    locale = "ru",
-    showSystemUi = false,
-)
+@HeadUnitPreviews
 @Composable
 private fun FunctionsPreview() = PreviewApp(AppTab.FUNCTIONS)
 
-@Preview(
-    name = "ГУ · Лог",
-    group = "1440×1920",
-    device = "spec:width=1440px,height=1920px,dpi=160",
-    locale = "ru",
-    showSystemUi = false,
-)
+@HeadUnitPreviews
 @Composable
 private fun LogPreview() = PreviewApp(AppTab.LOG)
 
 @Preview(
-    name = "ГУ · Светлая тема",
-    group = "Темы",
-    device = "spec:width=1440px,height=1920px,dpi=160",
+    name = "Cityray / Atlas · Светлая тема",
+    group = "Темы · Cityray / Atlas",
+    device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     uiMode = Configuration.UI_MODE_NIGHT_NO,
     showSystemUi = false,
@@ -247,9 +211,9 @@ private fun LogPreview() = PreviewApp(AppTab.LOG)
 private fun LightThemePreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
 @Preview(
-    name = "ГУ · Тёмная тема",
-    group = "Темы",
-    device = "spec:width=1440px,height=1920px,dpi=160",
+    name = "Cityray / Atlas · Тёмная тема",
+    group = "Темы · Cityray / Atlas",
+    device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     uiMode = Configuration.UI_MODE_NIGHT_YES,
     showSystemUi = false,
