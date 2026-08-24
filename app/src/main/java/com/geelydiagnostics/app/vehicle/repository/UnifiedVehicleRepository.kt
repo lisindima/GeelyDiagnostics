@@ -9,6 +9,7 @@ import com.geelydiagnostics.app.ReadStatus
 import com.geelydiagnostics.app.VehicleFunctionRecord
 import com.geelydiagnostics.app.VehicleInfoRecord
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
@@ -18,6 +19,10 @@ import java.io.Closeable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 internal data class VehicleRepositoryState(
     val carStatus: ReadStatus = ReadStatus.NOT_CHECKED,
@@ -40,32 +45,38 @@ internal data class VehicleRepositoryState(
 
 internal class UnifiedVehicleRepository(
     context: Context,
-    private val onState: (VehicleRepositoryState) -> Unit,
 ) : Closeable, EcarxDataListener {
     private val appContext = context.applicationContext
     private val diagnostics = DiagnosticsRepository()
     private val sources = mutableListOf<VehicleParameterDataSource>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
-    private var state = VehicleRepositoryState()
-    private val parameterCache = UnifiedParameterCache()
+    private val mutableState = MutableStateFlow(VehicleRepositoryState())
+    private val parameterStore = UnifiedParameterStore()
+
+    val state: StateFlow<VehicleRepositoryState> = mutableState.asStateFlow()
+
+    fun observe(propertyId: CarPropertyId, areaId: Int = 0): Flow<VehicleParameter?> =
+        parameterStore.observe(propertyId, areaId)
+
+    fun observeParameters(): StateFlow<List<VehicleParameter>> = parameterStore.parameters
 
     @Synchronized
     fun start(profile: VehicleProfile) {
+        val previousLog = mutableState.value.logLines
         sources.forEach { runCatching { it.close() } }
         sources.clear()
         diagnostics.reset()
-        parameterCache.clear()
-        state = VehicleRepositoryState(
+        parameterStore.clear()
+        mutableState.value = VehicleRepositoryState(
             carStatus = ReadStatus.CHECKING,
             ecarxParameterStatus = ReadStatus.CHECKING,
             vhalStatus = ReadStatus.CHECKING,
             carInfoStatus = ReadStatus.CHECKING,
             functionStatus = ReadStatus.CHECKING,
             diagnostics = diagnostics.snapshot(),
-            logLines = state.logLines,
+            logLines = previousLog,
             scanStartedAtMillis = System.currentTimeMillis(),
         )
-        publish()
         onSystemLog("=== Новый опрос источников ===")
         try {
             sources += EcarxDataSource(appContext, this).also { it.start() }
@@ -142,6 +153,7 @@ internal class UnifiedVehicleRepository(
         when (source) {
             VehiclePropertySource.ECARX -> copy(ecarxParameterStatus = status, ecarxParameterDetail = detail)
             VehiclePropertySource.VHAL -> copy(vhalStatus = status, vhalDetail = detail)
+            VehiclePropertySource.MOCK -> this
         }
     }
 
@@ -150,13 +162,13 @@ internal class UnifiedVehicleRepository(
         source: VehiclePropertySource,
         values: List<CarPropertySnapshot>,
     ) {
-        parameterCache.replaceSource(source, values)
+        parameterStore.replaceSource(source, values)
         publishParameters()
     }
 
     @Synchronized
     override fun onParameterValue(value: CarPropertySnapshot) {
-        parameterCache.update(value)
+        parameterStore.update(value)
         publishParameters()
     }
 
@@ -190,15 +202,12 @@ internal class UnifiedVehicleRepository(
     fun clearLog() = update { copy(logLines = emptyList()) }
 
     private fun publishParameters() = update {
-        copy(parameters = parameterCache.parameters())
+        copy(parameters = parameterStore.parameters.value)
     }
 
     private fun update(block: VehicleRepositoryState.() -> VehicleRepositoryState) {
-        state = state.block()
-        publish()
+        mutableState.value = mutableState.value.block()
     }
-
-    private fun publish() = onState(state)
 
     override fun close() {
         sources.forEach { runCatching { it.close() } }

@@ -40,7 +40,7 @@ internal fun VehicleDisplayValue.chartNumber(): Double? = LEADING_NUMBER
     ?.takeIf(Double::isFinite)
 
 @Composable
-internal fun SensorHistoryChart(
+internal fun ParameterHistoryChart(
     samples: List<VehicleParameterSample>,
     isLive: Boolean,
 ) {

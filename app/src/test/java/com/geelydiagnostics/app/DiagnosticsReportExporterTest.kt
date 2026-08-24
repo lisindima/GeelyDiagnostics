@@ -18,10 +18,10 @@ class DiagnosticsReportExporterTest {
 
     @Test
     fun exportContainsRawValuesSourceProfileAndReadOnlyMarker() {
-        val sensor = VehicleParameter(
+        val parameter = VehicleParameter(
             propertyId = CarPropertyId(10012),
             areaId = 0,
-            title = "Тестовый сенсор",
+            title = "Тестовый параметр",
             value = VehicleDisplayValue(display = "Включено", raw = "1"),
             valueKind = "int",
             status = VehiclePropertyStatus.AVAILABLE,
@@ -46,8 +46,8 @@ class DiagnosticsReportExporterTest {
         )
         val state = AppUiState(
             selectedVhalProfile = VehicleProfile.G426,
-            parameters = listOf(sensor),
-            favoriteKeys = setOf(sensor.favoriteKey),
+            parameters = listOf(parameter),
+            favoriteKeys = setOf(parameter.favoriteKey),
             logLines = listOf("12:00:00.000  test"),
             scanStartedAtMillis = 1_700_000_000_000L,
         )

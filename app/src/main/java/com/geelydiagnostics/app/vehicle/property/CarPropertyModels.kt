@@ -64,6 +64,7 @@ enum class VehiclePropertyStatus {
 enum class VehiclePropertySource(val label: String) {
     VHAL("VHAL"),
     ECARX("ECARX"),
+    MOCK("MOCK"),
 }
 
 /**

@@ -6,7 +6,7 @@ import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKey
 import java.util.Locale
 
-internal enum class SensorValueFilter(val title: String) {
+internal enum class ParameterValueFilter(val title: String) {
     ALL("Все значения"),
     DECODED("Нормализовано"),
     RAW("Без расшифровки"),
@@ -21,22 +21,22 @@ internal enum class CatalogListFilter(val title: String) {
     ERRORS("Ошибки"),
 }
 
-internal fun filterSensors(
+internal fun filterParameters(
     records: List<VehicleParameter>,
-    valueFilter: SensorValueFilter,
+    valueFilter: ParameterValueFilter,
     query: String,
     favoriteKeys: Set<String>,
 ): List<VehicleParameter> = records.asSequence()
     .filter { record ->
         when (valueFilter) {
-            SensorValueFilter.ALL -> record.status == VehiclePropertyStatus.AVAILABLE
-            SensorValueFilter.DECODED -> record.status == VehiclePropertyStatus.AVAILABLE && record.decoded
-            SensorValueFilter.RAW -> record.status == VehiclePropertyStatus.AVAILABLE && !record.decoded
-            SensorValueFilter.CHANGED ->
+            ParameterValueFilter.ALL -> record.status == VehiclePropertyStatus.AVAILABLE
+            ParameterValueFilter.DECODED -> record.status == VehiclePropertyStatus.AVAILABLE && record.decoded
+            ParameterValueFilter.RAW -> record.status == VehiclePropertyStatus.AVAILABLE && !record.decoded
+            ParameterValueFilter.CHANGED ->
                 record.status == VehiclePropertyStatus.AVAILABLE && record.changedSinceScan
-            SensorValueFilter.ERRORS -> record.status == VehiclePropertyStatus.ERROR ||
+            ParameterValueFilter.ERRORS -> record.status == VehiclePropertyStatus.ERROR ||
                 record.error.isNotBlank() || record.sourceReadings.any { it.error.isNotBlank() }
-            SensorValueFilter.FAVORITES ->
+            ParameterValueFilter.FAVORITES ->
                 record.status == VehiclePropertyStatus.AVAILABLE && record.matchesFavorite(favoriteKeys)
         }
     }

@@ -110,7 +110,7 @@ private fun ParametersErrorPreview() {
 
 @HeadUnitPreviews
 @Composable
-private fun FullscreenSensorPreview() {
+private fun FullscreenParameterPreview() {
     val density = LocalDensity.current
     CompositionLocalProvider(
         LocalDensity provides Density(density = density.density, fontScale = 1.5f),
@@ -127,7 +127,7 @@ private fun FullscreenSensorPreview() {
                 onFavoriteToggle = {},
                 onDismiss = {},
                 chart = {
-                    SensorHistoryChart(
+                    ParameterHistoryChart(
                         samples = previewChartSamples(),
                         isLive = true,
                     )

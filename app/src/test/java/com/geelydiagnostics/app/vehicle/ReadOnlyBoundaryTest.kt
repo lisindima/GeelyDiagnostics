@@ -1,6 +1,8 @@
 package com.geelydiagnostics.app.vehicle
 
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.repository.UnifiedVehicleRepository
+import com.geelydiagnostics.app.vehicle.source.MockCarDataSource
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
 import com.geelydiagnostics.app.vehicle.vhal.VhalGateway
 import org.junit.Assert.assertFalse
@@ -32,6 +34,25 @@ class ReadOnlyBoundaryTest {
                 methodNames.any { it.startsWith(prefix, ignoreCase = true) },
             )
         }
+    }
+
+    @Test
+    fun mockSourceCannotExposeVehicleWrites() {
+        val methodNames = MockCarDataSource::class.java.declaredMethods.map { it.name }
+        listOf("set", "write", "delete", "reset").forEach { prefix ->
+            assertFalse(
+                "MockCarDataSource unexpectedly exposes $prefix*: $methodNames",
+                methodNames.any { it.startsWith(prefix, ignoreCase = true) },
+            )
+        }
+    }
+
+    @Test
+    fun unifiedRepositoryExposesPropertyObservation() {
+        val observe = UnifiedVehicleRepository::class.java.declaredMethods
+            .firstOrNull { it.name.startsWith("observe") }
+
+        assertTrue("observe(CarPropertyId) is required", observe != null)
     }
 
     @Test

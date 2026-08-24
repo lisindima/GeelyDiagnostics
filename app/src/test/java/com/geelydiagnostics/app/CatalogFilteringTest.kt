@@ -13,7 +13,7 @@ import org.junit.Test
 
 class CatalogFilteringTest {
 
-    private val mapped = sensor(
+    private val mapped = parameter(
         id = 0x2170901E,
         title = "Оставшееся топливо",
         value = VehicleDisplayValue("41.7 л", "41700"),
@@ -21,12 +21,12 @@ class CatalogFilteringTest {
         propertyId = 10012,
         decoded = true,
     )
-    private val raw = sensor(
+    private val raw = parameter(
         id = 0x21400401,
         title = "Неизвестное свойство",
         value = VehicleDisplayValue.raw("[1, 2]"),
     )
-    private val changed = sensor(
+    private val changed = parameter(
         id = 0x21400402,
         title = "Передача",
         value = VehicleDisplayValue("D", "3"),
@@ -35,7 +35,7 @@ class CatalogFilteringTest {
         changedSinceScan = true,
         decoded = true,
     )
-    private val error = sensor(
+    private val error = parameter(
         id = 0x21400403,
         title = "Ошибочное свойство",
         value = VehicleDisplayValue.unavailable,
@@ -44,18 +44,18 @@ class CatalogFilteringTest {
     )
 
     @Test
-    fun sensorFiltersSeparateMappedRawChangedErrorsAndFavorites() {
+    fun parameterFiltersSeparateMappedRawChangedErrorsAndFavorites() {
         val records = listOf(mapped, raw, changed, error)
 
-        assertEquals(listOf(mapped, changed), filtered(records, SensorValueFilter.DECODED))
-        assertEquals(listOf(raw), filtered(records, SensorValueFilter.RAW))
-        assertEquals(listOf(changed), filtered(records, SensorValueFilter.CHANGED))
-        assertEquals(listOf(error), filtered(records, SensorValueFilter.ERRORS))
+        assertEquals(listOf(mapped, changed), filtered(records, ParameterValueFilter.DECODED))
+        assertEquals(listOf(raw), filtered(records, ParameterValueFilter.RAW))
+        assertEquals(listOf(changed), filtered(records, ParameterValueFilter.CHANGED))
+        assertEquals(listOf(error), filtered(records, ParameterValueFilter.ERRORS))
         assertEquals(
             listOf(mapped),
-            filterSensors(
+            filterParameters(
                 records,
-                SensorValueFilter.FAVORITES,
+                ParameterValueFilter.FAVORITES,
                 "",
                 setOf(mapped.favoriteKey),
             ),
@@ -63,11 +63,11 @@ class CatalogFilteringTest {
     }
 
     @Test
-    fun sensorSearchMatchesMultipleTokensApiIdAndRaw() {
+    fun parameterSearchMatchesMultipleTokensApiIdAndRaw() {
         val records = listOf(mapped, raw, changed)
-        assertEquals(listOf(mapped), filtered(records, SensorValueFilter.ALL, "топливо 41700"))
-        assertEquals(listOf(raw), filtered(records, SensorValueFilter.ALL, "0x21400401"))
-        assertEquals(listOf(mapped), filtered(records, SensorValueFilter.ALL, "10012"))
+        assertEquals(listOf(mapped), filtered(records, ParameterValueFilter.ALL, "топливо 41700"))
+        assertEquals(listOf(raw), filtered(records, ParameterValueFilter.ALL, "0x21400401"))
+        assertEquals(listOf(mapped), filtered(records, ParameterValueFilter.ALL, "10012"))
     }
 
     @Test
@@ -94,12 +94,12 @@ class CatalogFilteringTest {
             ),
         )
 
-        assertEquals(listOf(combined), filtered(listOf(combined), SensorValueFilter.ALL, "ECARX 1050112"))
+        assertEquals(listOf(combined), filtered(listOf(combined), ParameterValueFilter.ALL, "ECARX 1050112"))
     }
 
     @Test
     fun mappingFailureRemainsVisibleAsRawAndIsAlsoMarkedAsError() {
-        val mappingFailure = sensor(
+        val mappingFailure = parameter(
             id = 0x21400404,
             title = "Неизвестное значение enum",
             value = VehicleDisplayValue.raw("99"),
@@ -108,9 +108,9 @@ class CatalogFilteringTest {
             decoded = false,
         )
 
-        assertTrue(mappingFailure in filtered(listOf(mappingFailure), SensorValueFilter.ALL))
-        assertTrue(mappingFailure in filtered(listOf(mappingFailure), SensorValueFilter.RAW))
-        assertTrue(mappingFailure in filtered(listOf(mappingFailure), SensorValueFilter.ERRORS))
+        assertTrue(mappingFailure in filtered(listOf(mappingFailure), ParameterValueFilter.ALL))
+        assertTrue(mappingFailure in filtered(listOf(mappingFailure), ParameterValueFilter.RAW))
+        assertTrue(mappingFailure in filtered(listOf(mappingFailure), ParameterValueFilter.ERRORS))
     }
 
     @Test
@@ -142,11 +142,11 @@ class CatalogFilteringTest {
 
     private fun filtered(
         records: List<VehicleParameter>,
-        filter: SensorValueFilter,
+        filter: ParameterValueFilter,
         query: String = "",
-    ) = filterSensors(records, filter, query, emptySet())
+    ) = filterParameters(records, filter, query, emptySet())
 
-    private fun sensor(
+    private fun parameter(
         id: Int,
         title: String,
         value: VehicleDisplayValue,

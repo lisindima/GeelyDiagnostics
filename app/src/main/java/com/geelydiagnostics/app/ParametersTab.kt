@@ -46,13 +46,13 @@ internal object ParametersTab {
         onVhalProfileSelected: (VehicleProfile) -> Unit,
         onFavoriteToggle: (String) -> Unit,
     ) {
-        var expandedSensorKey by rememberSaveable { mutableStateOf<String?>(null) }
+        var expandedParameterKey by rememberSaveable { mutableStateOf<String?>(null) }
         var query by rememberSaveable { mutableStateOf("") }
-        var selectedValueFilterIndex by rememberSaveable { mutableIntStateOf(SensorValueFilter.ALL.ordinal) }
-        val selectedValueFilter = SensorValueFilter.entries[selectedValueFilterIndex]
+        var selectedValueFilterIndex by rememberSaveable { mutableIntStateOf(ParameterValueFilter.ALL.ordinal) }
+        val selectedValueFilter = ParameterValueFilter.entries[selectedValueFilterIndex]
         val nowMillis by rememberCurrentTimeMillis()
         val supported = state.parameters.filter { it.status == VehiclePropertyStatus.AVAILABLE }
-        val filtered = filterSensors(
+        val filtered = filterParameters(
             records = state.parameters,
             valueFilter = selectedValueFilter,
             query = query,
@@ -68,13 +68,13 @@ internal object ParametersTab {
         val emptyText = when {
             state.ecarxParameterStatus == ReadStatus.ERROR && state.vhalStatus == ReadStatus.ERROR ->
                 "Источники данных недоступны. Подробности записаны в журнале."
-            selectedValueFilter == SensorValueFilter.DECODED &&
+            selectedValueFilter == ParameterValueFilter.DECODED &&
                 state.selectedVhalProfile == VehicleProfile.RAW ->
                 "Для VHAL выбран RAW. Здесь останутся только значения, расшифрованные другими источниками."
             else -> "По выбранному фильтру значения не найдены."
         }
 
-        SensorList(
+        ParameterList(
             state = state,
             supportedCount = supported.size,
             displayedCount = filtered.size,
@@ -91,35 +91,35 @@ internal object ParametersTab {
             nowMillis = nowMillis,
             onVhalProfileSelected = onVhalProfileSelected,
             onFavoriteToggle = onFavoriteToggle,
-            onSensorSelected = { expandedSensorKey = it.selectionKey },
+            onParameterSelected = { expandedParameterKey = it.selectionKey },
         )
-        state.parameters.firstOrNull { it.selectionKey == expandedSensorKey }?.let { sensor ->
+        state.parameters.firstOrNull { it.selectionKey == expandedParameterKey }?.let { parameter ->
             FullscreenValueDialog(
-                title = sensor.title,
-                apiName = sensor.fieldName,
-                idText = sensor.cardIdLabel,
-                value = sensor.value,
-                sourceLabels = sensor.sourceLabels,
-                modeLabel = if (sensor.autoUpdates) {
+                title = parameter.title,
+                apiName = parameter.fieldName,
+                idText = parameter.cardIdLabel,
+                value = parameter.value,
+                sourceLabels = parameter.sourceLabels,
+                modeLabel = if (parameter.autoUpdates) {
                     "АВТООБНОВЛЕНИЕ · ПОДПИСКА"
                 } else {
                     "РУЧНОЕ ОБНОВЛЕНИЕ"
                 },
-                isFavorite = sensor.favoriteKey in state.favoriteKeys,
-                onFavoriteToggle = { onFavoriteToggle(sensor.favoriteKey) },
-                onDismiss = { expandedSensorKey = null },
-                chart = if (sensor.chartable) {
+                isFavorite = parameter.favoriteKey in state.favoriteKeys,
+                onFavoriteToggle = { onFavoriteToggle(parameter.favoriteKey) },
+                onDismiss = { expandedParameterKey = null },
+                chart = if (parameter.chartable) {
                     {
-                        SensorHistoryChart(
-                            samples = state.parameterHistory[sensor.favoriteKey].orEmpty(),
-                            isLive = sensor.autoUpdates,
+                        ParameterHistoryChart(
+                            samples = state.parameterHistory[parameter.favoriteKey].orEmpty(),
+                            isLive = parameter.autoUpdates,
                         )
                     }
                 } else {
                     null
                 },
             ) {
-                SensorDetails(sensor, nowMillis)
+                ParameterDetails(parameter, nowMillis)
             }
         }
     }
@@ -190,7 +190,7 @@ internal object ParametersTab {
     }
 
     @Composable
-    private fun SensorList(
+    private fun ParameterList(
         state: AppUiState,
         supportedCount: Int,
         displayedCount: Int,
@@ -207,7 +207,7 @@ internal object ParametersTab {
         nowMillis: Long,
         onVhalProfileSelected: (VehicleProfile) -> Unit,
         onFavoriteToggle: (String) -> Unit,
-        onSensorSelected: (VehicleParameter) -> Unit,
+        onParameterSelected: (VehicleParameter) -> Unit,
     ) {
         val combinedStatus = aggregateReadStatus(listOf(state.ecarxParameterStatus, state.vhalStatus))
         val combinedDetail = listOf(
@@ -257,7 +257,7 @@ internal object ParametersTab {
             }
             item {
                 CatalogFilterRow(
-                    labels = SensorValueFilter.entries.map(SensorValueFilter::title),
+                    labels = ParameterValueFilter.entries.map(ParameterValueFilter::title),
                     selectedIndex = selectedValueFilterIndex,
                     onSelected = onValueFilterSelected,
                 )
@@ -275,7 +275,7 @@ internal object ParametersTab {
             } else {
                 groups.forEach { (groupTitle, groupSubtitle, parameters) ->
                     item {
-                        SensorGroupHeader(
+                        ParameterGroupHeader(
                             title = groupTitle,
                             subtitle = groupSubtitle,
                             count = parameters.size,
@@ -283,13 +283,13 @@ internal object ParametersTab {
                     }
                     parameters.chunked(2).forEach { row ->
                         item {
-                            TwoColumnRow(row) { sensor ->
-                                SensorCard(
-                                    sensor = sensor,
+                            TwoColumnRow(row) { parameter ->
+                                ParameterCard(
+                                    parameter = parameter,
                                     nowMillis = nowMillis,
-                                    isFavorite = sensor.favoriteKey in favoriteKeys,
-                                    onFavoriteToggle = { onFavoriteToggle(sensor.favoriteKey) },
-                                    onClick = { onSensorSelected(sensor) },
+                                    isFavorite = parameter.favoriteKey in favoriteKeys,
+                                    onFavoriteToggle = { onFavoriteToggle(parameter.favoriteKey) },
+                                    onClick = { onParameterSelected(parameter) },
                                 )
                             }
                         }
@@ -300,7 +300,7 @@ internal object ParametersTab {
     }
 
     @Composable
-    private fun SensorGroupHeader(title: String, subtitle: String, count: Int) {
+    private fun ParameterGroupHeader(title: String, subtitle: String, count: Int) {
         CountSummary(
             title = title,
             count = count,
@@ -339,31 +339,31 @@ internal object ParametersTab {
     }
 
     @Composable
-    private fun SensorCard(
-        sensor: VehicleParameter,
+    private fun ParameterCard(
+        parameter: VehicleParameter,
         nowMillis: Long,
         isFavorite: Boolean,
         onFavoriteToggle: () -> Unit,
         onClick: () -> Unit,
     ) {
-        val stale = sensor.isStale(nowMillis)
+        val stale = parameter.isStale(nowMillis)
         DataCard(
-            title = sensor.title,
-            apiName = sensor.fieldName,
-            id = sensor.propertyId?.rawValue ?: sensor.primaryReading.signalId,
-            idLabel = sensor.cardIdLabel,
-            value = sensor.value,
-            sourceLabels = sensor.sourceLabels,
-            modeLabel = if (sensor.autoUpdates) "● ПО ПОДПИСКЕ" else "РУЧНОЕ ОБНОВЛЕНИЕ",
-            modeIsHighlighted = sensor.autoUpdates,
-            footerText = formatUpdateTime(sensor.updatedAtMillis, nowMillis) +
+            title = parameter.title,
+            apiName = parameter.fieldName,
+            id = parameter.propertyId?.rawValue ?: parameter.primaryReading.signalId,
+            idLabel = parameter.cardIdLabel,
+            value = parameter.value,
+            sourceLabels = parameter.sourceLabels,
+            modeLabel = if (parameter.autoUpdates) "● ПО ПОДПИСКЕ" else "РУЧНОЕ ОБНОВЛЕНИЕ",
+            modeIsHighlighted = parameter.autoUpdates,
+            footerText = formatUpdateTime(parameter.updatedAtMillis, nowMillis) +
                 if (stale) " · УСТАРЕЛО" else "",
             footerIsError = stale,
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            sensor.sourceReadings.filter { it.error.isNotBlank() }.forEach { reading ->
+            parameter.sourceReadings.filter { it.error.isNotBlank() }.forEach { reading ->
                 Text(
                     text = "${reading.badgeLabel}: ${reading.error}",
                     color = MaterialTheme.colorScheme.error,
@@ -375,24 +375,24 @@ internal object ParametersTab {
     }
 
     @Composable
-    private fun SensorDetails(sensor: VehicleParameter, nowMillis: Long) {
-        ValueLine("Тип", sensor.valueKind)
+    private fun ParameterDetails(parameter: VehicleParameter, nowMillis: Long) {
+        ValueLine("Тип", parameter.valueKind)
         ValueLine(
             "Обновлено",
-            formatUpdateTime(sensor.updatedAtMillis, nowMillis) +
-                if (sensor.isStale(nowMillis)) " · УСТАРЕЛО" else "",
+            formatUpdateTime(parameter.updatedAtMillis, nowMillis) +
+                if (parameter.isStale(nowMillis)) " · УСТАРЕЛО" else "",
         )
         ValueLine(
             "Обновление",
-            if (sensor.autoUpdates) "автоматически по подписке" else "только вручную",
+            if (parameter.autoUpdates) "автоматически по подписке" else "только вручную",
         )
-        if (sensor.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
-        sensor.propertyId?.let { ValueLine("ID свойства", it.toString()) }
+        if (parameter.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
+        parameter.propertyId?.let { ValueLine("ID свойства", it.toString()) }
         ValueLine(
             "Расшифровка",
-            if (sensor.decoded) "нормализованное свойство" else "нет — показано исходное значение",
+            if (parameter.decoded) "нормализованное свойство" else "нет — показано исходное значение",
         )
-        sensor.sourceReadings.forEach { reading ->
+        parameter.sourceReadings.forEach { reading ->
             val label = reading.badgeLabel
             ValueLine("$label · сигнал", reading.signalLabel)
             ValueLine("$label · raw", reading.value.raw)

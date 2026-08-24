@@ -1,12 +1,11 @@
 package com.geelydiagnostics.app
 
 import android.app.Application
-import android.os.Handler
-import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
@@ -14,6 +13,7 @@ import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKey
 import com.geelydiagnostics.app.vehicle.repository.UnifiedVehicleRepository
 import com.geelydiagnostics.app.vehicle.repository.VehicleRepositoryState
+import kotlinx.coroutines.launch
 
 internal class DiagnosticsViewModel(application: Application) : AndroidViewModel(application) {
     var uiState by mutableStateOf(
@@ -24,10 +24,14 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
     )
         private set
 
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val repository = UnifiedVehicleRepository(application, ::onRepositoryState)
+    private val repository = UnifiedVehicleRepository(application)
 
     init {
+        viewModelScope.launch {
+            repository.state.collect { repositoryState ->
+                onRepositoryState(repositoryState)
+            }
+        }
         startScan()
     }
 
@@ -56,7 +60,7 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         repository.start(uiState.selectedVhalProfile)
     }
 
-    private fun onRepositoryState(repositoryState: VehicleRepositoryState) = onMain {
+    private fun onRepositoryState(repositoryState: VehicleRepositoryState) {
         var history = if (
             repositoryState.scanStartedAtMillis != null &&
             repositoryState.scanStartedAtMillis != uiState.scanStartedAtMillis
@@ -65,8 +69,11 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         } else {
             uiState.parameterHistory
         }
-        repositoryState.parameters.forEach { sensor ->
-            history = history.withSample(sensor, sensor.updatedAtMillis ?: System.currentTimeMillis())
+        repositoryState.parameters.forEach { parameter ->
+            history = history.withSample(
+                parameter,
+                parameter.updatedAtMillis ?: System.currentTimeMillis(),
+            )
         }
         val favoriteKeys = migrateParameterFavorites(uiState.favoriteKeys, repositoryState.parameters)
         if (favoriteKeys != uiState.favoriteKeys) {
@@ -103,31 +110,27 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         parameters: List<VehicleParameter>,
     ): Set<String> {
         val migrated = current.toMutableSet()
-        parameters.filter { it.propertyId != null }.forEach { sensor ->
-            val legacyKeys = sensor.sourceReadings
+        parameters.filter { it.propertyId != null }.forEach { parameter ->
+            val legacyKeys = parameter.sourceReadings
                 .map { it.legacyFavoriteKey }
             if (legacyKeys.any(migrated::contains)) {
                 migrated.removeAll(legacyKeys.toSet())
-                migrated += sensor.favoriteKey
+                migrated += parameter.favoriteKey
             }
         }
         return migrated
-    }
-
-    private fun onMain(action: () -> Unit) {
-        if (Looper.myLooper() == Looper.getMainLooper()) action() else mainHandler.post { action() }
     }
 
     private fun preferences() = getApplication<Application>()
         .getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
 
     private fun Map<String, List<VehicleParameterSample>>.withSample(
-        sensor: VehicleParameter,
+        parameter: VehicleParameter,
         timestampMillis: Long,
     ): Map<String, List<VehicleParameterSample>> {
-        if (!sensor.chartable) return this
-        val numericValue = sensor.value.chartNumber() ?: return this
-        val key = sensor.favoriteKey
+        if (!parameter.chartable) return this
+        val numericValue = parameter.value.chartNumber() ?: return this
+        val key = parameter.favoriteKey
         val sample = VehicleParameterSample(timestampMillis = timestampMillis, value = numericValue)
         val existing = get(key).orEmpty()
         if (existing.lastOrNull() == sample) return this
