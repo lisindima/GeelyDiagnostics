@@ -27,8 +27,8 @@ class BundledVehicleAssetsTest {
     fun bundledCatalogContainsAllVerifiedDefinitionsAndNoAccessMetadata() {
         val raw = JSONArray(catalogFile.readText())
 
-        assertEquals(73, catalog.all().size)
-        assertEquals(73, raw.length())
+        assertEquals(74, catalog.all().size)
+        assertEquals(74, raw.length())
         for (index in 0 until raw.length()) {
             val item = raw.getJSONObject(index)
             assertFalse("property ${item.getInt("propertyId")}", item.has("access"))

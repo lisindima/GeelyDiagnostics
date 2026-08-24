@@ -2,6 +2,7 @@ package com.geelydiagnostics.app.vehicle.vhal
 
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import java.io.Closeable
+import java.math.BigDecimal
 
 internal data class VhalPropertyConfig(
     val propertyId: Int,
@@ -40,4 +41,20 @@ internal interface VhalGateway : Closeable {
         configs: List<VhalPropertyConfig>,
         onValue: (VhalPropertyValue) -> Unit,
     ): Set<Int>
+}
+
+/** Keeps the shortest decimal form supplied by Float instead of exposing Float-to-Double noise. */
+internal fun formatVhalNumber(value: Number): String = when (value) {
+    is Float -> if (value.isFinite()) {
+        BigDecimal(value.toString()).stripTrailingZeros().toPlainString()
+    } else {
+        value.toString()
+    }
+    is Double -> if (value.isFinite()) {
+        BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
+    } else {
+        value.toString()
+    }
+    is Byte, is Short, is Int, is Long -> value.toLong().toString()
+    else -> value.toString()
 }

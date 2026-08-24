@@ -5,7 +5,6 @@ import android.hardware.automotive.vehicle.V2_0.VehiclePropValue
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
-import java.math.BigDecimal
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -322,23 +321,17 @@ private fun List<VhalPropertyConfig>.merge(): VhalPropertyConfig {
 }
 
 private fun RawVehicleValue.Companion.number(value: Number): RawVehicleValue = RawVehicleValue(
-    text = formatNumber(value.toDouble()),
+    text = formatVhalNumber(value),
     number = value.toDouble(),
 )
 
 private fun List<Number>.formatted(): String =
     joinToString(prefix = "[", postfix = "]") { value ->
         when (value) {
-            is Float, is Double -> formatNumber(value.toDouble())
+            is Float, is Double -> formatVhalNumber(value)
             else -> value.toLong().toString()
         }
     }
-
-private fun formatNumber(value: Double): String = if (value.isFinite()) {
-    BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
-} else {
-    value.toString()
-}
 
 private fun Int.hex(): String = "0x${toUInt().toString(16).padStart(8, '0')}"
 

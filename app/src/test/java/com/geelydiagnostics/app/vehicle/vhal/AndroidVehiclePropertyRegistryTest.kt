@@ -33,6 +33,12 @@ class AndroidVehiclePropertyRegistryTest {
             expected = 36.0,
         )
         assertNumber(
+            VehiclePropertyIds.PERF_VEHICLE_SPEED_DISPLAY,
+            raw = 10.0,
+            expectedProperty = CarPropertyId.DISPLAY_VEHICLE_SPEED,
+            expected = 36.0,
+        )
+        assertNumber(
             VehiclePropertyIds.FUEL_LEVEL,
             raw = 41_700.0,
             expectedProperty = CarPropertyId.REMAINING_FUEL_LITERS,

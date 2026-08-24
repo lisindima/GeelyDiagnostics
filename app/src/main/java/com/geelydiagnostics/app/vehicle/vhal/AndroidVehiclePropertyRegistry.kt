@@ -34,7 +34,7 @@ internal object AndroidVehiclePropertyRegistry {
         numberMapping(
             VehiclePropertyIds.PERF_VEHICLE_SPEED_DISPLAY,
             "PERF_VEHICLE_SPEED_DISPLAY",
-            CarPropertyId.VEHICLE_SPEED,
+            CarPropertyId.DISPLAY_VEHICLE_SPEED,
             Operator.MULTIPLY,
             3.6,
         ),

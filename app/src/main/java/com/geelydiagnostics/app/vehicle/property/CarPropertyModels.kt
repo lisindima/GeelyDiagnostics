@@ -22,6 +22,7 @@ value class CarPropertyId(val rawValue: Int) {
         val DRIVER_SEAT_BELT = CarPropertyId(10056)
         val STEERING_WHEEL_ANGLE = CarPropertyId(10058)
         val HIGH_VOLTAGE_BATTERY_RANGE = CarPropertyId(10060)
+        val DISPLAY_VEHICLE_SPEED = CarPropertyId(10063)
     }
 }
 

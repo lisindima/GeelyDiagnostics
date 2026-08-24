@@ -5,7 +5,6 @@ import android.car.hardware.CarPropertyValue
 import android.car.hardware.property.CarPropertyManager
 import android.content.Context
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
-import java.math.BigDecimal
 
 /** Read-only AAOS gateway. CarService selects its AIDL or HIDL VHAL backend. */
 @Suppress("DEPRECATION") // Compatibility path shared with Android Automotive 11.
@@ -122,8 +121,10 @@ internal class CarPropertyManagerGateway(
 
 private fun Any?.toRawVehicleValue(): RawVehicleValue = when (this) {
     null -> throw IllegalStateException("Car property value is null")
+    is Float -> RawVehicleValue(formatVhalNumber(this), toDouble())
+    is Double -> RawVehicleValue(formatVhalNumber(this), this)
     is Number -> RawVehicleValue(
-        text = formatCarNumber(toDouble()),
+        text = formatVhalNumber(this),
         number = toDouble(),
     )
     is Boolean -> RawVehicleValue(if (this) "1" else "0", if (this) 1.0 else 0.0)
@@ -131,9 +132,11 @@ private fun Any?.toRawVehicleValue(): RawVehicleValue = when (this) {
     is IntArray -> RawVehicleValue(joinToString(prefix = "[", postfix = "]"))
     is LongArray -> RawVehicleValue(joinToString(prefix = "[", postfix = "]"))
     is FloatArray -> RawVehicleValue(
-        joinToString(prefix = "[", postfix = "]") { formatCarNumber(it.toDouble()) },
+        joinToString(prefix = "[", postfix = "]", transform = ::formatVhalNumber),
     )
-    is DoubleArray -> RawVehicleValue(joinToString(prefix = "[", postfix = "]", transform = ::formatCarNumber))
+    is DoubleArray -> RawVehicleValue(
+        joinToString(prefix = "[", postfix = "]", transform = ::formatVhalNumber),
+    )
     is ByteArray -> RawVehicleValue(joinToString(prefix = "[", postfix = "]") { (it.toInt() and 0xff).toString() })
     is Array<*> -> RawVehicleValue(joinToString(prefix = "[", postfix = "]") { it.toCarText() })
     is Iterable<*> -> RawVehicleValue(joinToString(prefix = "[", postfix = "]") { it.toCarText() })
@@ -141,15 +144,8 @@ private fun Any?.toRawVehicleValue(): RawVehicleValue = when (this) {
 }
 
 private fun Any?.toCarText(): String = when (this) {
-    is Float -> formatCarNumber(toDouble())
-    is Double -> formatCarNumber(this)
+    is Number -> formatVhalNumber(this)
     else -> toString()
-}
-
-private fun formatCarNumber(value: Double): String = if (value.isFinite()) {
-    BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
-} else {
-    value.toString()
 }
 
 private fun Int.hex(): String = "0x${toUInt().toString(16).padStart(8, '0')}"

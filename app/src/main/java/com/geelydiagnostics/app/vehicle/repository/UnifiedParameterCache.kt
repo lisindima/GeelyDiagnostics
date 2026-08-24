@@ -60,10 +60,14 @@ internal class UnifiedParameterCache {
     }
 
     private fun merge(values: List<CarPropertySnapshot>): VehicleParameter {
-        val primary = values.firstOrNull { it.source == VehiclePropertySource.VHAL && it.readableDecoded }
-            ?: values.firstOrNull { it.readableDecoded }
-            ?: values.firstOrNull { it.status == VehiclePropertyStatus.AVAILABLE && it.rawValue != null }
-            ?: values.first()
+        val primary = values.asSequence()
+            .filter { it.readableDecoded }
+            .maxWithOrNull(primaryReadingComparator)
+            ?: values.asSequence()
+                .filter { it.status == VehiclePropertyStatus.AVAILABLE && it.rawValue != null }
+                .maxWithOrNull(primaryReadingComparator)
+            ?: values.maxWithOrNull(primaryReadingComparator)
+            ?: error("Cannot merge an empty parameter group")
         val readings = values
             .sortedWith(
                 compareBy<CarPropertySnapshot> { it.key != primary.key }
@@ -113,6 +117,16 @@ internal class UnifiedParameterCache {
     )
 
     private data class NormalizedKey(val propertyId: CarPropertyId, val areaId: Int)
+
+    companion object {
+        private val primaryReadingComparator = compareBy<CarPropertySnapshot> {
+            it.receivedAtMillis
+        }.thenBy {
+            it.sourceTimestampNanos ?: Long.MIN_VALUE
+        }.thenBy {
+            it.source == VehiclePropertySource.VHAL
+        }
+    }
 }
 
 private fun Int.identity(source: VehiclePropertySource): String = if (source == VehiclePropertySource.VHAL) {

@@ -93,6 +93,29 @@ class UnifiedParameterCacheTest {
         assertTrue(cache.parameters().single().changedSinceScan)
     }
 
+    @Test
+    fun freshestDecodedReadingBecomesPrimary() {
+        val cache = UnifiedParameterCache()
+        cache.replaceSource(
+            VehiclePropertySource.VHAL,
+            listOf(snapshot(VehiclePropertySource.VHAL, 2, 10001, "41", receivedAtMillis = 20)),
+        )
+        cache.replaceSource(
+            VehiclePropertySource.ECARX,
+            listOf(snapshot(VehiclePropertySource.ECARX, 1, 10001, "40", receivedAtMillis = 10)),
+        )
+
+        assertEquals("41", cache.parameters().single().value.display)
+
+        cache.update(
+            snapshot(VehiclePropertySource.ECARX, 1, 10001, "42", receivedAtMillis = 30),
+        )
+
+        val updated = cache.parameters().single()
+        assertEquals("42", updated.value.display)
+        assertEquals(VehiclePropertySource.ECARX, updated.sourceReadings.first().source)
+    }
+
     private fun snapshot(
         source: VehiclePropertySource,
         signalId: Int,
@@ -100,6 +123,7 @@ class UnifiedParameterCacheTest {
         display: String,
         status: VehiclePropertyStatus = VehiclePropertyStatus.AVAILABLE,
         raw: String? = display,
+        receivedAtMillis: Long = 1,
     ) = CarPropertySnapshot(
         propertyId = propertyId?.let(::CarPropertyId),
         value = raw?.toDoubleOrNull()?.let(CarValue::FloatValue),
@@ -110,6 +134,6 @@ class UnifiedParameterCacheTest {
         sourceSignalId = signalId,
         sourceSignalName = "signal_$signalId",
         sourceTitle = "Signal $signalId",
-        receivedAtMillis = 1,
+        receivedAtMillis = receivedAtMillis,
     )
 }

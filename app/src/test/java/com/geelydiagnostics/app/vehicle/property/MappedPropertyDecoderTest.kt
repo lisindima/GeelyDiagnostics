@@ -105,7 +105,7 @@ class MappedPropertyDecoderTest {
     fun formatsVerifiedDecimalPlacesWithoutChangingRaw() {
         val temperatureId = CarPropertyId.EXTERIOR_TEMPERATURE
         val temperatureCatalog = catalogOf(
-            CarPropertyDefinition(temperatureId, CarValueType.FLOAT, "temperature", 0),
+            CarPropertyDefinition(temperatureId, CarValueType.FLOAT, "temperature", 1),
         )
         val mapping = ReadSignalMapping(temperatureId, 10, "temperature")
 
@@ -122,8 +122,39 @@ class MappedPropertyDecoderTest {
         )
 
         assertEquals(CarValue.FloatValue(21.6), result.value)
-        assertEquals("22 °C", result.displayValue)
+        assertEquals("21.6 °C", result.displayValue)
         assertEquals("21.6", result.rawValue?.text)
+    }
+
+    @Test
+    fun roundsConvertedSpeedToOneDecimalPlace() {
+        val speedId = CarPropertyId.VEHICLE_SPEED
+        val speedCatalog = catalogOf(
+            CarPropertyDefinition(speedId, CarValueType.FLOAT, "speed", 1),
+        )
+        val mapping = ReadSignalMapping(
+            propertyId = speedId,
+            signalId = 10,
+            signalName = "speed",
+            transform = ReadTransform.Pipeline(
+                listOf(ReadTransformStep.Arithmetic(Operator.MULTIPLY, 3.6)),
+            ),
+        )
+
+        val result = MappedPropertyDecoder(speedCatalog).decode(
+            mapping,
+            RawVehicleValue("12.345678", 12.345678),
+            mapping.signalId,
+            mapping.signalName,
+            0,
+            "AOSP",
+            null,
+            100L,
+            true,
+        )
+
+        assertEquals("44.4 км/ч", result.displayValue)
+        assertEquals("12.345678", result.rawValue?.text)
     }
 
     @Test
