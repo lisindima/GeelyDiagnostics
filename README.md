@@ -96,33 +96,33 @@ VHAL-маппинг не привязан к одной модели. По ум�
 отдельно учитывается каждый `areaId`. В приложение встроена только read-часть
 маппингов; поля и преобразования записи удалены.
 
-## Структура UI
+## Структура проекта
 
-- `DiagnosticsViewModel.kt` — сбор `StateFlow` диагностической сессии, подписки,
-  избранное и lifecycle соединений;
-- `MainActivity.kt` — Compose host и системный экспорт JSON;
-- `GeelyDiagnosticsApp.kt` — общий app shell, заголовок и навигация;
-- `DiagnosticsTab.kt`, `ParametersTab.kt`, `VehicleTab.kt`, `FunctionsTab.kt`,
-  `LogTab.kt` — независимая реализация каждой вкладки;
-- `TabComponents.kt` — общие карточки и элементы каталогов;
-- `FullscreenValueDialog.kt`, `ParameterHistoryChart.kt` — полноэкранное значение и
-  график числовых измерений;
-- `CatalogFiltering.kt`, `ValueFreshness.kt` — поиск, фильтры и свежесть данных;
-- `DiagnosticsReportExporter.kt` — read-only диагностический отчёт;
-- `AppModels.kt` — состояние экранов и модели отдельных ECARX-каталогов;
+- `MainActivity.kt` — Android entry point, Compose host и системный экспорт JSON;
+- `model/` — состояние экранов, статусы и общие модели каталогов;
+- `export/` — формирование read-only диагностического отчёта;
+- `ui/GeelyDiagnosticsApp.kt` — общий app shell, тема, заголовок и навигация;
+- `ui/viewmodel/` — сбор `StateFlow` диагностической сессии, избранное и lifecycle
+  соединений;
+- `ui/tabs/` — независимая реализация вкладок диагностики, параметров,
+  автомобиля, функций и журнала;
+- `ui/components/` — общие карточки, полноэкранное значение и график измерений;
+- `ui/catalog/` — поиск, фильтры и определение свежести данных;
+- `src/debug/.../ui/preview/` — Compose Preview для поддерживаемых экранов ГУ;
+- `src/test/` — unit-тесты, разложенные зеркально production-пакетам;
 - `vehicle/property/VehicleParameter.kt` — единая модель параметра, где
   `CarPropertyId` является основной идентичностью, а ECARX/VHAL представлены
   вложенными исходными показаниями;
+- `vehicle/mapping/` — read-only профили автомобилей и преобразования raw;
 - `vehicle/source/VehicleParameterDataSource.kt` — общий read-only контракт
   источников;
-- `vehicle/repository/UnifiedParameterCache.kt` — единый кэш по
-  `propertyId + areaId` и отдельное хранение неизвестных raw-сигналов;
-- `vehicle/repository/UnifiedParameterStore.kt` — наблюдаемое состояние параметров
-  и адресный `Flow` для `observe(CarPropertyId, areaId)`;
+- `vehicle/repository/` — диагностика, единый кэш по `propertyId + areaId`,
+  наблюдаемое состояние и `Flow` для `observe(CarPropertyId, areaId)`;
 - `vehicle/source/MockCarDataSource.kt` — in-memory источник для unit-тестов и
   явно включаемых debug-сценариев; в production-опрос автомобиля он не входит;
-- `vehicle/ecarx/` — независимые readers диагностики, параметров, заводских
-  сведений и возможностей поверх общего ECARX-подключения.
+- `vehicle/ecarx/` — подключение ECARX, метаданные, декодеры и независимые readers
+  диагностики, параметров, заводских сведений и возможностей;
+- `vehicle/vhal/` — read-only HIDL gateway, первичное чтение и подписки VHAL.
 
 ## Гарантия Read Only
 

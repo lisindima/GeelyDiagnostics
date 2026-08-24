@@ -1,6 +1,6 @@
 package com.geelydiagnostics.app.vehicle.source
 
-import com.geelydiagnostics.app.ReadStatus
+import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import java.io.Closeable

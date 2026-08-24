@@ -1,0 +1,158 @@
+package com.geelydiagnostics.app.ui.tabs
+
+import com.geelydiagnostics.app.model.*
+import com.geelydiagnostics.app.ui.catalog.*
+import com.geelydiagnostics.app.ui.components.*
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+internal object LogTab {
+
+    private enum class LogFilter(val title: String) {
+        ALL("Все"),
+        ERRORS("Ошибки"),
+        ECARX("ECARX"),
+        VHAL("VHAL"),
+        SYSTEM("Система"),
+    }
+
+    @Composable
+    fun Content(lines: List<String>, onClear: () -> Unit) {
+        var selectedFilterIndex by rememberSaveable { mutableIntStateOf(LogFilter.ALL.ordinal) }
+        val selectedFilter = LogFilter.entries[selectedFilterIndex]
+        val filtered = lines.filter { line -> line.matches(selectedFilter) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Журнал",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = "Показано ${filtered.size} из ${lines.size} строк",
+                                fontSize = 13.sp,
+                            )
+                        }
+                        Button(
+                            onClick = onClear,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                contentColor = MaterialTheme.colorScheme.primaryContainer,
+                            ),
+                        ) {
+                            Text("Очистить", fontSize = 17.sp)
+                        }
+                    }
+                }
+            }
+            item {
+                CatalogFilterRow(
+                    labels = LogFilter.entries.map(LogFilter::title),
+                    selectedIndex = selectedFilterIndex,
+                    onSelected = { selectedFilterIndex = it },
+                )
+            }
+            item { LogPanel(filtered) }
+        }
+    }
+
+    @Composable
+    private fun LogPanel(lines: List<String>) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Box(Modifier.padding(14.dp)) {
+                SelectionContainer {
+                    if (lines.isEmpty()) {
+                        Text(
+                            text = "Журнал пуст",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp,
+                        )
+                    } else {
+                        Column {
+                            lines.forEachIndexed { index, line ->
+                                Text(
+                                    text = line,
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    color = if (line.isErrorLine) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp,
+                                )
+                                if (index != lines.lastIndex) {
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun String.matches(filter: LogFilter): Boolean {
+        val lower = lowercase()
+        return when (filter) {
+            LogFilter.ALL -> true
+            LogFilter.ERRORS -> isErrorLine
+            LogFilter.ECARX -> "ecarx" in lower || "adaptapi" in lower
+            LogFilter.VHAL -> "vhal" in lower
+            LogFilter.SYSTEM -> "ecarx" !in lower && "adaptapi" !in lower && "vhal" !in lower
+        }
+    }
+
+    private val String.isErrorLine: Boolean
+        get() {
+            val lower = lowercase()
+            return listOf("error", "failed", "exception", "denied", "ошиб").any(lower::contains)
+        }
+}

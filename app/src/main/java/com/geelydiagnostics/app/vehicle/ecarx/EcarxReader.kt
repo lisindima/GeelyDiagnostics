@@ -1,8 +1,10 @@
 package com.geelydiagnostics.app.vehicle.ecarx
 
+import com.geelydiagnostics.app.model.*
+
 import com.ecarx.xui.adaptapi.FunctionStatus
 import com.ecarx.xui.adaptapi.car.ICar
-import com.geelydiagnostics.app.ApiSupportStatus
+import com.geelydiagnostics.app.model.ApiSupportStatus
 import java.io.Closeable
 import java.lang.reflect.Modifier
 import java.util.Locale

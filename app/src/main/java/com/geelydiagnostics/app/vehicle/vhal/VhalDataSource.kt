@@ -1,7 +1,7 @@
 package com.geelydiagnostics.app.vehicle.vhal
 
 import android.content.Context
-import com.geelydiagnostics.app.ReadStatus
+import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.vehicle.mapping.VehicleMetadataStore
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfileMapping

@@ -1,7 +1,9 @@
 package com.geelydiagnostics.app.vehicle.repository
 
-import com.geelydiagnostics.app.DtcRecord
-import com.geelydiagnostics.app.ReadStatus
+import com.geelydiagnostics.app.model.*
+
+import com.geelydiagnostics.app.model.DtcRecord
+import com.geelydiagnostics.app.model.ReadStatus
 
 internal data class DiagnosticsState(
     val diagnosticsStatus: ReadStatus = ReadStatus.NOT_CHECKED,

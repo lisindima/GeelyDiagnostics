@@ -1,7 +1,7 @@
 package com.geelydiagnostics.app.vehicle.repository
 
-import com.geelydiagnostics.app.DtcRecord
-import com.geelydiagnostics.app.ReadStatus
+import com.geelydiagnostics.app.model.DtcRecord
+import com.geelydiagnostics.app.model.ReadStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

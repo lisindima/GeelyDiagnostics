@@ -1,5 +1,9 @@
 package com.geelydiagnostics.app
 
+import com.geelydiagnostics.app.export.DiagnosticsReportExporter
+import com.geelydiagnostics.app.ui.GeelyDiagnosticsApp
+import com.geelydiagnostics.app.ui.viewmodel.DiagnosticsViewModel
+
 import android.content.ContentValues
 import android.content.Intent
 import android.os.Build

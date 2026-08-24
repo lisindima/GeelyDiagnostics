@@ -1,13 +1,12 @@
 package com.geelydiagnostics.app.vehicle.ecarx
 
+import com.geelydiagnostics.app.model.*
+
 import com.ecarx.xui.adaptapi.FunctionStatus
 import com.ecarx.xui.adaptapi.car.ICar
 import com.ecarx.xui.adaptapi.car.sensor.ISensor
-import com.geelydiagnostics.app.ApiSupportStatus
-import com.geelydiagnostics.app.EcarxDataListener
-import com.geelydiagnostics.app.EcarxSensorMetadata
-import com.geelydiagnostics.app.ReadStatus
-import com.geelydiagnostics.app.VendorValueDecoder
+import com.geelydiagnostics.app.model.ApiSupportStatus
+import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.EcarxNormalizedPropertyRegistry

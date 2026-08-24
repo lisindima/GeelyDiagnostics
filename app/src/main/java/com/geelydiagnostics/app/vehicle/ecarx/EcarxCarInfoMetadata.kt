@@ -1,0 +1,165 @@
+package com.geelydiagnostics.app.vehicle.ecarx
+
+import com.geelydiagnostics.app.model.*
+
+internal data class EcarxFieldMetadata(
+    val title: String,
+    val unit: String? = null,
+    val rawToDisplayScale: Float = 1f,
+    val values: Map<Int, String> = emptyMap(),
+)
+
+internal object EcarxCarInfoMetadata {
+    val fields: Map<String, EcarxFieldMetadata> = mapOf(
+        "CONFIG_INFO_360CAM" to EcarxFieldMetadata("Камеры 360°"),
+        "CONFIG_INFO_DVR" to EcarxFieldMetadata("Видеорегистратор"),
+        "CONFIG_INFO_DVR_INNERCAM" to EcarxFieldMetadata("Внутренняя камера DVR"),
+        "CONFIG_INFO_EN_START_BUTTON" to EcarxFieldMetadata("Кнопка запуска двигателя"),
+        "CONFIG_INFO_FACE_CAM" to EcarxFieldMetadata("Камера распознавания лица"),
+        "CONFIG_INFO_FINGERPRINT" to EcarxFieldMetadata("Сканер отпечатка пальца"),
+        "CONFIG_INFO_MIRROR_SAVE_RESET" to EcarxFieldMetadata("Память/сброс положения зеркал"),
+        "CONFIG_INFO_NAVI_AR_AVAILABLE" to EcarxFieldMetadata("AR-навигация"),
+        "CONFIG_INFO_RADAR" to EcarxFieldMetadata("Радары"),
+        "CONFIG_INFO_REARVIEW_CAM" to EcarxFieldMetadata("Камера заднего вида"),
+        "CONFIG_INFO_REAR_CAM" to EcarxFieldMetadata("Задняя камера"),
+        "CONFIG_INFO_SUNROOF" to EcarxFieldMetadata("Люк"),
+        "CONFIG_INFO_TCAM" to EcarxFieldMetadata("TCAM"),
+        "CONFIG_INFO_TEM" to EcarxFieldMetadata("Телематический модуль TEM"),
+        "CONFIG_INFO_WIFI" to EcarxFieldMetadata("Wi-Fi"),
+        "CONFIG_INFO_WPC" to EcarxFieldMetadata("Беспроводная зарядка"),
+        "FLT_INFO_EV_BATTERY_CAPACITY" to EcarxFieldMetadata("Ёмкость тяговой батареи", unit = "кВт·ч"),
+        "FLT_INFO_FUEL_CAPACITY" to EcarxFieldMetadata("Объём топливного бака", unit = "л"),
+        "FLT_INFO_MAX_LIMITED_SPEED" to EcarxFieldMetadata("Максимальная ограниченная скорость", unit = "км/ч"),
+        "FLT_INFO_VEHICLE_WEIGHT" to EcarxFieldMetadata("Масса автомобиля", unit = "кг"),
+        "INFO_CAR_COLOR" to EcarxFieldMetadata("Цвет автомобиля"),
+        "INFO_CRUISE_CONTROL_LEVEL" to EcarxFieldMetadata("Уровень круиз-контроля"),
+        "INFO_CRUISE_CONTROL_TYPE" to EcarxFieldMetadata("Тип круиз-контроля"),
+        "INFO_DRIVER_ASSIST_SYSTEM" to EcarxFieldMetadata("Конфигурация ассистентов водителя"),
+        "INFO_DRIVE_LAYOUT" to EcarxFieldMetadata("Компоновка привода"),
+        "INFO_DRIVE_TYPE" to EcarxFieldMetadata(
+            "Тип привода",
+            values = mapOf(
+                1049601 to "Передний привод",
+                1049602 to "Задний привод",
+                1049603 to "Полный привод",
+                1049855 to "Неизвестно",
+            )
+        ),
+        "INFO_EV_BATTERY_CAPACITY" to EcarxFieldMetadata("Ёмкость тяговой батареи", unit = "кВт·ч"),
+        "INFO_EV_CONNECTOR_TYPE" to EcarxFieldMetadata("Тип зарядного разъёма"),
+        "INFO_FUEL_CAPACITY" to EcarxFieldMetadata("Объём топливного бака", unit = "л"),
+        "INFO_MAX_LIMITED_SPEED" to EcarxFieldMetadata("Максимальная ограниченная скорость", unit = "км/ч"),
+        "INFO_MIC_NUMBER" to EcarxFieldMetadata("Количество микрофонов"),
+        "INFO_SPEAKER_NUMBER" to EcarxFieldMetadata("Количество динамиков"),
+        "INFO_TIRE_ASPECT_RATIO" to EcarxFieldMetadata("Профиль шин", unit = "%"),
+        "INFO_TIRE_CONFIG" to EcarxFieldMetadata("Конфигурация шин"),
+        "INFO_TIRE_DIAMETER" to EcarxFieldMetadata("Диаметр диска/шины", unit = "дюйм"),
+        "INFO_TIRE_TYPE" to EcarxFieldMetadata("Тип шин"),
+        "INFO_TIRE_WIDTH" to EcarxFieldMetadata("Ширина шин", unit = "мм"),
+        "INFO_VEHICLE_TYPE" to EcarxFieldMetadata(
+            "Тип силовой установки",
+            values = mapOf(
+                1049089 to "Бензин / ДВС",
+                1049090 to "Гибрид HEV",
+                1049091 to "Подключаемый гибрид PHEV",
+                1049092 to "Последовательный гибрид EREV",
+                1049093 to "Водородный FCEV",
+                1049094 to "Топливные элементы FCV",
+                1049095 to "Мягкий гибрид MHEV",
+                1049096 to "Электромобиль BEV",
+                1049343 to "Неизвестно",
+            )
+        ),
+        "INFO_VEHICLE_WEIGHT" to EcarxFieldMetadata("Масса автомобиля", unit = "кг"),
+        "INFO_YEAR_EDITION" to EcarxFieldMetadata("Модельный год / версия"),
+        "INTS_INFO_EV_CONNECTOR_TYPES" to EcarxFieldMetadata("Типы зарядных разъёмов"),
+        "INTS_INFO_FUEL_TYPES" to EcarxFieldMetadata(
+            "Типы топлива",
+            values = mapOf(
+                1048833 to "Неэтилированный бензин",
+                1048834 to "Этилированный бензин",
+                1048835 to "Дизель",
+                1048836 to "Дизель №2",
+                1048837 to "Биодизель",
+                1048838 to "E85",
+                1048839 to "СУГ/LPG",
+                1048840 to "CNG",
+                1048841 to "LNG",
+                1048842 to "Электричество",
+                1048843 to "Водород",
+                1049087 to "Неизвестно",
+            )
+        ),
+        "INTS_INFO_SCENE_MODES" to EcarxFieldMetadata("Доступные режимы сценариев"),
+        "INT_INFO_ACTIVE_ROLL_BAR" to EcarxFieldMetadata("Активный стабилизатор поперечной устойчивости"),
+        "INT_INFO_CAR_CUTOFF" to EcarxFieldMetadata("Отключение автомобиля"),
+        "INT_INFO_CAR_COLOR" to EcarxFieldMetadata("Цвет автомобиля"),
+        "INT_INFO_CAR_TIRE_CONFIG" to EcarxFieldMetadata("Конфигурация шин"),
+        "INT_INFO_CHASSIS_CONTROL" to EcarxFieldMetadata("Управление шасси"),
+        "INT_INFO_CRUISE_CONTROL_CC" to EcarxFieldMetadata("Круиз-контроль"),
+        "INT_INFO_CSD_VARIANTS" to EcarxFieldMetadata("Вариант центрального дисплея CSD"),
+        "INT_INFO_DRIVER_ASSISTANCE_SYSTEM" to EcarxFieldMetadata("Системы помощи водителю"),
+        "INT_INFO_DRIVER_SIDE" to EcarxFieldMetadata("Сторона расположения водителя"),
+        "INT_INFO_DRIVE_MODE" to EcarxFieldMetadata(
+            "Тип привода",
+            values = mapOf(
+                1049601 to "Передний привод",
+                1049602 to "Задний привод",
+                1049603 to "Полный привод",
+                1049855 to "Неизвестно",
+            )
+        ),
+        "INT_INFO_EDS" to EcarxFieldMetadata("Электронная блокировка дифференциала EDS"),
+        "INT_INFO_EHP_V2_AVAILABLE" to EcarxFieldMetadata("Доступность EHP V2"),
+        "INT_INFO_FUNC_EHP_V2_SUPPORT" to EcarxFieldMetadata("Поддержка функций EHP V2"),
+        "INT_INFO_FUNC_EHP_V2_UNSUPPORTED" to EcarxFieldMetadata("Неподдерживаемые функции EHP V2"),
+        "INT_INFO_FUEL_TYPES" to EcarxFieldMetadata(
+            "Типы топлива",
+            values = mapOf(
+                1048833 to "Неэтилированный бензин",
+                1048834 to "Этилированный бензин",
+                1048835 to "Дизель",
+                1048836 to "Дизель №2",
+                1048837 to "Биодизель",
+                1048838 to "E85",
+                1048839 to "СУГ/LPG",
+                1048840 to "CNG",
+                1048841 to "LNG",
+                1048842 to "Электричество",
+                1048843 to "Водород",
+                1049087 to "Неизвестно",
+            )
+        ),
+        "INT_INFO_INTERNAL_AUD" to EcarxFieldMetadata("Внутренняя аудиосистема"),
+        "INT_INFO_MIC_TOTAL_COUNT" to EcarxFieldMetadata("Количество микрофонов"),
+        "INT_INFO_NAVI_AR_AVAILABLE" to EcarxFieldMetadata("Доступность AR-навигации"),
+        "INT_INFO_REAR_ACTIVE_STEERING" to EcarxFieldMetadata("Активное рулевое управление задней осью"),
+        "INT_INFO_RESERVE1_AVAILABLE" to EcarxFieldMetadata("Резервная возможность 1"),
+        "INT_INFO_RESERVE2_AVAILABLE" to EcarxFieldMetadata("Резервная возможность 2"),
+        "INT_INFO_SPEAKER_TOTAL_COUNT" to EcarxFieldMetadata("Количество динамиков"),
+        "INT_INFO_VEHICLE_TYPES" to EcarxFieldMetadata(
+            "Тип силовой установки",
+            values = mapOf(
+                1049089 to "Бензин / ДВС",
+                1049090 to "Гибрид HEV",
+                1049091 to "Подключаемый гибрид PHEV",
+                1049092 to "Последовательный гибрид EREV",
+                1049093 to "Водородный FCEV",
+                1049094 to "Топливные элементы FCV",
+                1049095 to "Мягкий гибрид MHEV",
+                1049096 to "Электромобиль BEV",
+                1049343 to "Неизвестно",
+            )
+        ),
+        "INT_INFO_YEAR_EDITION" to EcarxFieldMetadata("Модельный год"),
+        "MAP_INFO_EV_SLOPE_DOWN_ENERGY_COEFFICIENT" to EcarxFieldMetadata("Коэффициент расхода энергии на спуске"),
+        "MAP_INFO_EV_SLOPE_RISE_ENERGY_COEFFICIENT" to EcarxFieldMetadata("Коэффициент расхода энергии на подъёме"),
+        "MAP_INFO_EV_SPEED_DOWN_ENERGY_COEFFICIENT" to EcarxFieldMetadata("Коэффициент расхода энергии при снижении скорости"),
+        "MAP_INFO_EV_SPEED_RELATE_WEIGHT" to EcarxFieldMetadata("Зависимость расхода энергии от скорости и массы"),
+        "MAP_INFO_EV_SPEED_RISE_ENERGY_COEFFICIENT" to EcarxFieldMetadata("Коэффициент расхода энергии при увеличении скорости"),
+        "STRING_INFO_CAR_TIRE_CONFIG" to EcarxFieldMetadata("Конфигурация шин"),
+    )
+
+    fun field(apiName: String): EcarxFieldMetadata? =
+        fields[apiName] ?: fields[apiName.replace(Regex("^(FLT|INT|INTS|MAP|STRING)_"), "")]
+}

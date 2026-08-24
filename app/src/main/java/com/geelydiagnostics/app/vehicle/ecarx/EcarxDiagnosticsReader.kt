@@ -1,11 +1,12 @@
 package com.geelydiagnostics.app.vehicle.ecarx
 
+import com.geelydiagnostics.app.model.*
+
 import com.ecarx.xui.adaptapi.car.ICar
 import com.ecarx.xui.adaptapi.car.diagnostics.IDiagnostics
 import com.ecarx.xui.adaptapi.car.diagnostics.IDtcManager
-import com.geelydiagnostics.app.DtcRecord
-import com.geelydiagnostics.app.EcarxDataListener
-import com.geelydiagnostics.app.ReadStatus
+import com.geelydiagnostics.app.model.DtcRecord
+import com.geelydiagnostics.app.model.ReadStatus
 
 internal class EcarxDiagnosticsReader(
     private val sink: EcarxDataListener,
