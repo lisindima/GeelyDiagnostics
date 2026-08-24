@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
+import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
 private const val MIN_HEAD_UNIT_FONT_SCALE = 1.5f
 
@@ -57,6 +58,7 @@ internal fun GeelyDiagnosticsApp(
     onRefresh: () -> Unit,
     onExport: () -> Unit,
     onVhalProfileSelected: (VehicleProfile) -> Unit,
+    onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
     onFavoriteToggle: (String) -> Unit,
     onClearLog: () -> Unit,
     initialTab: AppTab = AppTab.DIAGNOSTICS,
@@ -101,6 +103,7 @@ internal fun GeelyDiagnosticsApp(
                         tab = selectedTab,
                         state = state,
                         onVhalProfileSelected = onVhalProfileSelected,
+                        onVhalBackendSelected = onVhalBackendSelected,
                         onFavoriteToggle = onFavoriteToggle,
                         onClearLog = onClearLog,
                     )
@@ -132,6 +135,7 @@ private fun AppTabContent(
     tab: AppTab,
     state: AppUiState,
     onVhalProfileSelected: (VehicleProfile) -> Unit,
+    onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
     onFavoriteToggle: (String) -> Unit,
     onClearLog: () -> Unit,
 ) {
@@ -151,6 +155,7 @@ private fun AppTabContent(
         AppTab.PARAMETERS -> ParametersTab.Content(
             state,
             onVhalProfileSelected,
+            onVhalBackendSelected,
             onFavoriteToggle,
         )
         AppTab.VEHICLE -> {

@@ -16,12 +16,14 @@ import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKey
 import com.geelydiagnostics.app.vehicle.repository.UnifiedVehicleRepository
 import com.geelydiagnostics.app.vehicle.repository.VehicleRepositoryState
+import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 import kotlinx.coroutines.launch
 
 internal class DiagnosticsViewModel(application: Application) : AndroidViewModel(application) {
     var uiState by mutableStateOf(
         AppUiState(
             selectedVhalProfile = loadVhalProfile(application),
+            selectedVhalBackend = loadVhalBackend(application),
             favoriteKeys = loadFavorites(application),
         ),
     )
@@ -47,6 +49,13 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         startScan()
     }
 
+    fun selectVhalBackend(backend: VhalGatewayBackend) {
+        if (backend == uiState.selectedVhalBackend) return
+        preferences().edit().putString(KEY_VHAL_BACKEND, backend.name).apply()
+        uiState = uiState.copy(selectedVhalBackend = backend)
+        startScan()
+    }
+
     fun toggleFavorite(key: String) {
         val favorites = uiState.favoriteKeys.toMutableSet().apply {
             if (!add(key)) remove(key)
@@ -60,7 +69,7 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
     fun onLog(message: String, error: Throwable? = null) = repository.onSystemLog(message, error)
 
     private fun startScan() {
-        repository.start(uiState.selectedVhalProfile)
+        repository.start(uiState.selectedVhalProfile, uiState.selectedVhalBackend)
     }
 
     private fun onRepositoryState(repositoryState: VehicleRepositoryState) {
@@ -155,12 +164,20 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         private const val PARAMETER_HISTORY_WINDOW_MILLIS = 120_000L
         private const val PREFERENCES = "geely_diagnostics"
         private const val KEY_VHAL_PROFILE = "vhal_profile"
+        private const val KEY_VHAL_BACKEND = "vhal_backend"
         private const val KEY_FAVORITES = "favorite_keys"
 
         private fun loadVhalProfile(application: Application): VehicleProfile {
             val saved = application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
                 .getString(KEY_VHAL_PROFILE, null)
             return VehicleProfile.entries.firstOrNull { it.name == saved } ?: VehicleProfile.RAW
+        }
+
+        private fun loadVhalBackend(application: Application): VhalGatewayBackend {
+            val saved = application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
+                .getString(KEY_VHAL_BACKEND, null)
+            return VhalGatewayBackend.entries.firstOrNull { it.name == saved }
+                ?: VhalGatewayBackend.CAR_PROPERTY_MANAGER
         }
 
         private fun loadFavorites(application: Application): Set<String> =

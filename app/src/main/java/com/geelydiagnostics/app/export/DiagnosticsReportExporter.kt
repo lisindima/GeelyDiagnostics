@@ -20,12 +20,13 @@ internal object DiagnosticsReportExporter {
         generatedAtMillis: Long,
         appVersion: String,
     ): String = JSONObject().apply {
-        put("schemaVersion", 4)
+        put("schemaVersion", 5)
         put("application", "Geely Diagnostics")
         put("appVersion", appVersion)
         put("generatedAt", isoTime(generatedAtMillis))
         put("readOnly", true)
         put("vhalProfile", state.selectedVhalProfile.key)
+        put("vhalBackend", state.selectedVhalBackend.name)
         put("scanStartedAt", state.scanStartedAtMillis.jsonTime())
         put("statuses", JSONObject().apply {
             putStatus("ecarx", state.carStatus, state.carDetail)

@@ -3,6 +3,7 @@ package com.geelydiagnostics.app
 import com.geelydiagnostics.app.export.DiagnosticsReportExporter
 import com.geelydiagnostics.app.ui.GeelyDiagnosticsApp
 import com.geelydiagnostics.app.ui.viewmodel.DiagnosticsViewModel
+import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
 import android.content.ContentValues
 import android.content.Intent
@@ -24,6 +25,12 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var viewModel: DiagnosticsViewModel
     private var pendingExportFileName: String? = null
+
+    private val requestCarPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results ->
+        if (results.values.any { it }) viewModel.refresh()
+    }
 
     private val createReportDocument = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
@@ -52,10 +59,28 @@ class MainActivity : ComponentActivity() {
                 onRefresh = viewModel::refresh,
                 onExport = ::exportReport,
                 onVhalProfileSelected = viewModel::selectVhalProfile,
+                onVhalBackendSelected = { backend ->
+                    viewModel.selectVhalBackend(backend)
+                    if (backend == VhalGatewayBackend.CAR_PROPERTY_MANAGER) {
+                        requestMissingCarPermissions()
+                    }
+                },
                 onFavoriteToggle = viewModel::toggleFavorite,
                 onClearLog = viewModel::clearLog,
             )
         }
+        if (viewModel.uiState.selectedVhalBackend == VhalGatewayBackend.CAR_PROPERTY_MANAGER) {
+            requestMissingCarPermissions()
+        }
+    }
+
+    private fun requestMissingCarPermissions() {
+        val missing = RUNTIME_CAR_PERMISSIONS.filter { permission ->
+            runCatching { packageManager.getPermissionInfo(permission, 0) }.isSuccess &&
+                checkSelfPermission(permission) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) requestCarPermissions.launch(missing.toTypedArray())
     }
 
     private fun exportReport() {
@@ -157,5 +182,9 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val PUBLIC_REPORT_DIRECTORY = "GeelyDiagnostics"
+        val RUNTIME_CAR_PERMISSIONS = listOf(
+            "android.car.permission.CAR_SPEED",
+            "android.car.permission.CAR_ENERGY",
+        )
     }
 }

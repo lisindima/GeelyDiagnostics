@@ -10,6 +10,7 @@ import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
+import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -48,6 +49,7 @@ class DiagnosticsReportExporterTest {
         )
         val state = AppUiState(
             selectedVhalProfile = VehicleProfile.G426,
+            selectedVhalBackend = VhalGatewayBackend.HIDL,
             parameters = listOf(parameter),
             favoriteKeys = setOf(parameter.favoriteKey),
             logLines = listOf("12:00:00.000  test"),
@@ -60,9 +62,10 @@ class DiagnosticsReportExporterTest {
         val exported = report.getJSONArray("parameters").getJSONObject(0)
 
         assertTrue(report.getBoolean("readOnly"))
-        assertEquals(4, report.getInt("schemaVersion"))
+        assertEquals(5, report.getInt("schemaVersion"))
         assertEquals("0.11.0", report.getString("appVersion"))
         assertEquals("G426", report.getString("vhalProfile"))
+        assertEquals("HIDL", report.getString("vhalBackend"))
         assertEquals("1", exported.getString("raw"))
         assertEquals(10012, exported.getInt("normalizedPropertyId"))
         assertEquals("VHAL", exported.getString("primarySource"))

@@ -17,6 +17,7 @@ import java.util.concurrent.Executors
 
 internal class VhalDataSource private constructor(
     private val profile: VehicleProfile,
+    private val backend: VhalGatewayBackend,
     private val listener: VehicleParameterSink,
     dependencies: Dependencies,
 ) : VehicleParameterDataSource {
@@ -37,12 +38,13 @@ internal class VhalDataSource private constructor(
     constructor(
         context: Context,
         profile: VehicleProfile,
+        backend: VhalGatewayBackend,
         listener: VehicleParameterSink,
-        gatewayFactory: ((String, Throwable?) -> Unit) -> VhalGateway = ::HidlVhalGateway,
     ) : this(
         profile = profile,
+        backend = backend,
         listener = listener,
-        dependencies = productionDependencies(context, profile, listener, gatewayFactory),
+        dependencies = productionDependencies(context, profile, backend, listener),
     )
 
     internal constructor(
@@ -51,13 +53,18 @@ internal class VhalDataSource private constructor(
         mapping: VehicleProfileMapping,
         catalog: CarPropertyCatalog,
         gateway: VhalGateway,
-    ) : this(profile, listener, Dependencies(mapping, catalog, gateway))
+    ) : this(
+        profile = profile,
+        backend = VhalGatewayBackend.HIDL,
+        listener = listener,
+        dependencies = Dependencies(mapping, catalog, gateway),
+    )
 
     override fun start() {
         listener.onParameterStatus(
             source,
             ReadStatus.CHECKING,
-            "VHAL: полный каталог · профиль ${profile.key}",
+            "VHAL ${backend.title}: полный каталог · профиль ${profile.key}",
         )
         executor.execute(::load)
     }
@@ -91,7 +98,8 @@ internal class VhalDataSource private constructor(
             listener.onParameterStatus(
                 source,
                 ReadStatus.AVAILABLE,
-                "${classified.size} значений · $mappingDetail · подписки: ${subscribedIds.size}",
+                "${classified.size} значений · ${backend.title} · $mappingDetail · " +
+                    "подписки: ${subscribedIds.size}",
             )
         } catch (error: Throwable) {
             if (!closed) {
@@ -233,15 +241,19 @@ internal class VhalDataSource private constructor(
         private fun productionDependencies(
             context: Context,
             profile: VehicleProfile,
+            backend: VhalGatewayBackend,
             listener: VehicleParameterSink,
-            gatewayFactory: ((String, Throwable?) -> Unit) -> VhalGateway,
         ): Dependencies {
             val metadata = VehicleMetadataStore(context)
+            val log: (String, Throwable?) -> Unit = { message, error ->
+                listener.onParameterLog(VehiclePropertySource.VHAL, message, error)
+            }
             return Dependencies(
                 mapping = metadata.mapping(profile),
                 catalog = metadata.properties,
-                gateway = gatewayFactory { message, error ->
-                    listener.onParameterLog(VehiclePropertySource.VHAL, message, error)
+                gateway = when (backend) {
+                    VhalGatewayBackend.CAR_PROPERTY_MANAGER -> CarPropertyManagerGateway(context, log)
+                    VhalGatewayBackend.HIDL -> HidlVhalGateway(log)
                 },
             )
         }

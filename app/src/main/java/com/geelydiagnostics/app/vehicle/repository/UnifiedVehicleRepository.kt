@@ -17,6 +17,7 @@ import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
 import com.geelydiagnostics.app.vehicle.vhal.VhalDataSource
+import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 import java.io.Closeable
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -63,7 +64,7 @@ internal class UnifiedVehicleRepository(
     fun observeParameters(): StateFlow<List<VehicleParameter>> = parameterStore.parameters
 
     @Synchronized
-    fun start(profile: VehicleProfile) {
+    fun start(profile: VehicleProfile, vhalBackend: VhalGatewayBackend) {
         val previousLog = mutableState.value.logLines
         sources.forEach { runCatching { it.close() } }
         sources.clear()
@@ -96,7 +97,7 @@ internal class UnifiedVehicleRepository(
             appendLog("ECARX", "initialization failed: ${describe(error)}", error)
         }
         try {
-            sources += VhalDataSource(appContext, profile, this).also { it.start() }
+            sources += VhalDataSource(appContext, profile, vhalBackend, this).also { it.start() }
         } catch (error: Throwable) {
             onParameterStatus(VehiclePropertySource.VHAL, ReadStatus.ERROR, describe(error))
             appendLog("VHAL", "initialization failed: ${describe(error)}", error)

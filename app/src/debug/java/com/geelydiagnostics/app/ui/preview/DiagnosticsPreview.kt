@@ -198,6 +198,7 @@ private fun PreviewApp(tab: AppTab, state: AppUiState = previewState()) {
         onRefresh = {},
         onExport = {},
         onVhalProfileSelected = {},
+        onVhalBackendSelected = {},
         onFavoriteToggle = {},
         onClearLog = {},
         initialTab = tab,

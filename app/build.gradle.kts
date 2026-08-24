@@ -39,6 +39,13 @@ android {
 dependencies {
     // Compile-time signatures only. This module must never be packaged in the APK.
     compileOnly(project(":adaptapi"))
+    compileOnly(
+        files(
+            android.sdkDirectory.resolve(
+                "platforms/android-${android.compileSdk}/optional/android.car.jar",
+            ),
+        ),
+    )
 
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")

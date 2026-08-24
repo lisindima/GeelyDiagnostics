@@ -6,12 +6,29 @@
     <uses-permission android:name="com.geely.settings.permission.QDAS_MESSAGE" />
     <uses-permission android:name="geely.oneos.permission.SERVICE" />
 
+    <!-- Read-only Android Automotive property permissions used by CarPropertyManager. -->
+    <uses-permission android:name="android.car.permission.CAR_INFO" />
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <uses-permission android:name="android.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+    <uses-permission android:name="android.car.permission.CAR_ENERGY_PORTS" />
+    <uses-permission android:name="android.car.permission.CAR_EXTERIOR_ENVIRONMENT" />
+    <uses-permission android:name="android.car.permission.READ_CAR_DISPLAY_UNITS" />
+    <uses-permission android:name="android.car.permission.CAR_IDENTIFICATION" />
+    <uses-permission android:name="android.car.permission.READ_CAR_STEERING" />
+    <uses-permission android:name="android.car.permission.READ_CAR_INTERIOR_LIGHTS" />
+    <uses-permission android:name="android.car.permission.PRIVILEGED_CAR_INFO" />
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.GeelyDiagnostics">
+        <uses-library
+            android:name="android.car"
+            android:required="false" />
+
         <activity
             android:name="com.geelydiagnostics.app.MainActivity"
             android:exported="true">

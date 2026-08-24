@@ -6,6 +6,7 @@ import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
 enum class ReadStatus {
     NOT_CHECKED,
@@ -71,6 +72,7 @@ data class AppUiState(
     val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val vhalDetail: String = "",
     val selectedVhalProfile: VehicleProfile = VehicleProfile.RAW,
+    val selectedVhalBackend: VhalGatewayBackend = VhalGatewayBackend.CAR_PROPERTY_MANAGER,
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carInfoDetail: String = "",
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,

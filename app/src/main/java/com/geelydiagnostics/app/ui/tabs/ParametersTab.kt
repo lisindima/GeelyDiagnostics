@@ -11,6 +11,7 @@ import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.property.primaryReading
+import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ internal object ParametersTab {
     fun Content(
         state: AppUiState,
         onVhalProfileSelected: (VehicleProfile) -> Unit,
+        onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
         onFavoriteToggle: (String) -> Unit,
     ) {
         var expandedParameterKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -94,6 +96,7 @@ internal object ParametersTab {
             favoriteKeys = state.favoriteKeys,
             nowMillis = nowMillis,
             onVhalProfileSelected = onVhalProfileSelected,
+            onVhalBackendSelected = onVhalBackendSelected,
             onFavoriteToggle = onFavoriteToggle,
             onParameterSelected = { expandedParameterKey = it.selectionKey },
         )
@@ -124,6 +127,64 @@ internal object ParametersTab {
                 },
             ) {
                 ParameterDetails(parameter, nowMillis)
+            }
+        }
+    }
+
+    @Composable
+    private fun BackendSelector(
+        selected: VhalGatewayBackend,
+        onSelected: (VhalGatewayBackend) -> Unit,
+    ) {
+        var expanded by remember { mutableStateOf(false) }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            shape = MaterialTheme.shapes.medium,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Транспорт VHAL · временный переключатель",
+                        fontSize = 12.sp,
+                    )
+                    Text(
+                        text = selected.title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = selected.description,
+                        fontSize = 11.sp,
+                    )
+                }
+                Box {
+                    OutlinedButton(onClick = { expanded = true }) {
+                        Text("Изменить", fontSize = 13.sp)
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        VhalGatewayBackend.entries.forEach { backend ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(backend.title, fontWeight = FontWeight.SemiBold)
+                                        Text(backend.description, fontSize = 11.sp)
+                                    }
+                                },
+                                onClick = {
+                                    expanded = false
+                                    onSelected(backend)
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -210,13 +271,15 @@ internal object ParametersTab {
         favoriteKeys: Set<String>,
         nowMillis: Long,
         onVhalProfileSelected: (VehicleProfile) -> Unit,
+        onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
         onFavoriteToggle: (String) -> Unit,
         onParameterSelected: (VehicleParameter) -> Unit,
     ) {
         val combinedStatus = aggregateReadStatus(listOf(state.ecarxParameterStatus, state.vhalStatus))
         val combinedDetail = listOf(
             "ECARX: ${state.ecarxParameterDetail.ifBlank { state.ecarxParameterStatus.labelForSource }}",
-            "VHAL ${state.selectedVhalProfile.key}: ${state.vhalDetail.ifBlank { state.vhalStatus.labelForSource }}",
+            "VHAL ${state.selectedVhalBackend.title} · ${state.selectedVhalProfile.key}: " +
+                state.vhalDetail.ifBlank { state.vhalStatus.labelForSource },
         ).joinToString(" · ")
         val vhalReadings = state.parameters.flatMap(VehicleParameter::sourceReadings)
             .filter { it.source == VehiclePropertySource.VHAL }
@@ -240,9 +303,19 @@ internal object ParametersTab {
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         SourceStateBadge("ECARX", state.ecarxParameterStatus, Modifier.weight(1f))
-                        SourceStateBadge("VHAL", state.vhalStatus, Modifier.weight(1f))
+                        SourceStateBadge(
+                            "VHAL · ${state.selectedVhalBackend.title}",
+                            state.vhalStatus,
+                            Modifier.weight(1f),
+                        )
                     }
                 }
+            }
+            item {
+                BackendSelector(
+                    selected = state.selectedVhalBackend,
+                    onSelected = onVhalBackendSelected,
+                )
             }
             item {
                 ProfileSelector(
