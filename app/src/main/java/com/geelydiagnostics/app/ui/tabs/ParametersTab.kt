@@ -501,8 +501,8 @@ internal object ParametersTab {
         get() = when {
             propertyId != null -> "внутренний ID ${propertyId.rawValue}" + areaSuffix
             primaryReading.source == VehiclePropertySource.VHAL ->
-                "сигнал ${String.format(Locale.US, "0x%08X", primaryReading.signalId)}" + areaSuffix
-            else -> "сигнал ${primaryReading.signalId}"
+                String.format(Locale.US, "0x%08X", primaryReading.signalId) + areaSuffix
+            else -> primaryReading.signalId.toString()
         }
 
     private val VehicleParameter.areaSuffix: String

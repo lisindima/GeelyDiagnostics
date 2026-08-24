@@ -199,10 +199,9 @@ internal fun DataCard(
 
             Text(
                 text = title,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 15.sp,
-                lineHeight = 20.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
