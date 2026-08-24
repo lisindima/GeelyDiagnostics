@@ -1,17 +1,13 @@
 package com.geelydiagnostics.app
 
 import android.content.res.Configuration
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
@@ -143,27 +139,6 @@ private fun FullscreenSensorPreview() {
                 ValueLine("VHAL-сигнал", "0x2170901E")
                 ValueLine("ID свойства", "10012")
             }
-        }
-    }
-}
-
-@Preview(
-    name = "Компонент · График параметра",
-    group = "Компоненты",
-    device = "spec:width=1100px,height=700px,dpi=160",
-    locale = "ru",
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true,
-    showSystemUi = false,
-)
-@Composable
-private fun SensorChartPreview() {
-    MaterialTheme(colorScheme = darkColorScheme()) {
-        Surface(modifier = Modifier.padding(24.dp)) {
-            SensorHistoryChart(
-                samples = previewChartSamples(),
-                isLive = true,
-            )
         }
     }
 }
