@@ -112,16 +112,6 @@ private fun ParametersErrorPreview() {
     )
 }
 
-@Preview(
-    name = "Компактный экран · Параметры",
-    group = "Адаптивность",
-    device = "spec:width=800px,height=1280px,dpi=160",
-    locale = "ru",
-    showSystemUi = false,
-)
-@Composable
-private fun CompactParametersPreview() = PreviewApp(AppTab.PARAMETERS)
-
 @HeadUnitPreviews
 @Composable
 private fun FullscreenSensorPreview() {
