@@ -67,7 +67,7 @@ internal fun <T> CatalogScreen(
                 title = title,
                 description = subtitle,
                 status = status,
-                detail = detail,
+                detail = statusAttentionDetail(status, detail),
             )
         }
         item { controls() }
@@ -404,7 +404,7 @@ internal fun StatusCard(
                     )
                     if (detail.isNotBlank()) {
                         Spacer(Modifier.height(5.dp))
-                        Text(text = detail.displayText, fontSize = 13.sp, maxLines = 3)
+                        Text(text = detail, fontSize = 13.sp, maxLines = 3)
                     }
                 }
             }
@@ -489,10 +489,8 @@ internal fun aggregateReadStatus(statuses: Iterable<ReadStatus>): ReadStatus {
     return ReadStatus.ERROR
 }
 
-private val String.displayText: String
-    get() = when (this) {
-        "CONNECTED" -> "Связь установлена"
-        "AVAILABLE" -> "Сервис отвечает"
-        "CREATED" -> "Объект автомобиля создан"
-        else -> this
-    }
+/** Successful catalog metrics are shown in CountSummary, not repeated in the status card. */
+internal fun statusAttentionDetail(status: ReadStatus, detail: String): String = when (status) {
+    ReadStatus.PARTIAL, ReadStatus.ERROR -> detail
+    ReadStatus.NOT_CHECKED, ReadStatus.CHECKING, ReadStatus.AVAILABLE -> ""
+}

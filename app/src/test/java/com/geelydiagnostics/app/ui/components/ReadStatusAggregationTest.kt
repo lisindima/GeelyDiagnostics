@@ -17,4 +17,18 @@ class ReadStatusAggregationTest {
             aggregateReadStatus(listOf(ReadStatus.AVAILABLE, ReadStatus.AVAILABLE)),
         )
     }
+
+    @Test
+    fun statusCardKeepsOnlyDetailsThatNeedAttention() {
+        assertEquals("", statusAttentionDetail(ReadStatus.AVAILABLE, "21 из 102"))
+        assertEquals("", statusAttentionDetail(ReadStatus.CHECKING, "getSensorManager()"))
+        assertEquals(
+            "часть каталога недоступна",
+            statusAttentionDetail(ReadStatus.PARTIAL, "часть каталога недоступна"),
+        )
+        assertEquals(
+            "ECARX API unavailable",
+            statusAttentionDetail(ReadStatus.ERROR, "ECARX API unavailable"),
+        )
+    }
 }

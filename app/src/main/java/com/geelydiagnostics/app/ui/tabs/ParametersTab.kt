@@ -276,10 +276,17 @@ internal object ParametersTab {
         onParameterSelected: (VehicleParameter) -> Unit,
     ) {
         val combinedStatus = aggregateReadStatus(listOf(state.ecarxParameterStatus, state.vhalStatus))
-        val combinedDetail = listOf(
-            "ECARX: ${state.ecarxParameterDetail.ifBlank { state.ecarxParameterStatus.labelForSource }}",
-            "VHAL ${state.selectedVhalBackend.title} · ${state.selectedVhalProfile.key}: " +
-                state.vhalDetail.ifBlank { state.vhalStatus.labelForSource },
+        val combinedDetail = listOfNotNull(
+            sourceAttentionDetail(
+                "ECARX",
+                state.ecarxParameterStatus,
+                state.ecarxParameterDetail,
+            ),
+            sourceAttentionDetail(
+                "VHAL",
+                state.vhalStatus,
+                state.vhalDetail,
+            ),
         ).joinToString(" · ")
         val vhalReadings = state.parameters.flatMap(VehicleParameter::sourceReadings)
             .filter { it.source == VehiclePropertySource.VHAL }
@@ -304,7 +311,7 @@ internal object ParametersTab {
                     ) {
                         SourceStateBadge("ECARX", state.ecarxParameterStatus, Modifier.weight(1f))
                         SourceStateBadge(
-                            "VHAL · ${state.selectedVhalBackend.title}",
+                            "VHAL",
                             state.vhalStatus,
                             Modifier.weight(1f),
                         )
@@ -508,6 +515,14 @@ internal object ParametersTab {
             ReadStatus.AVAILABLE -> "доступен"
             ReadStatus.ERROR -> "ошибка"
         }
+
+    private fun sourceAttentionDetail(
+        label: String,
+        status: ReadStatus,
+        detail: String,
+    ): String? = statusAttentionDetail(status, detail)
+        .ifBlank { null }
+        ?.let { "$label: $it" }
 
     private val VehicleSourceReading.badgeLabel: String
         get() = when {

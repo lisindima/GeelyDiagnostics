@@ -45,10 +45,10 @@ internal object DiagnosticsTab {
         val diagnosticsStatus = aggregateReadStatus(
             listOf(state.carStatus, state.diagnosticsStatus, state.dtcManagerStatus),
         )
-        val diagnosticsDetail = listOf(
-            "подключение: ${state.carDetail.ifBlank { state.carStatus.detailLabel }}",
-            "сервис: ${state.diagnosticsDetail.ifBlank { state.diagnosticsStatus.detailLabel }}",
-            "DTC: ${state.dtcManagerDetail.ifBlank { state.dtcManagerStatus.detailLabel }}",
+        val diagnosticsDetail = listOfNotNull(
+            statusAttentionLine("Подключение", state.carStatus, state.carDetail),
+            statusAttentionLine("Сервис", state.diagnosticsStatus, state.diagnosticsDetail),
+            statusAttentionLine("DTC", state.dtcManagerStatus, state.dtcManagerDetail),
         ).joinToString(" · ")
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -244,12 +244,11 @@ internal object DiagnosticsTab {
             .format(Date(tickTime))
     }
 
-    private val ReadStatus.detailLabel: String
-        get() = when (this) {
-            ReadStatus.NOT_CHECKED -> "не проверено"
-            ReadStatus.CHECKING -> "проверка"
-            ReadStatus.PARTIAL -> "частично доступен"
-            ReadStatus.AVAILABLE -> "доступен"
-            ReadStatus.ERROR -> "ошибка"
-        }
+    private fun statusAttentionLine(
+        label: String,
+        status: ReadStatus,
+        detail: String,
+    ): String? = statusAttentionDetail(status, detail)
+        .ifBlank { null }
+        ?.let { "$label: $it" }
 }
