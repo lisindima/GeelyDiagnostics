@@ -25,6 +25,11 @@ import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.repository.UnifiedParameterCache
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
+private const val MONJARO_2023_2025_DEVICE = "spec:width=1920px,height=720px,dpi=160"
+
+// The refreshed 15.4-inch Flyme Auto display is commonly specified as a 2.5K 2560x1600 panel.
+// Keep this as a preview profile until the exact Android Display metrics are captured in-car.
+private const val MONJARO_2026_DEVICE = "spec:width=2560px,height=1600px,dpi=160"
 
 @Preview(
     name = "ГУ · Диагностика",
@@ -107,6 +112,26 @@ private fun ParametersErrorPreview() {
 )
 @Composable
 private fun CompactParametersPreview() = PreviewApp(AppTab.PARAMETERS)
+
+@Preview(
+    name = "Monjaro 2023–2025 · Параметры",
+    group = "Monjaro",
+    device = MONJARO_2023_2025_DEVICE,
+    locale = "ru",
+    showSystemUi = false,
+)
+@Composable
+private fun MonjaroLegacyParametersPreview() = PreviewApp(AppTab.PARAMETERS)
+
+@Preview(
+    name = "Monjaro 2026+ · Параметры",
+    group = "Monjaro",
+    device = MONJARO_2026_DEVICE,
+    locale = "ru",
+    showSystemUi = false,
+)
+@Composable
+private fun MonjaroFlymeParametersPreview() = PreviewApp(AppTab.PARAMETERS)
 
 @Preview(
     name = "ГУ · Значение + график",
