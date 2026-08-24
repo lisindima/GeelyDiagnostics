@@ -23,6 +23,42 @@ import org.junit.Test
 
 class VhalDataSourceTest {
     @Test
+    fun appliesAndroidRegistryBeforeVehicleProfileMapping() {
+        val androidSpeedId = 0x11600207
+        val gateway = FakeGateway(
+            configs = listOf(config(androidSpeedId, dynamic = true)),
+            initialValues = mapOf(
+                (androidSpeedId to 0) to value(androidSpeedId, "10", 10.0, 10L),
+            ),
+        )
+        val listener = RecordingListener()
+        val source = VhalDataSource(
+            profile = VehicleProfile.RAW,
+            listener = listener,
+            mapping = VehicleProfileMapping.raw(),
+            catalog = catalog(
+                CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.INT, "speed"),
+            ),
+            gateway = gateway,
+        )
+
+        try {
+            source.start()
+            assertTrue("initial snapshot timeout", listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+
+            val speed = listener.snapshot.single()
+            assertEquals(CarPropertyId.VEHICLE_SPEED, speed.propertyId)
+            assertEquals("36 км/ч", speed.displayValue)
+            assertEquals("10", speed.rawValue?.text)
+            assertEquals("PERF_VEHICLE_SPEED", speed.sourceSignalName)
+            assertEquals("Скорость автомобиля", speed.sourceTitle)
+            assertEquals("AOSP", speed.profileKey)
+        } finally {
+            source.close()
+        }
+    }
+
+    @Test
     fun readsMappedAndUnknownValuesAndClassifiesSubscriptions() {
         val gateway = FakeGateway(
             configs = listOf(

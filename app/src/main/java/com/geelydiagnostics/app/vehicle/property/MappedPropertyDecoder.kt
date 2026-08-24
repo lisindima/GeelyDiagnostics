@@ -18,6 +18,7 @@ internal class MappedPropertyDecoder(
         sourceTimestampNanos: Long?,
         receivedAtMillis: Long,
         autoUpdates: Boolean,
+        sourceTitle: String? = null,
     ): CarPropertySnapshot {
         if (mapping == null) {
             return CarPropertySnapshot(
@@ -30,6 +31,7 @@ internal class MappedPropertyDecoder(
                 source = VehiclePropertySource.VHAL,
                 sourceSignalId = sourceSignalId,
                 sourceSignalName = sourceSignalName,
+                sourceTitle = sourceTitle,
                 areaId = areaId,
                 sourceTimestampNanos = sourceTimestampNanos,
                 receivedAtMillis = receivedAtMillis,
@@ -39,7 +41,7 @@ internal class MappedPropertyDecoder(
 
         val definition = catalog.definition(mapping.propertyId)
             ?: return failure(mapping, raw, areaId, profileKey, sourceTimestampNanos, receivedAtMillis,
-                autoUpdates, "Свойство ${mapping.propertyId} отсутствует в каталоге")
+                autoUpdates, sourceTitle, "Свойство ${mapping.propertyId} отсутствует в каталоге")
         return when (val transformed = mapping.transform.apply(raw)) {
             is TransformResult.Failure -> failure(
                 mapping,
@@ -49,12 +51,13 @@ internal class MappedPropertyDecoder(
                 sourceTimestampNanos,
                 receivedAtMillis,
                 autoUpdates,
+                sourceTitle,
                 "Ошибка преобразования: ${transformed.reason}",
             )
             is TransformResult.Success -> {
                 val typed = transformed.value.toCarValue(definition.valueType)
                     ?: return failure(mapping, raw, areaId, profileKey, sourceTimestampNanos,
-                        receivedAtMillis, autoUpdates,
+                        receivedAtMillis, autoUpdates, sourceTitle,
                         "Значение не соответствует типу ${definition.valueType}")
                 CarPropertySnapshot(
                     propertyId = mapping.propertyId,
@@ -65,6 +68,7 @@ internal class MappedPropertyDecoder(
                     source = VehiclePropertySource.VHAL,
                     sourceSignalId = mapping.signalId,
                     sourceSignalName = mapping.signalName,
+                    sourceTitle = sourceTitle,
                     areaId = areaId,
                     profileKey = profileKey,
                     sourceTimestampNanos = sourceTimestampNanos,
@@ -83,6 +87,7 @@ internal class MappedPropertyDecoder(
         sourceTimestampNanos: Long?,
         receivedAtMillis: Long,
         autoUpdates: Boolean,
+        sourceTitle: String?,
         error: String,
     ) = CarPropertySnapshot(
         propertyId = mapping.propertyId,
@@ -93,6 +98,7 @@ internal class MappedPropertyDecoder(
         source = VehiclePropertySource.VHAL,
         sourceSignalId = mapping.signalId,
         sourceSignalName = mapping.signalName,
+        sourceTitle = sourceTitle,
         areaId = areaId,
         profileKey = profileKey,
         sourceTimestampNanos = sourceTimestampNanos,

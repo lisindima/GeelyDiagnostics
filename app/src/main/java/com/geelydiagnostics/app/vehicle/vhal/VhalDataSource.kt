@@ -90,10 +90,20 @@ internal class VhalDataSource private constructor(
             classified.forEach(::logInitial)
             listener.onParameterSnapshot(source, classified)
             val mappedCount = classified.count { it.propertyId != null }
-            val mappingDetail = if (profile == VehicleProfile.RAW) {
-                "RAW без расшифровки"
+            val aospMappedCount = classified.count {
+                it.propertyId != null &&
+                    it.profileKey == AndroidVehiclePropertyRegistry.PROFILE_KEY
+            }
+            val profileMappedCount = mappedCount - aospMappedCount
+            val rawCount = classified.size - mappedCount
+            val mappingDetail = if (mappedCount == 0) {
+                "без нормализации"
             } else {
-                "$mappedCount расшифровано ${profile.key}"
+                buildList {
+                    if (aospMappedCount > 0) add("$aospMappedCount AOSP")
+                    if (profileMappedCount > 0) add("$profileMappedCount ${profile.key}")
+                    if (rawCount > 0) add("$rawCount raw")
+                }.joinToString(" · ")
             }
             listener.onParameterStatus(
                 source,
@@ -143,17 +153,26 @@ internal class VhalDataSource private constructor(
         config: VhalPropertyConfig,
         autoUpdates: Boolean,
     ): CarPropertySnapshot {
-        val signalMapping = mapping.forSignal(value.propertyId)
+        val androidProperty = AndroidVehiclePropertyRegistry.property(value.propertyId)
+        val profileMapping = mapping.forSignal(value.propertyId)
+        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
         return decoder.decode(
             mapping = signalMapping,
             raw = value.raw,
             sourceSignalId = value.propertyId,
-            sourceSignalName = signalMapping?.signalName ?: "VHAL_${value.propertyId.hex()}",
+            sourceSignalName = androidProperty?.apiName
+                ?: signalMapping?.signalName
+                ?: "VHAL_${value.propertyId.hex()}",
             areaId = value.areaId,
-            profileKey = signalMapping?.let { profile.key },
+            profileKey = when {
+                androidProperty != null -> androidProperty.profileKey
+                profileMapping != null -> profile.key
+                else -> null
+            },
             sourceTimestampNanos = value.sourceTimestampNanos,
             receivedAtMillis = System.currentTimeMillis(),
             autoUpdates = autoUpdates,
+            sourceTitle = androidProperty?.title,
         ).copy(
             valueKind = propertyType(value.propertyId),
             expectedUpdateIntervalMillis = if (config.continuous) STALE_AFTER_MILLIS else null,
@@ -165,7 +184,9 @@ internal class VhalDataSource private constructor(
         areaId: Int,
         error: String,
     ): CarPropertySnapshot {
-        val signalMapping = mapping.forSignal(config.propertyId)
+        val androidProperty = AndroidVehiclePropertyRegistry.property(config.propertyId)
+        val profileMapping = mapping.forSignal(config.propertyId)
+        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
         return CarPropertySnapshot(
             propertyId = signalMapping?.propertyId,
             value = null,
@@ -174,9 +195,16 @@ internal class VhalDataSource private constructor(
             status = VehiclePropertyStatus.ERROR,
             source = VehiclePropertySource.VHAL,
             sourceSignalId = config.propertyId,
-            sourceSignalName = signalMapping?.signalName ?: "VHAL_${config.propertyId.hex()}",
+            sourceSignalName = androidProperty?.apiName
+                ?: signalMapping?.signalName
+                ?: "VHAL_${config.propertyId.hex()}",
+            sourceTitle = androidProperty?.title,
             areaId = areaId,
-            profileKey = signalMapping?.let { profile.key },
+            profileKey = when {
+                androidProperty != null -> androidProperty.profileKey
+                profileMapping != null -> profile.key
+                else -> null
+            },
             receivedAtMillis = System.currentTimeMillis(),
             autoUpdates = false,
             valueKind = propertyType(config.propertyId),
