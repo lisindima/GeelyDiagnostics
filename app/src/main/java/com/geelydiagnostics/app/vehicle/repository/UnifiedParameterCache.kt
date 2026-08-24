@@ -70,7 +70,7 @@ internal class UnifiedParameterCache {
                     .thenBy { it.source != VehiclePropertySource.VHAL }
                     .thenBy(CarPropertySnapshot::sourceSignalId),
             )
-            .map(CarPropertySnapshot::toSourceReading)
+            .map { it.toSourceReading() }
         val presentation = primary.propertyId?.let(CarPropertyPresentations::get)
         val numeric = primary.value is CarValue.IntValue || primary.value is CarValue.FloatValue
         return VehicleParameter(

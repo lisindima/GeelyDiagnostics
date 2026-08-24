@@ -30,8 +30,8 @@ internal fun filterSensors(
     .filter { record ->
         when (valueFilter) {
             SensorValueFilter.ALL -> record.status == VehiclePropertyStatus.AVAILABLE
-            SensorValueFilter.DECODED -> record.status == VehiclePropertyStatus.AVAILABLE && record.isDecoded
-            SensorValueFilter.RAW -> record.status == VehiclePropertyStatus.AVAILABLE && !record.isDecoded
+            SensorValueFilter.DECODED -> record.status == VehiclePropertyStatus.AVAILABLE && record.decoded
+            SensorValueFilter.RAW -> record.status == VehiclePropertyStatus.AVAILABLE && !record.decoded
             SensorValueFilter.CHANGED ->
                 record.status == VehiclePropertyStatus.AVAILABLE && record.changedSinceScan
             SensorValueFilter.ERRORS -> record.status == VehiclePropertyStatus.ERROR ||
