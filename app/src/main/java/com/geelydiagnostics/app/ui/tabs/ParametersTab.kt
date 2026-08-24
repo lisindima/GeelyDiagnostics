@@ -471,7 +471,6 @@ internal object ParametersTab {
             if (parameter.autoUpdates) "автоматически по подписке" else "только вручную",
         )
         if (parameter.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
-        parameter.propertyId?.let { ValueLine("ID свойства", it.toString()) }
         ValueLine(
             "Расшифровка",
             if (parameter.decoded) "нормализованное свойство" else "нет — показано исходное значение",
@@ -494,11 +493,13 @@ internal object ParametersTab {
         get() = sourceReadings.map { it.badgeLabel }.distinct()
 
     private val VehicleParameter.fieldName: String
-        get() = propertyId?.let { "property_${it.rawValue}" } ?: primaryReading.signalName
+        get() = primaryReading.signalName.takeUnless {
+            it.startsWith("VHAL_0x", ignoreCase = true)
+        }.orEmpty()
 
     private val VehicleParameter.cardIdLabel: String
         get() = when {
-            propertyId != null -> "свойство ${propertyId.rawValue}" + areaSuffix
+            propertyId != null -> "внутренний ID ${propertyId.rawValue}" + areaSuffix
             primaryReading.source == VehiclePropertySource.VHAL ->
                 "сигнал ${String.format(Locale.US, "0x%08X", primaryReading.signalId)}" + areaSuffix
             else -> "сигнал ${primaryReading.signalId}"

@@ -124,7 +124,7 @@ private fun FullscreenParameterPreview() {
             FullscreenValueScreen(
                 title = "Оставшееся топливо",
                 apiName = "pafulvlindcdfulvlvalfromfutbl",
-                idText = "свойство 10012",
+                idText = "внутренний ID 10012",
                 value = VehicleDisplayValue(display = "41.7 л", raw = "41700"),
                 sourceLabels = listOf("VHAL · G426", "ECARX"),
                 modeLabel = "АВТООБНОВЛЕНИЕ",
@@ -142,7 +142,6 @@ private fun FullscreenParameterPreview() {
                 ValueLine("Обновлено", "17:26:16 · только что")
                 ValueLine("Расшифровка", "профиль G426")
                 ValueLine("VHAL-сигнал", "0x2170901E")
-                ValueLine("ID свойства", "10012")
             }
         }
     }

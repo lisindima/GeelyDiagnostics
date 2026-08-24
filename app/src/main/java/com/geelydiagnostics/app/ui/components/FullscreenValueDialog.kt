@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.sp
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import java.util.Locale
 
 @Composable
 internal fun FullscreenValueDialog(
@@ -165,11 +164,9 @@ internal fun FullscreenValueScreen(
                                     lineHeight = 32.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
-                                Text(
-                                    text = "${apiName.lowercase(Locale.ROOT)} · $idText",
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FontFamily.Monospace,
+                                TechnicalLabel(
+                                    apiName = apiName,
+                                    idLabel = idText,
                                     fontSize = 14.sp,
                                 )
                             }

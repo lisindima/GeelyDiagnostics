@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
@@ -217,14 +218,7 @@ internal fun DataCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                text = "${apiName.lowercase(Locale.ROOT)} · $idLabel",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            TechnicalLabel(apiName = apiName, idLabel = idLabel, fontSize = 11.sp)
 
             content()
 
@@ -259,6 +253,23 @@ internal fun DataCard(
             }
         }
     }
+}
+
+@Composable
+internal fun TechnicalLabel(apiName: String, idLabel: String, fontSize: TextUnit) {
+    val text = listOfNotNull(
+        apiName.takeIf(String::isNotBlank)?.lowercase(Locale.ROOT),
+        idLabel.takeIf(String::isNotBlank),
+    ).joinToString(" · ")
+    if (text.isEmpty()) return
+    Text(
+        text = text,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontFamily = FontFamily.Monospace,
+        fontSize = fontSize,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
