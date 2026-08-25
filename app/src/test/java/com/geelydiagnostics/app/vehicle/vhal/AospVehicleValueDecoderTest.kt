@@ -42,6 +42,14 @@ class AospVehicleValueDecoderTest {
     }
 
     @Test
+    fun explainsAccessoryIgnitionStateInPlainLanguage() {
+        val result = decode("IGNITION_STATE", RawVehicleValue("3", 3.0))
+
+        assertEquals("Питание дополнительного оборудования", result.displayValue)
+        assertTrue(result.decoded)
+    }
+
+    @Test
     fun reportsUnknownEnumValueInsteadOfPretendingItWasDecoded() {
         val result = decode("IGNITION_STATE", RawVehicleValue("99", 99.0))
 
