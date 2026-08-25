@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.ui.preview
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.*
 import com.geelydiagnostics.app.ui.components.*
+import com.geelydiagnostics.app.ui.tabs.DataCategory
 import com.geelydiagnostics.app.vehicle.ecarx.VendorValueDecoder
 
 import android.content.res.Configuration
