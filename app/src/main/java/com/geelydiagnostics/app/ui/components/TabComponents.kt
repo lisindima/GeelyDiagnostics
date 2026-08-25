@@ -382,6 +382,27 @@ internal fun ValueLine(label: String, value: String) {
 }
 
 @Composable
+internal fun DescriptionBlock(label: String, text: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Small)) {
+        Text(
+            text = label.uppercase(Locale.getDefault()),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontFamily = FontFamily.Monospace,
+            fontSize = AppType.Supporting,
+            fontWeight = FontWeight.Bold,
+        )
+        SelectionContainer {
+            Text(
+                text = text,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = AppType.Body,
+                lineHeight = AppType.BodyLine,
+            )
+        }
+    }
+}
+
+@Composable
 internal fun StatusCard(
     modifier: Modifier,
     title: String,

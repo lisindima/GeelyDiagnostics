@@ -471,6 +471,12 @@ internal object ParametersTab {
 
     @Composable
     private fun ParameterDetails(parameter: VehicleParameter, nowMillis: Long) {
+        parameter.sourceReadings
+            .mapNotNull { reading -> reading.description?.let { reading.badgeLabel to it } }
+            .distinct()
+            .forEach { (source, description) ->
+                DescriptionBlock("Описание $source", description)
+            }
         ValueLine("Тип", parameter.valueKind)
         ValueLine(
             "Обновлено",

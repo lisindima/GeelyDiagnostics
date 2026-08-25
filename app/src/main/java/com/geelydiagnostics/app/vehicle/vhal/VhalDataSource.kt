@@ -185,6 +185,7 @@ internal class VhalDataSource private constructor(
             value = aospValue?.value ?: decoded.value,
             displayValue = aospValue?.displayValue ?: decoded.displayValue,
             decoded = aospValue?.decoded ?: decoded.decoded,
+            sourceDescription = androidProperty?.description,
             valueKind = propertyType(value.propertyId),
             expectedUpdateIntervalMillis = if (config.continuous) STALE_AFTER_MILLIS else null,
         )
@@ -214,6 +215,7 @@ internal class VhalDataSource private constructor(
                 ?: signalMapping?.signalName
                 ?: "VHAL_${config.propertyId.hex()}",
             sourceTitle = androidProperty?.titleForArea(areaId),
+            sourceDescription = androidProperty?.description,
             areaId = areaId,
             profileKey = when {
                 androidProperty != null -> androidProperty.profileKey

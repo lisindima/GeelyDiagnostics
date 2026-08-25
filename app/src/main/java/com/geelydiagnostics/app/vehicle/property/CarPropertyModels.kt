@@ -85,6 +85,7 @@ data class CarPropertySnapshot(
     val sourceSignalId: Int,
     val sourceSignalName: String,
     val sourceTitle: String? = null,
+    val sourceDescription: String? = null,
     val areaId: Int = 0,
     val profileKey: String? = null,
     val sourceTimestampNanos: Long? = null,

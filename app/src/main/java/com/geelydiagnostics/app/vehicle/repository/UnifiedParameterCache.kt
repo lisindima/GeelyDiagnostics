@@ -107,6 +107,7 @@ internal class UnifiedParameterCache {
         signalName = sourceSignalName,
         value = VehicleDisplayValue(displayValue, rawValue?.text ?: "—"),
         status = status,
+        description = sourceDescription,
         error = error,
         profile = profileKey,
         areaId = areaId,

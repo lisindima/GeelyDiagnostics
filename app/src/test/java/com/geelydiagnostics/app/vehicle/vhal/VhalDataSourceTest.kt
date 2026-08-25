@@ -53,6 +53,7 @@ class VhalDataSourceTest {
             assertNull(ignition.propertyId)
             assertEquals("IGNITION_STATE", ignition.sourceSignalName)
             assertEquals("Зажигание включено", ignition.displayValue)
+            assertEquals("Обозначает состояние зажигания.", ignition.sourceDescription)
             assertEquals("AOSP", ignition.profileKey)
             assertTrue(ignition.decoded)
         } finally {

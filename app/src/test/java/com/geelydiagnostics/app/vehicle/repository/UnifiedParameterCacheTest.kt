@@ -19,7 +19,11 @@ class UnifiedParameterCacheTest {
             VehiclePropertySource.VHAL,
             listOf(
                 snapshot(VehiclePropertySource.VHAL, 289_408_009, null, "Зажигание включено")
-                    .copy(decoded = true, profileKey = "AOSP"),
+                    .copy(
+                        decoded = true,
+                        profileKey = "AOSP",
+                        sourceDescription = "Обозначает состояние зажигания.",
+                    ),
             ),
         )
 
@@ -27,6 +31,10 @@ class UnifiedParameterCacheTest {
         assertTrue(parameter.decoded)
         assertTrue(parameter.sourceReadings.single().decoded)
         assertEquals("Зажигание включено", parameter.value.display)
+        assertEquals(
+            "Обозначает состояние зажигания.",
+            parameter.sourceReadings.single().description,
+        )
     }
 
     @Test

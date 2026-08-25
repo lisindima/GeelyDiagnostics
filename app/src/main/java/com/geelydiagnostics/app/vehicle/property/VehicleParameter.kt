@@ -18,6 +18,7 @@ data class VehicleSourceReading(
     val signalName: String,
     val value: VehicleDisplayValue,
     val status: VehiclePropertyStatus,
+    val description: String? = null,
     val error: String = "",
     val profile: String? = null,
     val areaId: Int = 0,

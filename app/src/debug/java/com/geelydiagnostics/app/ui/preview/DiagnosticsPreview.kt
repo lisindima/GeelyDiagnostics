@@ -138,6 +138,10 @@ private fun FullscreenParameterPreview() {
                     )
                 },
             ) {
+                DescriptionBlock(
+                    label = "Описание AOSP",
+                    text = "Оставшийся объём топлива в баке автомобиля, измеренный в миллилитрах.",
+                )
                 ValueLine("Тип", "int")
                 ValueLine("Обновлено", "17:26:16 · только что")
                 ValueLine("Расшифровка", "профиль G426")

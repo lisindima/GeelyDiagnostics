@@ -109,11 +109,6 @@ internal object AndroidVehiclePropertyRegistry {
             Operator.DIVIDE,
             1000.0,
         ),
-        identityMapping(
-            VehiclePropertyIds.PERF_STEERING_ANGLE,
-            "PERF_STEERING_ANGLE",
-            CarPropertyId.STEERING_WHEEL_ANGLE,
-        ),
         enumMapping(
             VehiclePropertyIds.PARKING_BRAKE_ON,
             "PARKING_BRAKE_ON",
@@ -165,7 +160,7 @@ internal object AndroidVehiclePropertyRegistry {
         "PERF_VEHICLE_SPEED" to "Скорость автомобиля",
         "PERF_VEHICLE_SPEED_DISPLAY" to "Отображаемая скорость",
         "PERF_ODOMETER" to "Пробег",
-        "PERF_STEERING_ANGLE" to "Угол рулевого колеса",
+        "PERF_STEERING_ANGLE" to "Угол передних управляемых колёс",
         "PERF_REAR_STEERING_ANGLE" to "Угол задних управляемых колёс",
         "ENGINE_RPM" to "Обороты двигателя",
         "ENGINE_COOLANT_TEMP" to "Температура охлаждающей жидкости",
@@ -234,6 +229,7 @@ internal object AndroidVehiclePropertyRegistry {
             propertyId = propertyId,
             apiName = apiName,
             title = translatedTitles[apiName] ?: apiName.toReadableTitle(),
+            description = AospVehiclePropertyDescriptions.byId[propertyId],
             normalizedMapping = mappingsById[propertyId],
             profileKey = PROFILE_KEY,
         )
@@ -286,6 +282,7 @@ internal data class AndroidVehicleProperty(
     val propertyId: Int,
     val apiName: String,
     val title: String,
+    val description: String?,
     val normalizedMapping: ReadSignalMapping?,
     val profileKey: String,
 ) {

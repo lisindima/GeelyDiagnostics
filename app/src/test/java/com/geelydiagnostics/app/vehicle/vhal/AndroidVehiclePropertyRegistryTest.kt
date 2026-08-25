@@ -24,7 +24,19 @@ class AndroidVehiclePropertyRegistryTest {
 
         assertEquals("ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE", acceleratorPedal.apiName)
         assertEquals("Положение педали акселератора", acceleratorPedal.title)
+        assertEquals("Процент сжатия педали акселератора.", acceleratorPedal.description)
         assertEquals("AOSP", acceleratorPedal.profileKey)
+    }
+
+    @Test
+    fun everyPublishedPropertyExceptInvalidHasARussianDescription() {
+        val describedIds = AospVehiclePropertyDescriptions.byId.keys
+
+        assertEquals(AospVehiclePropertyIds.namesById.keys - setOf(0), describedIds)
+        AospVehiclePropertyDescriptions.byId.values.forEach { description ->
+            assertTrue(description.isNotBlank())
+            assertTrue(description.any { it in 'А'..'я' || it == 'ё' || it == 'Ё' })
+        }
     }
 
     @Test
@@ -106,6 +118,16 @@ class AndroidVehiclePropertyRegistryTest {
             expectedProperty = CarPropertyId.TRANSMISSION_GEAR,
             expected = 4.0,
         )
+    }
+
+    @Test
+    fun doesNotMergeFrontWheelAngleWithSteeringWheelAngle() {
+        val property = requireNotNull(
+            AndroidVehiclePropertyRegistry.property(VehiclePropertyIds.PERF_STEERING_ANGLE),
+        )
+
+        assertEquals("Угол передних управляемых колёс", property.title)
+        assertNull(property.normalizedMapping)
     }
 
     private fun assertNumber(
