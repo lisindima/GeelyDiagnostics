@@ -7,7 +7,6 @@ import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
 import android.content.ContentValues
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
@@ -90,17 +89,12 @@ class MainActivity : ComponentActivity() {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "application/json"
         }
-        val pickerAvailable = pickerIntent.resolveActivity(packageManager) != null
-        if (pickerAvailable) {
-            pendingExportFileName = fileName
-            runCatching { createReportDocument.launch(fileName) }
-                .onFailure { error ->
-                    pendingExportFileName = null
-                    saveReportLocally(fileName, error)
-                }
-        } else {
-            saveReportLocally(fileName)
-        }
+        pendingExportFileName = fileName
+        runCatching { createReportDocument.launch(fileName) }
+            .onFailure { error ->
+                pendingExportFileName = null
+                saveReportLocally(fileName, error)
+            }
     }
 
     private fun newReportFileName(): String {
@@ -118,15 +112,11 @@ class MainActivity : ComponentActivity() {
         var downloadsError: Throwable? = null
         runCatching {
             val report = createReport()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                runCatching { saveReportToDownloads(fileName, report) }
-                    .getOrElse { error ->
-                        downloadsError = error
-                        saveReportToPrivateStorage(fileName, report)
-                    }
-            } else {
-                saveReportToPrivateStorage(fileName, report)
-            }
+            runCatching { saveReportToDownloads(fileName, report) }
+                .getOrElse { error ->
+                    downloadsError = error
+                    saveReportToPrivateStorage(fileName, report)
+                }
         }.onSuccess { saved ->
             pickerError?.let { viewModel.onLog("System file picker failed: ${it.message}", it) }
             downloadsError?.let { viewModel.onLog("Public Downloads export failed: ${it.message}", it) }

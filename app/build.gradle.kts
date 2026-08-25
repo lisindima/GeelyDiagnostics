@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.geelydiagnostics.app"
-        minSdk = 26
+        minSdk = 30
         targetSdk = 35
         versionCode = 27
         versionName = "0.13.0"
