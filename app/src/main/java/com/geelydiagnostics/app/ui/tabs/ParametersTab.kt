@@ -3,13 +3,13 @@ package com.geelydiagnostics.app.ui.tabs
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.catalog.*
 import com.geelydiagnostics.app.ui.components.*
+import com.geelydiagnostics.app.ui.parameters.*
 import com.geelydiagnostics.app.ui.theme.*
 
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
-import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.property.primaryReading
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
@@ -40,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import java.util.Locale
 
 internal object ParametersTab {
 
@@ -100,33 +99,14 @@ internal object ParametersTab {
             onParameterSelected = { expandedParameterKey = it.selectionKey },
         )
         state.parameters.firstOrNull { it.selectionKey == expandedParameterKey }?.let { parameter ->
-            FullscreenValueDialog(
-                title = parameter.title,
-                apiName = parameter.fieldName,
-                idText = parameter.cardIdLabel,
-                value = parameter.value,
-                sourceLabels = parameter.sourceLabels,
-                modeLabel = if (parameter.autoUpdates) {
-                    "АВТООБНОВЛЕНИЕ · ПОДПИСКА"
-                } else {
-                    "РУЧНОЕ ОБНОВЛЕНИЕ"
-                },
+            ParameterFullscreenDialog(
+                parameter = parameter,
+                history = state.parameterHistory[parameter.favoriteKey].orEmpty(),
+                nowMillis = nowMillis,
                 isFavorite = parameter.favoriteKey in state.favoriteKeys,
                 onFavoriteToggle = { onFavoriteToggle(parameter.favoriteKey) },
                 onDismiss = { expandedParameterKey = null },
-                chart = if (parameter.chartable) {
-                    {
-                        ParameterHistoryChart(
-                            samples = state.parameterHistory[parameter.favoriteKey].orEmpty(),
-                            isLive = parameter.autoUpdates,
-                        )
-                    }
-                } else {
-                    null
-                },
-            ) {
-                ParameterDetails(parameter, nowMillis)
-            }
+            )
         }
     }
 
@@ -469,67 +449,6 @@ internal object ParametersTab {
         }
     }
 
-    @Composable
-    private fun ParameterDetails(parameter: VehicleParameter, nowMillis: Long) {
-        parameter.sourceReadings
-            .mapNotNull { reading -> reading.description?.let { reading.badgeLabel to it } }
-            .distinct()
-            .forEach { (source, description) ->
-                DescriptionBlock("Описание $source", description)
-            }
-        ValueLine("Тип", parameter.valueKind)
-        ValueLine(
-            "Обновлено",
-            formatUpdateTime(parameter.updatedAtMillis, nowMillis) +
-                if (parameter.isStale(nowMillis)) " · УСТАРЕЛО" else "",
-        )
-        ValueLine(
-            "Обновление",
-            if (parameter.autoUpdates) "автоматически по подписке" else "только вручную",
-        )
-        if (parameter.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
-        ValueLine(
-            "Расшифровка",
-            when {
-                !parameter.decoded -> "нет — показано исходное значение"
-                parameter.propertyId != null -> "расшифровано и объединено с общим параметром"
-                parameter.sourceReadings.any { it.profile == "AOSP" } -> "по стандартным правилам AOSP"
-                else -> "по выбранному профилю автомобиля"
-            },
-        )
-        parameter.sourceReadings.forEach { reading ->
-            val label = reading.badgeLabel
-            ValueLine("$label · сигнал", reading.signalLabel)
-            ValueLine("$label · raw", reading.value.raw)
-            reading.sourceTimestampNanos?.let {
-                ValueLine("$label · timestamp", "$it нс от запуска системы")
-            }
-            if (reading.error.isNotBlank()) ValueLine("$label · ошибка", reading.error)
-        }
-    }
-
-    private val VehicleParameter.selectionKey: String
-        get() = favoriteKey
-
-    private val VehicleParameter.sourceLabels: List<String>
-        get() = sourceReadings.map { it.badgeLabel }.distinct()
-
-    private val VehicleParameter.fieldName: String
-        get() = primaryReading.signalName.takeUnless {
-            it.startsWith("VHAL_0x", ignoreCase = true)
-        }.orEmpty()
-
-    private val VehicleParameter.cardIdLabel: String
-        get() = when {
-            propertyId != null -> "внутренний ID ${propertyId.rawValue}" + areaSuffix
-            primaryReading.source == VehiclePropertySource.VHAL ->
-                String.format(Locale.US, "0x%08X", primaryReading.signalId) + areaSuffix
-            else -> primaryReading.signalId.toString()
-        }
-
-    private val VehicleParameter.areaSuffix: String
-        get() = if (areaId == 0) "" else String.format(Locale.US, " · area 0x%08X", areaId)
-
     private val ReadStatus.labelForSource: String
         get() = when (this) {
             ReadStatus.NOT_CHECKED -> "не проверено"
@@ -547,22 +466,4 @@ internal object ParametersTab {
         .ifBlank { null }
         ?.let { "$label: $it" }
 
-    private val VehicleSourceReading.badgeLabel: String
-        get() = when {
-            source == VehiclePropertySource.VHAL && profile != null -> "VHAL · $profile"
-            source == VehiclePropertySource.VHAL -> "VHAL · RAW"
-            else -> source.label
-        }
-
-    private val VehicleSourceReading.signalLabel: String
-        get() = buildString {
-            if (source == VehiclePropertySource.VHAL) {
-                append(String.format(Locale.US, "0x%08X", signalId))
-            } else {
-                append(signalId)
-            }
-            append(" · ")
-            append(signalName)
-            if (areaId != 0) append(String.format(Locale.US, " · area 0x%08X", areaId))
-        }
 }
