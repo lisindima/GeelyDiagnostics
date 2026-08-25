@@ -207,6 +207,10 @@ internal class HidlVhalGateway(
             TYPE_FLOAT -> floats.firstOrNull()
             TYPE_INT32, TYPE_BOOLEAN -> int32.firstOrNull()
             TYPE_INT64 -> int64.firstOrNull()
+            TYPE_FLOAT_VECTOR -> return RawVehicleValue.vector(floats)
+            TYPE_INT32_VECTOR -> return RawVehicleValue.vector(int32)
+            TYPE_INT64_VECTOR -> return RawVehicleValue.vector(int64)
+            TYPE_BYTES -> return RawVehicleValue.vector(bytes)
             else -> null
         }
         if (preferred != null) return RawVehicleValue.number(preferred)
@@ -306,8 +310,12 @@ internal class HidlVhalGateway(
         private const val TYPE_STRING = 0x00100000
         private const val TYPE_BOOLEAN = 0x00200000
         private const val TYPE_INT32 = 0x00400000
+        private const val TYPE_INT32_VECTOR = 0x00410000
         private const val TYPE_INT64 = 0x00500000
+        private const val TYPE_INT64_VECTOR = 0x00510000
         private const val TYPE_FLOAT = 0x00600000
+        private const val TYPE_FLOAT_VECTOR = 0x00610000
+        private const val TYPE_BYTES = 0x00700000
     }
 }
 
@@ -322,7 +330,12 @@ private fun List<VhalPropertyConfig>.merge(): VhalPropertyConfig {
 
 private fun RawVehicleValue.Companion.number(value: Number): RawVehicleValue = RawVehicleValue(
     text = formatVhalNumber(value),
-    number = value.toDouble(),
+    number = value.toStableVhalDouble(),
+)
+
+private fun RawVehicleValue.Companion.vector(values: List<Number>): RawVehicleValue = RawVehicleValue(
+    text = values.formatted(),
+    numbers = values.map(Number::toStableVhalDouble),
 )
 
 private fun List<Number>.formatted(): String =

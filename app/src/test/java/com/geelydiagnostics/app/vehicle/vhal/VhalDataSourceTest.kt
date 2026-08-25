@@ -23,6 +23,44 @@ import org.junit.Test
 
 class VhalDataSourceTest {
     @Test
+    fun standardAospDecoderWinsOverVehicleProfileForSameSignalId() {
+        val ignitionId = 289_408_009
+        val gateway = FakeGateway(
+            configs = listOf(config(ignitionId, dynamic = true)),
+            initialValues = mapOf(
+                (ignitionId to 0) to value(ignitionId, "4", 4.0, 10L),
+            ),
+        )
+        val listener = RecordingListener()
+        val source = VhalDataSource(
+            profile = VehicleProfile.G426,
+            listener = listener,
+            mapping = VehicleProfileMapping(
+                VehicleProfile.G426,
+                listOf(ReadSignalMapping(CarPropertyId.VEHICLE_SPEED, ignitionId, "vendor_speed")),
+            ),
+            catalog = catalog(
+                CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.FLOAT, "speed"),
+            ),
+            gateway = gateway,
+        )
+
+        try {
+            source.start()
+            assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+
+            val ignition = listener.snapshot.single()
+            assertNull(ignition.propertyId)
+            assertEquals("IGNITION_STATE", ignition.sourceSignalName)
+            assertEquals("Зажигание включено", ignition.displayValue)
+            assertEquals("AOSP", ignition.profileKey)
+            assertTrue(ignition.decoded)
+        } finally {
+            source.close()
+        }
+    }
+
+    @Test
     fun appliesAndroidRegistryBeforeVehicleProfileMapping() {
         val androidSpeedId = 0x11600207
         val gateway = FakeGateway(

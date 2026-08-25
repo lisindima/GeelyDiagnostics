@@ -155,8 +155,12 @@ internal class VhalDataSource private constructor(
     ): CarPropertySnapshot {
         val androidProperty = AndroidVehiclePropertyRegistry.property(value.propertyId)
         val profileMapping = mapping.forSignal(value.propertyId)
-        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
-        return decoder.decode(
+        val signalMapping = if (androidProperty != null) {
+            androidProperty.normalizedMapping
+        } else {
+            profileMapping
+        }
+        val decoded = decoder.decode(
             mapping = signalMapping,
             raw = value.raw,
             sourceSignalId = value.propertyId,
@@ -172,8 +176,15 @@ internal class VhalDataSource private constructor(
             sourceTimestampNanos = value.sourceTimestampNanos,
             receivedAtMillis = System.currentTimeMillis(),
             autoUpdates = autoUpdates,
-            sourceTitle = androidProperty?.title,
-        ).copy(
+            sourceTitle = androidProperty?.titleForArea(value.areaId),
+        )
+        val aospValue = androidProperty
+            ?.takeIf { it.normalizedMapping == null }
+            ?.decode(value.raw)
+        return decoded.copy(
+            value = aospValue?.value ?: decoded.value,
+            displayValue = aospValue?.displayValue ?: decoded.displayValue,
+            decoded = aospValue?.decoded ?: decoded.decoded,
             valueKind = propertyType(value.propertyId),
             expectedUpdateIntervalMillis = if (config.continuous) STALE_AFTER_MILLIS else null,
         )
@@ -186,7 +197,11 @@ internal class VhalDataSource private constructor(
     ): CarPropertySnapshot {
         val androidProperty = AndroidVehiclePropertyRegistry.property(config.propertyId)
         val profileMapping = mapping.forSignal(config.propertyId)
-        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
+        val signalMapping = if (androidProperty != null) {
+            androidProperty.normalizedMapping
+        } else {
+            profileMapping
+        }
         return CarPropertySnapshot(
             propertyId = signalMapping?.propertyId,
             value = null,
@@ -198,7 +213,7 @@ internal class VhalDataSource private constructor(
             sourceSignalName = androidProperty?.apiName
                 ?: signalMapping?.signalName
                 ?: "VHAL_${config.propertyId.hex()}",
-            sourceTitle = androidProperty?.title,
+            sourceTitle = androidProperty?.titleForArea(areaId),
             areaId = areaId,
             profileKey = when {
                 androidProperty != null -> androidProperty.profileKey

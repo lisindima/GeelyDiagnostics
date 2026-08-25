@@ -53,6 +53,7 @@ sealed interface CarValue {
 data class RawVehicleValue(
     val text: String,
     val number: Double? = null,
+    val numbers: List<Double>? = null,
 ) {
     companion object
 }
@@ -70,8 +71,9 @@ enum class VehiclePropertySource(val label: String) {
 }
 
 /**
- * Stable repository value. A property id is absent only for an unknown signal that is deliberately
- * retained as raw data. Source timestamps and local receive timestamps have different clocks.
+ * Stable repository value. A property id is present only when this reading can be merged into the
+ * app's normalized catalog. AOSP readings may still be decoded while remaining source-specific.
+ * Source timestamps and local receive timestamps have different clocks.
  */
 data class CarPropertySnapshot(
     val propertyId: CarPropertyId?,
@@ -91,6 +93,7 @@ data class CarPropertySnapshot(
     val valueKind: String = "raw",
     val expectedUpdateIntervalMillis: Long? = null,
     val error: String = "",
+    val decoded: Boolean = propertyId != null,
 )
 
 data class CarPropertyKey(

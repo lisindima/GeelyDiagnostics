@@ -33,6 +33,7 @@ internal class MappedPropertyDecoder(
                 sourceSignalName = sourceSignalName,
                 sourceTitle = sourceTitle,
                 areaId = areaId,
+                profileKey = profileKey,
                 sourceTimestampNanos = sourceTimestampNanos,
                 receivedAtMillis = receivedAtMillis,
                 autoUpdates = autoUpdates,

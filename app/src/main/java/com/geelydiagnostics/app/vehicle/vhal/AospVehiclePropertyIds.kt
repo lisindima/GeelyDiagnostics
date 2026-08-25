@@ -259,5 +259,12 @@ internal object AospVehiclePropertyIds {
         322964422 to "WINDSHIELD_WIPERS_STATE",
         322964423 to "WINDSHIELD_WIPERS_SWITCH",
     )
-}
 
+    private val idsByName: Map<String, Int> by lazy {
+        namesById.entries.associate { (id, name) -> name to id }
+    }
+
+    fun id(apiName: String): Int = requireNotNull(idsByName[apiName]) {
+        "Unknown AOSP vehicle property $apiName"
+    }
+}

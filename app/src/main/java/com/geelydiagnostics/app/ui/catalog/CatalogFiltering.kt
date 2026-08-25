@@ -10,7 +10,7 @@ import java.util.Locale
 
 internal enum class ParameterValueFilter(val title: String) {
     ALL("Все значения"),
-    DECODED("Нормализовано"),
+    DECODED("Расшифровано"),
     RAW("Без расшифровки"),
     CHANGED("Изменились"),
     ERRORS("Ошибки"),

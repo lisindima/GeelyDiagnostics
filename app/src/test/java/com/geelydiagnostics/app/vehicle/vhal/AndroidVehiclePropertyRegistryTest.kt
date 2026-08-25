@@ -15,12 +15,15 @@ class AndroidVehiclePropertyRegistryTest {
     @Test
     fun containsEveryPublishedAospPropertyIncludingIdsNewerThanCompileSdk() {
         assertEquals(250, AospVehiclePropertyIds.namesById.size)
+        AospVehiclePropertyIds.namesById.forEach { (id, name) ->
+            assertEquals(name, requireNotNull(AndroidVehiclePropertyRegistry.property(id)).apiName)
+        }
         val acceleratorPedal = requireNotNull(
             AndroidVehiclePropertyRegistry.property(291_504_911),
         )
 
         assertEquals("ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE", acceleratorPedal.apiName)
-        assertEquals("Accelerator pedal compression percentage", acceleratorPedal.title)
+        assertEquals("Положение педали акселератора", acceleratorPedal.title)
         assertEquals("AOSP", acceleratorPedal.profileKey)
     }
 
@@ -74,6 +77,18 @@ class AndroidVehiclePropertyRegistryTest {
             raw = 123_400.0,
             expectedProperty = CarPropertyId.REMAINING_RANGE,
             expected = 123.4,
+        )
+        assertNumber(
+            AospVehiclePropertyIds.id("ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE"),
+            raw = 42.5,
+            expectedProperty = CarPropertyId.ACCELERATOR_POSITION,
+            expected = 42.5,
+        )
+        assertNumber(
+            AospVehiclePropertyIds.id("BRAKE_PEDAL_COMPRESSION_PERCENTAGE"),
+            raw = 18.0,
+            expectedProperty = CarPropertyId.BRAKE_POSITION,
+            expected = 18.0,
         )
     }
 

@@ -13,6 +13,23 @@ import org.junit.Test
 
 class UnifiedParameterCacheTest {
     @Test
+    fun decodedAospSignalDoesNotNeedNormalizedPropertyId() {
+        val cache = UnifiedParameterCache()
+        cache.replaceSource(
+            VehiclePropertySource.VHAL,
+            listOf(
+                snapshot(VehiclePropertySource.VHAL, 289_408_009, null, "Зажигание включено")
+                    .copy(decoded = true, profileKey = "AOSP"),
+            ),
+        )
+
+        val parameter = cache.parameters().single()
+        assertTrue(parameter.decoded)
+        assertTrue(parameter.sourceReadings.single().decoded)
+        assertEquals("Зажигание включено", parameter.value.display)
+    }
+
+    @Test
     fun matchingPropertyAndAreaMergeWhileUnknownSignalsRemainSeparate() {
         val cache = UnifiedParameterCache()
         cache.replaceSource(

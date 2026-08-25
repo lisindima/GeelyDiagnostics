@@ -119,33 +119,55 @@ internal class CarPropertyManagerGateway(
     }
 }
 
-private fun Any?.toRawVehicleValue(): RawVehicleValue = when (this) {
+internal fun Any?.toRawVehicleValue(): RawVehicleValue = when (this) {
     null -> throw IllegalStateException("Car property value is null")
-    is Float -> RawVehicleValue(formatVhalNumber(this), toDouble())
+    is Float -> RawVehicleValue(formatVhalNumber(this), toStableVhalDouble())
     is Double -> RawVehicleValue(formatVhalNumber(this), this)
     is Number -> RawVehicleValue(
         text = formatVhalNumber(this),
-        number = toDouble(),
+        number = toStableVhalDouble(),
     )
     is Boolean -> RawVehicleValue(if (this) "1" else "0", if (this) 1.0 else 0.0)
     is String -> RawVehicleValue(this)
-    is IntArray -> RawVehicleValue(joinToString(prefix = "[", postfix = "]"))
-    is LongArray -> RawVehicleValue(joinToString(prefix = "[", postfix = "]"))
+    is IntArray -> RawVehicleValue(
+        text = joinToString(prefix = "[", postfix = "]"),
+        numbers = map { it.toStableVhalDouble() },
+    )
+    is LongArray -> RawVehicleValue(
+        text = joinToString(prefix = "[", postfix = "]"),
+        numbers = map { it.toStableVhalDouble() },
+    )
     is FloatArray -> RawVehicleValue(
-        joinToString(prefix = "[", postfix = "]", transform = ::formatVhalNumber),
+        text = joinToString(prefix = "[", postfix = "]", transform = ::formatVhalNumber),
+        numbers = map { it.toStableVhalDouble() },
     )
     is DoubleArray -> RawVehicleValue(
-        joinToString(prefix = "[", postfix = "]", transform = ::formatVhalNumber),
+        text = joinToString(prefix = "[", postfix = "]", transform = ::formatVhalNumber),
+        numbers = map { it.toStableVhalDouble() },
     )
-    is ByteArray -> RawVehicleValue(joinToString(prefix = "[", postfix = "]") { (it.toInt() and 0xff).toString() })
-    is Array<*> -> RawVehicleValue(joinToString(prefix = "[", postfix = "]") { it.toCarText() })
-    is Iterable<*> -> RawVehicleValue(joinToString(prefix = "[", postfix = "]") { it.toCarText() })
+    is ByteArray -> RawVehicleValue(
+        text = joinToString(prefix = "[", postfix = "]") { (it.toInt() and 0xff).toString() },
+        numbers = map { (it.toInt() and 0xff).toDouble() },
+    )
+    is Array<*> -> asIterable().toRawVehicleVector()
+    is Iterable<*> -> toRawVehicleVector()
     else -> RawVehicleValue(toString())
 }
 
 private fun Any?.toCarText(): String = when (this) {
     is Number -> formatVhalNumber(this)
     else -> toString()
+}
+
+private fun Iterable<*>.toRawVehicleVector(): RawVehicleValue {
+    val values = toList()
+    val numbers = values.filterIsInstance<Number>()
+        .takeIf { it.size == values.size }
+        ?.map(Number::toStableVhalDouble)
+    return RawVehicleValue(
+        text = values.joinToString(prefix = "[", postfix = "]") { it.toCarText() },
+        numbers = numbers,
+    )
 }
 
 private fun Int.hex(): String = "0x${toUInt().toString(16).padStart(8, '0')}"

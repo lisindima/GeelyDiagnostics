@@ -28,8 +28,8 @@ data class VehicleSourceReading(
 )
 
 /**
- * Parameter consumed by the application. The stable property id is the primary identity; source
- * signal ids are retained only in [sourceReadings]. Unknown signals deliberately have no id.
+ * Parameter consumed by the application. The normalized property id is the primary identity when
+ * several sources can be merged; source-specific AOSP and unknown readings deliberately have no id.
  */
 data class VehicleParameter(
     val propertyId: CarPropertyId?,

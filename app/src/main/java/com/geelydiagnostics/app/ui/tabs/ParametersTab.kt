@@ -65,7 +65,7 @@ internal object ParametersTab {
         )
         val autoUpdating = filtered.filter(VehicleParameter::autoUpdates)
         val manuallyUpdated = filtered.filterNot(VehicleParameter::autoUpdates)
-        val unmappedCount = filtered.count { it.propertyId == null || !it.decoded }
+        val undecodedCount = filtered.count { !it.decoded }
         val groups = listOf(
             Triple("Автообновление", "Новые значения приходят по подписке", autoUpdating),
             Triple("Ручное обновление", "Значения обновляются по запросу", manuallyUpdated),
@@ -85,7 +85,7 @@ internal object ParametersTab {
             displayedCount = filtered.size,
             autoUpdatingCount = autoUpdating.size,
             manuallyUpdatedCount = manuallyUpdated.size,
-            unmappedCount = unmappedCount,
+            undecodedCount = undecodedCount,
             groups = groups,
             emptyText = emptyText,
             query = query,
@@ -266,7 +266,7 @@ internal object ParametersTab {
         displayedCount: Int,
         autoUpdatingCount: Int,
         manuallyUpdatedCount: Int,
-        unmappedCount: Int,
+        undecodedCount: Int,
         groups: List<Triple<String, String, List<VehicleParameter>>>,
         emptyText: String,
         query: String,
@@ -359,7 +359,7 @@ internal object ParametersTab {
                     title = "Показано",
                     count = displayedCount,
                     detail = "По подписке $autoUpdatingCount · вручную $manuallyUpdatedCount · " +
-                        "без расшифровки $unmappedCount · доступно $supportedCount",
+                        "без расшифровки $undecodedCount · доступно $supportedCount",
                 )
             }
             if (groups.isEmpty()) {
@@ -484,7 +484,12 @@ internal object ParametersTab {
         if (parameter.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
         ValueLine(
             "Расшифровка",
-            if (parameter.decoded) "нормализованное свойство" else "нет — показано исходное значение",
+            when {
+                !parameter.decoded -> "нет — показано исходное значение"
+                parameter.propertyId != null -> "расшифровано и объединено с общим параметром"
+                parameter.sourceReadings.any { it.profile == "AOSP" } -> "по стандартным правилам AOSP"
+                else -> "по выбранному профилю автомобиля"
+            },
         )
         parameter.sourceReadings.forEach { reading ->
             val label = reading.badgeLabel

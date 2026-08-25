@@ -58,3 +58,6 @@ internal fun formatVhalNumber(value: Number): String = when (value) {
     is Byte, is Short, is Int, is Long -> value.toLong().toString()
     else -> value.toString()
 }
+
+/** Numeric form matching [formatVhalNumber], without Float-to-Double representation noise. */
+internal fun Number.toStableVhalDouble(): Double = formatVhalNumber(this).toDoubleOrNull() ?: toDouble()

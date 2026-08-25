@@ -12,16 +12,16 @@ import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import com.geelydiagnostics.app.vehicle.property.key
 
-/** Single source of truth for normalized parameters and deliberately unknown source signals. */
+/** Single source of truth for normalized parameters and standalone source-specific readings. */
 internal class UnifiedParameterCache {
     private val normalized = linkedMapOf<NormalizedKey, LinkedHashMap<CarPropertyKey, CarPropertySnapshot>>()
-    private val unknown = linkedMapOf<CarPropertyKey, CarPropertySnapshot>()
+    private val standalone = linkedMapOf<CarPropertyKey, CarPropertySnapshot>()
     private val changed = linkedSetOf<CarPropertyKey>()
 
     fun replaceSource(source: VehiclePropertySource, values: List<CarPropertySnapshot>) {
         normalized.values.forEach { candidates -> candidates.keys.removeAll { it.source == source } }
         normalized.entries.removeAll { it.value.isEmpty() }
-        unknown.keys.removeAll { it.source == source }
+        standalone.keys.removeAll { it.source == source }
         changed.removeAll { it.source == source }
         values.forEach(::put)
     }
@@ -35,8 +35,8 @@ internal class UnifiedParameterCache {
 
     fun parameters(): List<VehicleParameter> {
         val normalizedParameters = normalized.values.map { merge(it.values.toList()) }
-        val unknownParameters = unknown.values.map { merge(listOf(it)) }
-        return (normalizedParameters + unknownParameters).sortedWith(
+        val standaloneParameters = standalone.values.map { merge(listOf(it)) }
+        return (normalizedParameters + standaloneParameters).sortedWith(
             compareBy<VehicleParameter> { it.title.lowercase() }
                 .thenBy { it.propertyId?.rawValue ?: Int.MAX_VALUE }
                 .thenBy(VehicleParameter::areaId),
@@ -45,14 +45,14 @@ internal class UnifiedParameterCache {
 
     fun clear() {
         normalized.clear()
-        unknown.clear()
+        standalone.clear()
         changed.clear()
     }
 
     private fun put(value: CarPropertySnapshot): CarPropertySnapshot? {
         val propertyId = value.propertyId
         return if (propertyId == null) {
-            unknown.put(value.key, value)
+            standalone.put(value.key, value)
         } else {
             normalized.getOrPut(NormalizedKey(propertyId, value.areaId)) { linkedMapOf() }
                 .put(value.key, value)
@@ -99,7 +99,7 @@ internal class UnifiedParameterCache {
     }
 
     private val CarPropertySnapshot.readableDecoded: Boolean
-        get() = propertyId != null && status == VehiclePropertyStatus.AVAILABLE && rawValue != null
+        get() = decoded && status == VehiclePropertyStatus.AVAILABLE && rawValue != null
 
     private fun CarPropertySnapshot.toSourceReading() = VehicleSourceReading(
         source = source,
