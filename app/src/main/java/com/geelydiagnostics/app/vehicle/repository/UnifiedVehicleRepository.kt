@@ -3,10 +3,9 @@ package com.geelydiagnostics.app.vehicle.repository
 import android.content.Context
 import android.util.Log
 import com.geelydiagnostics.app.model.DtcRecord
-import com.geelydiagnostics.app.model.DiagnosticsState
+import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.vehicle.ecarx.EcarxDataListener
 import com.geelydiagnostics.app.vehicle.ecarx.EcarxDataSource
-import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
