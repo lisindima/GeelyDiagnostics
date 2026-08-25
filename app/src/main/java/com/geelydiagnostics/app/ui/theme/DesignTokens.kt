@@ -2,8 +2,91 @@ package com.geelydiagnostics.app.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+/** Palette used by the approved UI mockup. Components consume semantic Material roles. */
+internal val GeelyDiagnosticsLightColors = lightColorScheme(
+    primary = Color(0xFF1F5FAE),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFD7E3FF),
+    onPrimaryContainer = Color(0xFF0D2E5D),
+    secondary = Color(0xFF40683E),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFD8E8D4),
+    onSecondaryContainer = Color(0xFF18391D),
+    tertiary = Color(0xFF755B00),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFFE08A),
+    onTertiaryContainer = Color(0xFF2A2100),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    background = Color(0xFFF8F9FD),
+    onBackground = Color(0xFF1A1C1E),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF1A1C1E),
+    surfaceVariant = Color(0xFFEFF1F6),
+    onSurfaceVariant = Color(0xFF626872),
+    outline = Color(0xFF777D88),
+    outlineVariant = Color(0xFFD0D4DC),
+    scrim = Color(0xFF000000),
+)
+
+internal val GeelyDiagnosticsDarkColors = darkColorScheme(
+    primary = Color(0xFFAAC7FF),
+    onPrimary = Color(0xFF062E63),
+    primaryContainer = Color(0xFF304566),
+    onPrimaryContainer = Color(0xFFD8E5FF),
+    secondary = Color(0xFFC0EFC6),
+    onSecondary = Color(0xFF18391D),
+    secondaryContainer = Color(0xFF244C31),
+    onSecondaryContainer = Color(0xFFC0EFC6),
+    tertiary = Color(0xFFF5C746),
+    onTertiary = Color(0xFF3D2F00),
+    tertiaryContainer = Color(0xFF554300),
+    onTertiaryContainer = Color(0xFFFFE08A),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF111318),
+    onBackground = Color(0xFFE2E2E6),
+    surface = Color(0xFF1A1C21),
+    onSurface = Color(0xFFE2E2E6),
+    surfaceVariant = Color(0xFF292C32),
+    onSurfaceVariant = Color(0xFFAEB4C0),
+    outline = Color(0xFF8D929D),
+    outlineVariant = Color(0xFF454A55),
+    scrim = Color(0xFF000000),
+)
+
+private val MaterialTypography = Typography()
+
+/** Roboto/system sans for UI copy; monospace remains opt-in for raw and API labels. */
+internal val GeelyDiagnosticsTypography = Typography(
+    displayLarge = MaterialTypography.displayLarge.copy(fontFamily = FontFamily.SansSerif),
+    displayMedium = MaterialTypography.displayMedium.copy(fontFamily = FontFamily.SansSerif),
+    displaySmall = MaterialTypography.displaySmall.copy(fontFamily = FontFamily.SansSerif),
+    headlineLarge = MaterialTypography.headlineLarge.copy(fontFamily = FontFamily.SansSerif),
+    headlineMedium = MaterialTypography.headlineMedium.copy(fontFamily = FontFamily.SansSerif),
+    headlineSmall = MaterialTypography.headlineSmall.copy(fontFamily = FontFamily.SansSerif),
+    titleLarge = MaterialTypography.titleLarge.copy(fontFamily = FontFamily.SansSerif),
+    titleMedium = MaterialTypography.titleMedium.copy(fontFamily = FontFamily.SansSerif),
+    titleSmall = MaterialTypography.titleSmall.copy(fontFamily = FontFamily.SansSerif),
+    bodyLarge = MaterialTypography.bodyLarge.copy(fontFamily = FontFamily.SansSerif),
+    bodyMedium = MaterialTypography.bodyMedium.copy(fontFamily = FontFamily.SansSerif),
+    bodySmall = MaterialTypography.bodySmall.copy(fontFamily = FontFamily.SansSerif),
+    labelLarge = MaterialTypography.labelLarge.copy(fontFamily = FontFamily.SansSerif),
+    labelMedium = MaterialTypography.labelMedium.copy(fontFamily = FontFamily.SansSerif),
+    labelSmall = MaterialTypography.labelSmall.copy(fontFamily = FontFamily.SansSerif),
+)
 
 /**
  * Layout spacing follows a 4 dp baseline grid. Prefer semantic aliases at call sites
@@ -23,7 +106,7 @@ internal object AppSpacing {
 
     val Technical = Small
     val CardContent = Default
-    val ScreenHorizontal = XLarge
+    val ScreenHorizontal = Large
     val ScreenTop = Default
     val ScreenBottom = XXXLarge
 }
@@ -31,8 +114,10 @@ internal object AppSpacing {
 /** Fixed component and drawing dimensions; these are not layout spacing. */
 internal object AppSizes {
     val Border = 1.dp
-    val CardElevation = 1.dp
+    val CardElevation = 0.dp
     val DialogElevation = 8.dp
+    val HeaderActionMinHeight = 40.dp
+    val FavoriteButton = 36.dp
     val SettingsDialogMaxWidth = 560.dp
     val ChartHeight = 300.dp
     val ChartLine = 4.dp
@@ -46,31 +131,31 @@ internal object AppBreakpoints {
 
 /** Semantic type scale. Font sizes are independent from the 4 dp layout grid. */
 internal object AppType {
-    val Technical = 11.sp
-    val Label = 12.sp
-    val Supporting = 13.sp
-    val Body = 14.sp
-    val BodyEmphasis = 15.sp
-    val Standard = 16.sp
-    val Action = 17.sp
-    val CardTitle = 18.sp
+    val Technical = 10.sp
+    val Label = 11.sp
+    val Supporting = 12.sp
+    val Body = 13.sp
+    val BodyEmphasis = 14.sp
+    val Standard = 15.sp
+    val Action = 16.sp
+    val CardTitle = 16.sp
     val Count = 28.sp
     val SectionTitle = 22.sp
     val DialogTitle = 26.sp
-    val HeaderTitle = 28.sp
+    val HeaderTitle = 24.sp
     val DialogFavorite = 30.sp
     val DialogClose = 34.sp
-    val CardValue = 38.sp
+    val CardValue = 28.sp
     val DialogValue = 58.sp
 
-    val ValueLabelLine = 17.sp
-    val SupportingLine = 18.sp
-    val BodyLine = 19.sp
-    val CardTitleLine = 24.sp
+    val ValueLabelLine = 16.sp
+    val SupportingLine = 17.sp
+    val BodyLine = 18.sp
+    val CardTitleLine = 22.sp
     val DialogRawLine = 28.sp
     val DialogTitleLine = 32.sp
     val DialogCloseLine = 34.sp
-    val CardValueLine = 44.sp
+    val CardValueLine = 34.sp
     val DialogValueLine = 66.sp
 }
 

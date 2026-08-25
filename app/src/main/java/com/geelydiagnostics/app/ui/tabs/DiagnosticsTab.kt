@@ -95,6 +95,7 @@ internal object DiagnosticsTab {
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     ),
+                    shape = MaterialTheme.shapes.large,
                 ) {
                     Text(
                         text = "Получены данные по ${recordsByEcu.size} блокам, но ни одного DTC-кода не передано. Вероятно, активных кодов ошибок нет; точная семантика vendor API не документирована.",
@@ -123,6 +124,7 @@ internal object DiagnosticsTab {
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = AppSizes.CardElevation),
+            shape = MaterialTheme.shapes.large,
         ) {
             Column {
                 Surface(

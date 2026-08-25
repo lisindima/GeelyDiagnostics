@@ -63,6 +63,7 @@ internal object LogTab {
                         containerColor = MaterialTheme.colorScheme.surface,
                     ),
                     border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+                    shape = MaterialTheme.shapes.large,
                 ) {
                     Row(
                         modifier = Modifier.padding(AppSpacing.CardContent),
@@ -71,8 +72,8 @@ internal object LogTab {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Журнал",
-                                fontSize = AppType.SectionTitle,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = AppType.CardTitle,
+                                fontWeight = FontWeight.ExtraBold,
                             )
                             Text(
                                 text = "Показано ${filtered.size} из ${lines.size} строк",
@@ -102,7 +103,8 @@ internal object LogTab {
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            shape = MaterialTheme.shapes.medium,
+            shape = MaterialTheme.shapes.large,
+            border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Box(Modifier.padding(AppSpacing.CardContent)) {
                 SelectionContainer {

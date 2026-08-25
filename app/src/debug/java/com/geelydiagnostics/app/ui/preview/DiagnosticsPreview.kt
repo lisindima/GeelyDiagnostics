@@ -4,11 +4,13 @@ import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.*
 import com.geelydiagnostics.app.ui.components.*
 import com.geelydiagnostics.app.ui.tabs.DataCategory
+import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsDarkColors
+import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsShapes
+import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsTypography
 import com.geelydiagnostics.app.vehicle.ecarx.VendorValueDecoder
 
 import android.content.res.Configuration
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -126,7 +128,11 @@ private fun FullscreenParameterPreview() {
     CompositionLocalProvider(
         LocalDensity provides Density(density = density.density, fontScale = 1.5f),
     ) {
-        MaterialTheme(colorScheme = darkColorScheme()) {
+        MaterialTheme(
+            colorScheme = GeelyDiagnosticsDarkColors,
+            shapes = GeelyDiagnosticsShapes,
+            typography = GeelyDiagnosticsTypography,
+        ) {
             FullscreenValueScreen(
                 title = "Оставшееся топливо",
                 apiName = "pafulvlindcdfulvlvalfromfutbl",

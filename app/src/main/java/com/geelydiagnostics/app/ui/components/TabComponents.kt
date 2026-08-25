@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -81,6 +82,7 @@ internal fun DataCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = AppSizes.CardElevation),
+        shape = MaterialTheme.shapes.large,
     ) {
         Column(
             modifier = Modifier.padding(AppSpacing.CardContent),
@@ -96,13 +98,15 @@ internal fun DataCard(
                 )
                 IconButton(
                     onClick = onFavoriteToggle,
-                    modifier = Modifier.semantics {
-                        contentDescription = if (isFavorite) {
-                            "Удалить из избранного"
-                        } else {
-                            "Добавить в избранное"
+                    modifier = Modifier
+                        .size(AppSizes.FavoriteButton)
+                        .semantics {
+                            contentDescription = if (isFavorite) {
+                                "Удалить из избранного"
+                            } else {
+                                "Добавить в избранное"
+                            }
                         }
-                    },
                 ) {
                     Text(
                         text = if (isFavorite) "★" else "☆",
@@ -127,7 +131,7 @@ internal fun DataCard(
                         ),
                         fontSize = AppType.CardValue,
                         lineHeight = AppType.CardValueLine,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -140,7 +144,7 @@ internal fun DataCard(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = AppType.CardTitle,
                     lineHeight = AppType.CardTitleLine,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -218,8 +222,8 @@ internal fun CatalogSearchField(
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
-        label = { Text("Поиск") },
         placeholder = { Text(placeholder) },
+        shape = MaterialTheme.shapes.medium,
     )
 }
 
@@ -318,6 +322,7 @@ internal fun StatusCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = AppSizes.CardElevation),
+        shape = MaterialTheme.shapes.large,
     ) {
         Column(
             modifier = Modifier.padding(AppSpacing.CardContent),
@@ -332,7 +337,7 @@ internal fun StatusCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(AppSpacing.XSmall),
                 ) {
-                    Text(title, fontSize = AppType.CardTitle, fontWeight = FontWeight.Bold)
+                    Text(title, fontSize = AppType.CardTitle, fontWeight = FontWeight.ExtraBold)
                     Text(
                         description,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -401,7 +406,7 @@ internal fun CountSummary(
                 text = title,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = AppType.CardTitle,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.ExtraBold,
             )
             Text(
                 text = detail,
@@ -413,7 +418,7 @@ internal fun CountSummary(
             text = count.toString(),
             color = MaterialTheme.colorScheme.primary,
             fontSize = AppType.Count,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
         )
     }
 }
@@ -421,8 +426,8 @@ internal fun CountSummary(
 @Composable
 internal fun SourceStateBadge(label: String, status: ReadStatus, modifier: Modifier = Modifier) {
     val colors = when (status) {
-        ReadStatus.AVAILABLE -> MaterialTheme.colorScheme.primaryContainer to
-            MaterialTheme.colorScheme.onPrimaryContainer
+        ReadStatus.AVAILABLE -> MaterialTheme.colorScheme.secondaryContainer to
+            MaterialTheme.colorScheme.onSecondaryContainer
         ReadStatus.PARTIAL, ReadStatus.CHECKING -> MaterialTheme.colorScheme.tertiaryContainer to
             MaterialTheme.colorScheme.onTertiaryContainer
         ReadStatus.ERROR -> MaterialTheme.colorScheme.errorContainer to
@@ -468,7 +473,7 @@ private fun statusColors(status: ReadStatus): Pair<Color, Color> = when (status)
     ReadStatus.PARTIAL ->
         MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
     ReadStatus.AVAILABLE ->
-        MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     ReadStatus.ERROR ->
         MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
 }

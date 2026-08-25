@@ -153,6 +153,7 @@ internal fun FullscreenValueScreen(
                             containerColor = MaterialTheme.colorScheme.surface,
                         ),
                         border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+                        shape = MaterialTheme.shapes.large,
                     ) {
                         Column {
                             Column(
@@ -210,6 +211,7 @@ internal fun FullscreenValueScreen(
                             containerColor = MaterialTheme.colorScheme.surface,
                         ),
                         border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+                        shape = MaterialTheme.shapes.large,
                     ) {
                         Column(
                             modifier = Modifier.padding(
@@ -238,7 +240,10 @@ internal fun FullscreenValueScreen(
                     }
                 }
                 item {
-                    Button(onClick = onDismiss) {
+                    Button(
+                        onClick = onDismiss,
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
                         Text("Вернуться к списку", fontSize = AppType.Count)
                     }
                 }

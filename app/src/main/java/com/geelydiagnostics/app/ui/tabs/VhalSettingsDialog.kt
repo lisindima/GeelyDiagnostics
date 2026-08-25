@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -125,8 +125,13 @@ internal fun VhalSettingsDialog(
                 Button(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
                 ) {
-                    Text("Готово", fontSize = AppType.Action)
+                    Text(
+                        text = "Готово",
+                        fontSize = AppType.Body,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
                 }
             }
         }
@@ -152,6 +157,7 @@ private fun ProfileSetting(
             OutlinedButton(
                 onClick = { expanded = true },
                 modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -203,29 +209,43 @@ private fun BackendChoice(
     onClick: () -> Unit,
     modifier: Modifier,
 ) {
-    FilterChip(
-        selected = selected,
+    Card(
         onClick = onClick,
         modifier = modifier,
         shape = MaterialTheme.shapes.medium,
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            contentColor = if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
         ),
-        label = {
-            Column(Modifier.padding(vertical = AppSpacing.XSmall)) {
-                Text(
-                    text = backend.title,
-                    fontSize = AppType.Body,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = backend.description,
-                    fontSize = AppType.Technical,
-                    maxLines = 2,
-                )
-            }
-        },
-    )
+        border = BorderStroke(
+            AppSizes.Border,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+        ),
+    ) {
+        Column(Modifier.padding(AppSpacing.Medium)) {
+            Text(
+                text = backend.title,
+                fontSize = AppType.Body,
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Text(
+                text = backend.description,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                fontSize = AppType.Technical,
+                maxLines = 2,
+            )
+        }
+    }
 }

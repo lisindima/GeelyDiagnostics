@@ -28,7 +28,6 @@ import com.geelydiagnostics.app.model.AppUiState
 import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.ui.catalog.ParameterValueFilter
 import com.geelydiagnostics.app.ui.catalog.filterParameters
-import com.geelydiagnostics.app.ui.catalog.formatUpdateTime
 import com.geelydiagnostics.app.ui.catalog.isStale
 import com.geelydiagnostics.app.ui.catalog.rememberCurrentTimeMillis
 import com.geelydiagnostics.app.ui.components.CatalogFilterRow
@@ -39,7 +38,6 @@ import com.geelydiagnostics.app.ui.components.EmptyMessage
 import com.geelydiagnostics.app.ui.components.FullscreenValueDialog
 import com.geelydiagnostics.app.ui.components.SourceStateBadge
 import com.geelydiagnostics.app.ui.components.TwoColumnRow
-import com.geelydiagnostics.app.ui.components.ValueLine
 import com.geelydiagnostics.app.ui.components.aggregateReadStatus
 import com.geelydiagnostics.app.ui.components.sourceAttentionDetail
 import com.geelydiagnostics.app.ui.parameters.ParameterFullscreenDialog
@@ -56,7 +54,6 @@ import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
-import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.property.primaryReading
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
@@ -181,13 +178,13 @@ internal object DataTab {
             sourceAttentionDetail("ECARX", ecarxStatus, ecarxDetail),
             sourceAttentionDetail("VHAL", state.vhalStatus, state.vhalDetail),
         ).joinToString(" · ")
-        val supportedCount = category.values(state).count {
-            it.status == VehiclePropertyStatus.AVAILABLE
-        }
-        val undecodedCount = filtered.count { !it.decoded }
         val groups = listOf(
             DataGroup("Автообновление", "Новые значения приходят по подписке", autoUpdating),
-            DataGroup("Ручное обновление", "Значения обновляются полным опросом", manuallyUpdated),
+            DataGroup(
+                "Ручное обновление",
+                "Статические данные и значения полного опроса",
+                manuallyUpdated,
+            ),
         ).filter { it.values.isNotEmpty() }
 
         LazyColumn(
@@ -232,8 +229,8 @@ internal object DataTab {
                 CountSummary(
                     title = category.summaryTitle,
                     count = filtered.size,
-                    detail = "По подписке ${autoUpdating.size} · вручную ${manuallyUpdated.size} · " +
-                        "без расшифровки $undecodedCount · доступно $supportedCount",
+                    detail = "Автообновление ${autoUpdating.size} · " +
+                        "ручное обновление ${manuallyUpdated.size}",
                 )
             }
             if (groups.isEmpty()) {
@@ -280,6 +277,7 @@ internal object DataTab {
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+            shape = MaterialTheme.shapes.large,
         ) {
             Column(
                 modifier = Modifier.padding(AppSpacing.CardContent),
@@ -293,7 +291,7 @@ internal object DataTab {
                         Text(
                             text = "Источники данных",
                             fontSize = AppType.CardTitle,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.ExtraBold,
                         )
                         Text(
                             text = "Единый каталог · ${state.selectedVhalProfile.key} · " +
@@ -302,8 +300,15 @@ internal object DataTab {
                             fontSize = AppType.Supporting,
                         )
                     }
-                    OutlinedButton(onClick = onOpenSettings) {
-                        Text("Настройки VHAL", fontSize = AppType.Supporting)
+                    OutlinedButton(
+                        onClick = onOpenSettings,
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Text(
+                            text = "Настройки VHAL",
+                            fontSize = AppType.Supporting,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
                 Row(
@@ -341,18 +346,12 @@ internal object DataTab {
             value = parameter.value,
             sourceLabels = parameter.sourceLabels,
             modeLabel = parameter.cardModeLabel,
-            footerText = formatUpdateTime(parameter.updatedAtMillis, nowMillis) +
-                if (stale) " · УСТАРЕЛО" else "",
+            footerText = if (stale) "УСТАРЕЛО" else null,
             footerIsError = stale,
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            if (parameter.section == VehicleDataSection.CAPABILITY) {
-                parameter.primaryReading.details.take(2).forEach { detail ->
-                    ValueLine(detail.label, detail.value)
-                }
-            }
             VehicleParameterErrors(parameter)
         }
     }
@@ -448,7 +447,7 @@ private val DataCategory.emptyText: String
 private val VehicleParameter.cardModeLabel: String
     get() = when (section) {
         VehicleDataSection.PARAMETER -> if (autoUpdates) {
-            "● ПО ПОДПИСКЕ"
+            "АВТООБНОВЛЕНИЕ"
         } else {
             "РУЧНОЕ ОБНОВЛЕНИЕ"
         }
