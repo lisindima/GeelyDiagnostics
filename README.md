@@ -1,5 +1,7 @@
 # Geely Diagnostics
 
+[![Android CI](https://github.com/lisindima/GeelyDiagnostics/actions/workflows/android-ci.yml/badge.svg)](https://github.com/lisindima/GeelyDiagnostics/actions/workflows/android-ci.yml)
+
 Read-only приложение на Kotlin и Jetpack Compose для автомобилей Geely, чья
 штатная головная система предоставляет системный VHAL и/или ECARX AdaptAPI.
 
