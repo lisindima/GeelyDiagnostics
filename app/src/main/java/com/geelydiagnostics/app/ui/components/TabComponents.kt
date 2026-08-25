@@ -96,7 +96,8 @@ internal fun DataCard(
                 verticalAlignment = Alignment.Top,
             ) {
                 SourceBadges(
-                    labels = sourceLabels + listOfNotNull(modeLabel),
+                    labels = (sourceLabels + listOfNotNull(modeLabel))
+                        .filter(String::isNotBlank),
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(

@@ -451,6 +451,6 @@ private val VehicleParameter.cardModeLabel: String
         } else {
             "РУЧНОЕ ОБНОВЛЕНИЕ"
         }
-        VehicleDataSection.VEHICLE_INFO -> primaryReading.modeLabel ?: "СТАТИЧЕСКИЕ ДАННЫЕ"
-        VehicleDataSection.CAPABILITY -> primaryReading.modeLabel ?: "ДОСТУПНО ЧЕРЕЗ VHAL"
+        VehicleDataSection.VEHICLE_INFO,
+        VehicleDataSection.CAPABILITY -> ""
     }

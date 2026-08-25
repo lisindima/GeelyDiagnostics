@@ -108,12 +108,14 @@ internal fun FullscreenValueScreen(
                     ) {
                         Column(Modifier.weight(1f)) {
                             SourceBadges(sourceLabels)
-                            Text(
-                                text = modeLabel,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = AppType.Supporting,
-                            )
+                            if (modeLabel.isNotBlank()) {
+                                Text(
+                                    text = modeLabel,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = AppType.Supporting,
+                                )
+                            }
                         }
                         Spacer(Modifier.width(AppSpacing.Large))
                         IconButton(
