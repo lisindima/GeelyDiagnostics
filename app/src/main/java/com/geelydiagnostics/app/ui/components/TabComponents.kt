@@ -242,7 +242,7 @@ internal fun CatalogSearchField(
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyLarge.copy(
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = FontFamily.SansSerif,
+            fontFamily = GeelyDiagnosticsFontFamily,
             fontSize = AppType.Body,
         ),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),

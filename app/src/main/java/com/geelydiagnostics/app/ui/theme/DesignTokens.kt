@@ -1,12 +1,15 @@
 package com.geelydiagnostics.app.ui.theme
 
+import com.geelydiagnostics.app.R
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -67,25 +70,33 @@ internal val GeelyDiagnosticsDarkColors = darkColorScheme(
     scrim = Color(0xFF000000),
 )
 
+internal val GeelyDiagnosticsFontFamily = FontFamily(
+    Font(R.font.inter_variable, FontWeight.Normal),
+    Font(R.font.inter_variable, FontWeight.Medium),
+    Font(R.font.inter_variable, FontWeight.SemiBold),
+    Font(R.font.inter_variable, FontWeight.Bold),
+    Font(R.font.inter_variable, FontWeight.ExtraBold),
+)
+
 private val MaterialTypography = Typography()
 
-/** Roboto/system sans for UI copy; monospace remains opt-in for raw and API labels. */
+/** Inter for UI copy; monospace remains opt-in for raw and API labels. */
 internal val GeelyDiagnosticsTypography = Typography(
-    displayLarge = MaterialTypography.displayLarge.copy(fontFamily = FontFamily.SansSerif),
-    displayMedium = MaterialTypography.displayMedium.copy(fontFamily = FontFamily.SansSerif),
-    displaySmall = MaterialTypography.displaySmall.copy(fontFamily = FontFamily.SansSerif),
-    headlineLarge = MaterialTypography.headlineLarge.copy(fontFamily = FontFamily.SansSerif),
-    headlineMedium = MaterialTypography.headlineMedium.copy(fontFamily = FontFamily.SansSerif),
-    headlineSmall = MaterialTypography.headlineSmall.copy(fontFamily = FontFamily.SansSerif),
-    titleLarge = MaterialTypography.titleLarge.copy(fontFamily = FontFamily.SansSerif),
-    titleMedium = MaterialTypography.titleMedium.copy(fontFamily = FontFamily.SansSerif),
-    titleSmall = MaterialTypography.titleSmall.copy(fontFamily = FontFamily.SansSerif),
-    bodyLarge = MaterialTypography.bodyLarge.copy(fontFamily = FontFamily.SansSerif),
-    bodyMedium = MaterialTypography.bodyMedium.copy(fontFamily = FontFamily.SansSerif),
-    bodySmall = MaterialTypography.bodySmall.copy(fontFamily = FontFamily.SansSerif),
-    labelLarge = MaterialTypography.labelLarge.copy(fontFamily = FontFamily.SansSerif),
-    labelMedium = MaterialTypography.labelMedium.copy(fontFamily = FontFamily.SansSerif),
-    labelSmall = MaterialTypography.labelSmall.copy(fontFamily = FontFamily.SansSerif),
+    displayLarge = MaterialTypography.displayLarge.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    displayMedium = MaterialTypography.displayMedium.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    displaySmall = MaterialTypography.displaySmall.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    headlineLarge = MaterialTypography.headlineLarge.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    headlineMedium = MaterialTypography.headlineMedium.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    headlineSmall = MaterialTypography.headlineSmall.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    titleLarge = MaterialTypography.titleLarge.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    titleMedium = MaterialTypography.titleMedium.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    titleSmall = MaterialTypography.titleSmall.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    bodyLarge = MaterialTypography.bodyLarge.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    bodyMedium = MaterialTypography.bodyMedium.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    bodySmall = MaterialTypography.bodySmall.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    labelLarge = MaterialTypography.labelLarge.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    labelMedium = MaterialTypography.labelMedium.copy(fontFamily = GeelyDiagnosticsFontFamily),
+    labelSmall = MaterialTypography.labelSmall.copy(fontFamily = GeelyDiagnosticsFontFamily),
 )
 
 /**
