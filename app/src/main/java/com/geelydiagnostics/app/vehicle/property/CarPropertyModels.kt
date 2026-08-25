@@ -70,12 +70,35 @@ enum class VehiclePropertySource(val label: String) {
     MOCK("MOCK"),
 }
 
+/** Logical application section. It is part of signal identity to avoid collisions between APIs. */
+enum class VehicleDataSection {
+    PARAMETER,
+    VEHICLE_INFO,
+    CAPABILITY,
+}
+
+/** Section assigned by the normalized catalog's stable ID namespaces. */
+internal val CarPropertyId.catalogSection: VehicleDataSection
+    get() = if (rawValue >= FIRST_CAPABILITY_PROPERTY_ID) {
+        VehicleDataSection.CAPABILITY
+    } else {
+        VehicleDataSection.PARAMETER
+    }
+
+private const val FIRST_CAPABILITY_PROPERTY_ID = 30_000
+
+data class VehiclePropertyDetail(
+    val label: String,
+    val value: String,
+)
+
 /**
  * Stable repository value. A property id is present only when this reading can be merged into the
  * app's normalized catalog. AOSP readings may still be decoded while remaining source-specific.
  * Source timestamps and local receive timestamps have different clocks.
  */
 data class CarPropertySnapshot(
+    val section: VehicleDataSection = VehicleDataSection.PARAMETER,
     val propertyId: CarPropertyId?,
     val value: CarValue?,
     val displayValue: String,
@@ -93,15 +116,18 @@ data class CarPropertySnapshot(
     val autoUpdates: Boolean = false,
     val valueKind: String = "raw",
     val expectedUpdateIntervalMillis: Long? = null,
+    val modeLabel: String? = null,
+    val details: List<VehiclePropertyDetail> = emptyList(),
     val error: String = "",
     val decoded: Boolean = propertyId != null,
 )
 
 data class CarPropertyKey(
+    val section: VehicleDataSection,
     val source: VehiclePropertySource,
     val sourceSignalId: Int,
     val areaId: Int,
 )
 
 val CarPropertySnapshot.key: CarPropertyKey
-    get() = CarPropertyKey(source, sourceSignalId, areaId)
+    get() = CarPropertyKey(section, source, sourceSignalId, areaId)

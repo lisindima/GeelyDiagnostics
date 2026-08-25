@@ -1,11 +1,9 @@
 package com.geelydiagnostics.app.ui.catalog
 
-import com.geelydiagnostics.app.model.*
-
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
-import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKey
+import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKeys
 import java.util.Locale
 
 internal enum class ParameterValueFilter(val title: String) {
@@ -50,35 +48,32 @@ internal fun filterParameters(
     .toList()
 
 internal fun filterVehicleInfo(
-    records: List<VehicleInfoRecord>,
+    records: List<VehicleParameter>,
     filter: CatalogListFilter,
     query: String,
     favoriteKeys: Set<String>,
-): List<VehicleInfoRecord> = records.asSequence()
-    .filter { record ->
-        when (filter) {
-            CatalogListFilter.ALL -> record.support.isVisibleAsSupported
-            CatalogListFilter.FAVORITES ->
-                record.support.isVisibleAsSupported && record.favoriteKey in favoriteKeys
-            CatalogListFilter.ERRORS -> record.support == ApiSupportStatus.ERROR || record.error.isNotBlank()
-        }
-    }
-    .filter { record -> record.matchesQuery(query) }
-    .sortedBy { it.title.lowercase(Locale.ROOT) }
-    .toList()
+): List<VehicleParameter> = filterCatalogRecords(records, filter, query, favoriteKeys)
 
 internal fun filterFunctions(
-    records: List<VehicleFunctionRecord>,
+    records: List<VehicleParameter>,
     filter: CatalogListFilter,
     query: String,
     favoriteKeys: Set<String>,
-): List<VehicleFunctionRecord> = records.asSequence()
+): List<VehicleParameter> = filterCatalogRecords(records, filter, query, favoriteKeys)
+
+private fun filterCatalogRecords(
+    records: List<VehicleParameter>,
+    filter: CatalogListFilter,
+    query: String,
+    favoriteKeys: Set<String>,
+): List<VehicleParameter> = records.asSequence()
     .filter { record ->
         when (filter) {
-            CatalogListFilter.ALL -> record.support.isVisibleAsSupported
+            CatalogListFilter.ALL -> record.status == VehiclePropertyStatus.AVAILABLE
             CatalogListFilter.FAVORITES ->
-                record.support.isVisibleAsSupported && record.favoriteKey in favoriteKeys
-            CatalogListFilter.ERRORS -> record.support == ApiSupportStatus.ERROR || record.error.isNotBlank()
+                record.status == VehiclePropertyStatus.AVAILABLE && record.matchesFavorite(favoriteKeys)
+            CatalogListFilter.ERRORS -> record.status == VehiclePropertyStatus.ERROR ||
+                record.error.isNotBlank() || record.sourceReadings.any { it.error.isNotBlank() }
         }
     }
     .filter { record -> record.matchesQuery(query) }
@@ -100,34 +95,14 @@ private fun VehicleParameter.matchesQuery(query: String): Boolean = matchesAllTo
             reading.value.display,
             reading.value.raw,
             reading.profile.orEmpty(),
+            reading.modeLabel.orEmpty(),
+            reading.details.joinToString(" ") { "${it.label} ${it.value}" },
         ).joinToString(" ")
     },
 )
 
 internal fun VehicleParameter.matchesFavorite(favoriteKeys: Set<String>): Boolean =
-    favoriteKey in favoriteKeys || sourceReadings.any { it.legacyFavoriteKey in favoriteKeys }
-
-private fun VehicleInfoRecord.matchesQuery(query: String): Boolean = matchesAllTokens(
-    query,
-    title,
-    apiName,
-    id.toString(),
-    value.display,
-    value.raw,
-    source.label,
-)
-
-private fun VehicleFunctionRecord.matchesQuery(query: String): Boolean = matchesAllTokens(
-    query,
-    title,
-    apiName,
-    id.toString(),
-    value.display,
-    value.raw,
-    supportedValues,
-    zones,
-    source.label,
-)
+    favoriteKey in favoriteKeys || legacyFavoriteKeys.any { it in favoriteKeys }
 
 private fun matchesAllTokens(query: String, vararg values: String): Boolean {
     val tokens = query.trim().lowercase(Locale.ROOT).split(Regex("\\s+")).filter(String::isNotBlank)

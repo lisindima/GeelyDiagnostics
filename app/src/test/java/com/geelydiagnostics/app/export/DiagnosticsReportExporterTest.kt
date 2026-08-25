@@ -62,7 +62,7 @@ class DiagnosticsReportExporterTest {
         val exported = report.getJSONArray("parameters").getJSONObject(0)
 
         assertTrue(report.getBoolean("readOnly"))
-        assertEquals(5, report.getInt("schemaVersion"))
+        assertEquals(6, report.getInt("schemaVersion"))
         assertEquals("0.11.0", report.getString("appVersion"))
         assertEquals("G426", report.getString("vhalProfile"))
         assertEquals("HIDL", report.getString("vhalBackend"))

@@ -1,19 +1,17 @@
 package com.geelydiagnostics.app.vehicle.repository
 
-import com.geelydiagnostics.app.model.*
-
 import android.content.Context
 import android.util.Log
 import com.geelydiagnostics.app.model.DtcRecord
+import com.geelydiagnostics.app.model.DiagnosticsState
 import com.geelydiagnostics.app.vehicle.ecarx.EcarxDataListener
 import com.geelydiagnostics.app.vehicle.ecarx.EcarxDataSource
 import com.geelydiagnostics.app.model.ReadStatus
-import com.geelydiagnostics.app.model.VehicleFunctionRecord
-import com.geelydiagnostics.app.model.VehicleInfoRecord
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
 import com.geelydiagnostics.app.vehicle.vhal.VhalDataSource
@@ -39,9 +37,6 @@ internal data class VehicleRepositoryState(
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val functionDetail: String = "",
     val diagnostics: DiagnosticsState = DiagnosticsState(),
-    val parameters: List<VehicleParameter> = emptyList(),
-    val vehicleInfo: List<VehicleInfoRecord> = emptyList(),
-    val functions: List<VehicleFunctionRecord> = emptyList(),
     val logLines: List<String> = emptyList(),
     val scanStartedAtMillis: Long? = null,
 )
@@ -58,8 +53,13 @@ internal class UnifiedVehicleRepository(
 
     val state: StateFlow<VehicleRepositoryState> = mutableState.asStateFlow()
 
-    fun observe(propertyId: CarPropertyId, areaId: Int = 0): Flow<VehicleParameter?> =
-        parameterStore.observe(propertyId, areaId)
+    fun observe(
+        propertyId: CarPropertyId,
+        areaId: Int = 0,
+        section: VehicleDataSection = VehicleDataSection.PARAMETER,
+    ): Flow<VehicleParameter?> = parameterStore.observe(propertyId, areaId, section)
+
+    fun observe(key: String): Flow<VehicleParameter?> = parameterStore.observe(key)
 
     fun observeParameters(): StateFlow<List<VehicleParameter>> = parameterStore.parameters
 
@@ -138,16 +138,6 @@ internal class UnifiedVehicleRepository(
     }
 
     @Synchronized
-    override fun onVehicleInfoChanged(items: List<VehicleInfoRecord>) = update {
-        copy(vehicleInfo = items)
-    }
-
-    @Synchronized
-    override fun onFunctionsChanged(functions: List<VehicleFunctionRecord>) = update {
-        copy(functions = functions)
-    }
-
-    @Synchronized
     override fun onParameterStatus(
         source: VehiclePropertySource,
         status: ReadStatus,
@@ -163,16 +153,15 @@ internal class UnifiedVehicleRepository(
     @Synchronized
     override fun onParameterSnapshot(
         source: VehiclePropertySource,
+        section: VehicleDataSection?,
         values: List<CarPropertySnapshot>,
     ) {
-        parameterStore.replaceSource(source, values)
-        publishParameters()
+        parameterStore.replaceSource(source, values, section)
     }
 
     @Synchronized
     override fun onParameterValue(value: CarPropertySnapshot) {
         parameterStore.update(value)
-        publishParameters()
     }
 
     override fun onParameterLog(
@@ -203,10 +192,6 @@ internal class UnifiedVehicleRepository(
 
     @Synchronized
     fun clearLog() = update { copy(logLines = emptyList()) }
-
-    private fun publishParameters() = update {
-        copy(parameters = parameterStore.parameters.value)
-    }
 
     private fun update(block: VehicleRepositoryState.() -> VehicleRepositoryState) {
         mutableState.value = mutableState.value.block()

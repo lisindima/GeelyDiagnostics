@@ -54,6 +54,7 @@ internal fun <T> CatalogScreen(
     emptyText: String,
     rows: List<List<T>>,
     controls: @Composable () -> Unit,
+    statusSupportingContent: (@Composable () -> Unit)? = null,
     rowContent: @Composable (List<T>) -> Unit,
 ) {
     LazyColumn(
@@ -71,6 +72,7 @@ internal fun <T> CatalogScreen(
                 description = subtitle,
                 status = status,
                 detail = statusAttentionDetail(status, detail),
+                supportingContent = statusSupportingContent,
             )
         }
         item { controls() }
@@ -502,6 +504,38 @@ internal fun CountSummary(
     }
 }
 
+@Composable
+internal fun SourceStateBadge(label: String, status: ReadStatus, modifier: Modifier = Modifier) {
+    val colors = when (status) {
+        ReadStatus.AVAILABLE -> MaterialTheme.colorScheme.primaryContainer to
+            MaterialTheme.colorScheme.onPrimaryContainer
+        ReadStatus.PARTIAL, ReadStatus.CHECKING -> MaterialTheme.colorScheme.tertiaryContainer to
+            MaterialTheme.colorScheme.onTertiaryContainer
+        ReadStatus.ERROR -> MaterialTheme.colorScheme.errorContainer to
+            MaterialTheme.colorScheme.onErrorContainer
+        ReadStatus.NOT_CHECKED -> MaterialTheme.colorScheme.surfaceVariant to
+            MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        modifier = modifier,
+        color = colors.first,
+        contentColor = colors.second,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = AppSpacing.Medium,
+                vertical = AppSpacing.Small,
+            ),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, fontSize = AppType.Label, fontWeight = FontWeight.Bold)
+            Text(status.labelForSource, fontSize = AppType.Label)
+        }
+    }
+}
+
 private val ReadStatus.label: String
     get() = when (this) {
         ReadStatus.NOT_CHECKED -> "НЕ ПРОВЕРЕНО"
@@ -539,3 +573,20 @@ internal fun statusAttentionDetail(status: ReadStatus, detail: String): String =
     ReadStatus.PARTIAL, ReadStatus.ERROR -> detail
     ReadStatus.NOT_CHECKED, ReadStatus.CHECKING, ReadStatus.AVAILABLE -> ""
 }
+
+internal fun sourceAttentionDetail(
+    label: String,
+    status: ReadStatus,
+    detail: String,
+): String? = statusAttentionDetail(status, detail)
+    .ifBlank { null }
+    ?.let { "$label: $it" }
+
+private val ReadStatus.labelForSource: String
+    get() = when (this) {
+        ReadStatus.NOT_CHECKED -> "не проверено"
+        ReadStatus.CHECKING -> "проверка"
+        ReadStatus.PARTIAL -> "частично доступен"
+        ReadStatus.AVAILABLE -> "доступен"
+        ReadStatus.ERROR -> "ошибка"
+    }

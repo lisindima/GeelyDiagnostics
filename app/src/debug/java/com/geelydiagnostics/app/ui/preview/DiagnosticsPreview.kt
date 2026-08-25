@@ -20,10 +20,15 @@ import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.EcarxNormalizedPropertyRegistry
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyDetail
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import com.geelydiagnostics.app.vehicle.repository.UnifiedParameterCache
+import kotlinx.coroutines.flow.flowOf
 
 private const val SAMPLE_TICK_TIME = 1786695380305L
 private const val CITYRAY_ATLAS_DEVICE = "spec:width=1440px,height=1920px,dpi=160"
@@ -203,6 +208,7 @@ private fun PreviewApp(tab: AppTab, state: AppUiState = previewState()) {
         onVhalProfileSelected = {},
         onVhalBackendSelected = {},
         onFavoriteToggle = {},
+        onObserveParameter = { flowOf(it) },
         onClearLog = {},
         initialTab = tab,
     )
@@ -336,13 +342,13 @@ private fun sensor(id: Int, apiName: String, title: String, value: String, kind:
 }
 
 private fun info(id: Int, apiName: String, title: String, value: String, raw: String = value) =
-    VehicleInfoRecord(
-        id,
-        apiName,
-        title,
-        VehicleDisplayValue(value, raw),
-        ApiSupportStatus.ACTIVE,
-        updatedAtMillis = System.currentTimeMillis(),
+    catalogParameter(
+        section = VehicleDataSection.VEHICLE_INFO,
+        id = id,
+        apiName = apiName,
+        title = title,
+        value = VehicleDisplayValue(value, raw),
+        modeLabel = "СТАТИЧЕСКИЕ ДАННЫЕ",
     )
 
 private fun vhalSensor(
@@ -392,7 +398,8 @@ private fun function(
     value: String,
     supportedValues: String,
     support: ApiSupportStatus = ApiSupportStatus.ACTIVE,
-) = VehicleFunctionRecord(
+) = catalogParameter(
+    section = VehicleDataSection.CAPABILITY,
     id = id,
     apiName = apiName,
     title = title,
@@ -401,7 +408,43 @@ private fun function(
         value.toInt(),
         supportedValues.split(',').mapNotNull { it.trim().toIntOrNull() }.toIntArray(),
     ),
-    supportedValues = supportedValues,
-    support = support,
+    modeLabel = if (support == ApiSupportStatus.NOT_ACTIVE) {
+        "ПОДДЕРЖИВАЕТСЯ · НЕАКТИВНА"
+    } else {
+        "ДОСТУПНА"
+    },
+    details = listOf(VehiclePropertyDetail("Допустимые raw", supportedValues)),
+)
+
+private fun catalogParameter(
+    section: VehicleDataSection,
+    id: Int,
+    apiName: String,
+    title: String,
+    value: VehicleDisplayValue,
+    modeLabel: String,
+    details: List<VehiclePropertyDetail> = emptyList(),
+) = VehicleParameter(
+    section = section,
+    propertyId = null,
+    areaId = 0,
+    title = title,
+    value = value,
+    valueKind = "int",
+    status = VehiclePropertyStatus.AVAILABLE,
     updatedAtMillis = System.currentTimeMillis(),
+    decoded = true,
+    sourceReadings = listOf(
+        VehicleSourceReading(
+            source = VehiclePropertySource.ECARX,
+            signalId = id,
+            signalName = apiName,
+            value = value,
+            status = VehiclePropertyStatus.AVAILABLE,
+            updatedAtMillis = System.currentTimeMillis(),
+            decoded = true,
+            modeLabel = modeLabel,
+            details = details,
+        ),
+    ),
 )

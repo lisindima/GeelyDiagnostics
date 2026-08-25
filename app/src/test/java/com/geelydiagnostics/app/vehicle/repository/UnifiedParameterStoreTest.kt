@@ -6,6 +6,7 @@ import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -39,6 +40,28 @@ class UnifiedParameterStoreTest {
 
         assertNull(store.observe(CarPropertyId(10013)).first())
         assertTrue(store.parameters.value.isEmpty())
+    }
+
+    @Test
+    fun observationUsesSectionAsPartOfNormalizedIdentity() = runBlocking {
+        val store = UnifiedParameterStore()
+        val parameter = snapshot(signalId = 9001, areaId = 0, raw = "236")
+        store.replaceSource(
+            VehiclePropertySource.VHAL,
+            listOf(parameter, parameter.copy(section = VehicleDataSection.CAPABILITY)),
+        )
+
+        assertEquals(
+            VehicleDataSection.PARAMETER,
+            store.observe(CarPropertyId(10013)).first()?.section,
+        )
+        assertEquals(
+            VehicleDataSection.CAPABILITY,
+            store.observe(
+                CarPropertyId(10013),
+                section = VehicleDataSection.CAPABILITY,
+            ).first()?.section,
+        )
     }
 
     private fun snapshot(signalId: Int, areaId: Int, raw: String) = CarPropertySnapshot(

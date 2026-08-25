@@ -12,6 +12,7 @@ import com.geelydiagnostics.app.vehicle.property.CarValueType
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterSink
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -202,6 +203,7 @@ class VhalDataSourceTest {
 
         override fun onParameterSnapshot(
             source: VehiclePropertySource,
+            section: VehicleDataSection?,
             values: List<CarPropertySnapshot>,
         ) {
             snapshot = values

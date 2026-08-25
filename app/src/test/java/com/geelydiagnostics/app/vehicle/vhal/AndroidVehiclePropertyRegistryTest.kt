@@ -5,6 +5,7 @@ import com.geelydiagnostics.app.vehicle.mapping.TransformResult
 import com.geelydiagnostics.app.vehicle.mapping.TransformValue
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -62,6 +63,24 @@ class AndroidVehiclePropertyRegistryTest {
         assertEquals("AOSP", model.profileKey)
         assertNull(model.normalizedMapping)
         assertNull(AndroidVehiclePropertyRegistry.property(0x21401234))
+    }
+
+    @Test
+    fun classifiesAospPropertiesIntoUnifiedApplicationSections() {
+        assertEquals(
+            VehicleDataSection.VEHICLE_INFO,
+            requireNotNull(AndroidVehiclePropertyRegistry.property(VehiclePropertyIds.INFO_MODEL)).section,
+        )
+        assertEquals(
+            VehicleDataSection.CAPABILITY,
+            requireNotNull(AndroidVehiclePropertyRegistry.property(VehiclePropertyIds.HVAC_AC_ON)).section,
+        )
+        assertEquals(
+            VehicleDataSection.PARAMETER,
+            requireNotNull(
+                AndroidVehiclePropertyRegistry.property(VehiclePropertyIds.PERF_VEHICLE_SPEED),
+            ).section,
+        )
     }
 
     @Test

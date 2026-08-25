@@ -7,6 +7,7 @@ import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.repository.UnifiedParameterStore
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -55,6 +56,29 @@ class MockCarDataSourceTest {
         source.close()
     }
 
+    @Test
+    fun replacingMockCatalogRemovesValuesFromSectionsThatDisappeared() {
+        val store = UnifiedParameterStore()
+        val source = MockCarDataSource(
+            StoreSink(store),
+            listOf(
+                snapshot("40"),
+                snapshot("1").copy(
+                    section = VehicleDataSection.CAPABILITY,
+                    propertyId = CarPropertyId(30_001),
+                    sourceSignalId = 30_001,
+                ),
+            ),
+        )
+        source.start()
+
+        source.replace(listOf(snapshot("41", receivedAtMillis = 2L)))
+
+        assertEquals(1, store.parameters.value.size)
+        assertEquals(VehicleDataSection.PARAMETER, store.parameters.value.single().section)
+        source.close()
+    }
+
     private class StoreSink(
         private val store: UnifiedParameterStore,
         private val onStatus: (ReadStatus) -> Unit = {},
@@ -67,8 +91,9 @@ class MockCarDataSourceTest {
 
         override fun onParameterSnapshot(
             source: VehiclePropertySource,
+            section: VehicleDataSection?,
             values: List<CarPropertySnapshot>,
-        ) = store.replaceSource(source, values)
+        ) = store.replaceSource(source, values, section)
 
         override fun onParameterValue(value: CarPropertySnapshot) {
             store.update(value)

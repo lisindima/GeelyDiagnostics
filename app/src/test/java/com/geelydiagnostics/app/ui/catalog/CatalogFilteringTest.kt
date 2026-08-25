@@ -4,11 +4,13 @@ import com.geelydiagnostics.app.model.*
 
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
+import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKeys
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -117,18 +119,19 @@ class CatalogFilteringTest {
 
     @Test
     fun vehicleAndFunctionCatalogsSupportFavoritesAndErrors() {
-        val info = VehicleInfoRecord(
+        val info = parameter(
             id = 1,
-            apiName = "STRING_INFO_VIN",
             title = "VIN",
             value = VehicleDisplayValue.raw("TEST"),
-            support = ApiSupportStatus.ACTIVE,
+            section = VehicleDataSection.VEHICLE_INFO,
+            source = VehiclePropertySource.ECARX,
         )
-        val functionError = VehicleFunctionRecord(
+        val functionError = parameter(
             id = 2,
-            apiName = "SETTING_FUNC_TEST",
             title = "Тестовая функция",
-            support = ApiSupportStatus.ERROR,
+            value = VehicleDisplayValue.unavailable,
+            section = VehicleDataSection.CAPABILITY,
+            status = VehiclePropertyStatus.ERROR,
             error = "denied",
         )
 
@@ -140,6 +143,26 @@ class CatalogFilteringTest {
             listOf(functionError),
             filterFunctions(listOf(functionError), CatalogListFilter.ERRORS, "", emptySet()),
         )
+    }
+
+    @Test
+    fun movedVhalValuesRetainTheirPreviousParameterFavoriteKeys() {
+        val capability = parameter(
+            id = 30_001,
+            title = "Кондиционер",
+            value = VehicleDisplayValue.raw("1"),
+            section = VehicleDataSection.CAPABILITY,
+            propertyId = 30_001,
+        )
+        val vehicleInfo = parameter(
+            id = 291_504_388,
+            title = "Модель",
+            value = VehicleDisplayValue.raw("Monjaro"),
+            section = VehicleDataSection.VEHICLE_INFO,
+        )
+
+        assertTrue("property:30001:0" in capability.legacyFavoriteKeys)
+        assertTrue("signal:VHAL:291504388:0" in vehicleInfo.legacyFavoriteKeys)
     }
 
     private fun filtered(
@@ -159,7 +182,9 @@ class CatalogFilteringTest {
         decoded: Boolean? = null,
         source: VehiclePropertySource = VehiclePropertySource.VHAL,
         propertyId: Int? = null,
+        section: VehicleDataSection = VehicleDataSection.PARAMETER,
     ) = VehicleParameter(
+        section = section,
         propertyId = propertyId?.let(::CarPropertyId),
         areaId = 0,
         title = title,

@@ -2,10 +2,8 @@ package com.geelydiagnostics.app.model
 
 import androidx.compose.runtime.Immutable
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
-import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
-import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
 enum class ReadStatus {
@@ -24,39 +22,12 @@ enum class ApiSupportStatus {
     UNKNOWN,
 }
 
-val ApiSupportStatus.isVisibleAsSupported: Boolean
-    get() = this == ApiSupportStatus.ACTIVE || this == ApiSupportStatus.NOT_ACTIVE
-
 data class DtcRecord(
     val code: String,
     val id: String,
     val ecuType: Int,
     val status: Int,
     val tickTime: Long,
-)
-
-data class VehicleInfoRecord(
-    val id: Int,
-    val apiName: String,
-    val title: String,
-    val value: VehicleDisplayValue,
-    val support: ApiSupportStatus,
-    val error: String = "",
-    val source: VehiclePropertySource = VehiclePropertySource.ECARX,
-    val updatedAtMillis: Long? = null,
-)
-
-data class VehicleFunctionRecord(
-    val id: Int,
-    val apiName: String,
-    val title: String,
-    val value: VehicleDisplayValue = VehicleDisplayValue.unavailable,
-    val supportedValues: String = "",
-    val zones: String = "",
-    val support: ApiSupportStatus,
-    val error: String = "",
-    val source: VehiclePropertySource = VehiclePropertySource.ECARX,
-    val updatedAtMillis: Long? = null,
 )
 
 @Immutable
@@ -80,15 +51,9 @@ data class AppUiState(
     val dtcs: List<DtcRecord> = emptyList(),
     val parameters: List<VehicleParameter> = emptyList(),
     val parameterHistory: Map<String, List<VehicleParameterSample>> = emptyMap(),
-    val vehicleInfo: List<VehicleInfoRecord> = emptyList(),
-    val functions: List<VehicleFunctionRecord> = emptyList(),
+    val vehicleInfo: List<VehicleParameter> = emptyList(),
+    val functions: List<VehicleParameter> = emptyList(),
     val logLines: List<String> = emptyList(),
     val favoriteKeys: Set<String> = emptySet(),
     val scanStartedAtMillis: Long? = null,
 )
-
-internal val VehicleInfoRecord.favoriteKey: String
-    get() = "vehicle:${source.name}:$id"
-
-internal val VehicleFunctionRecord.favoriteKey: String
-    get() = "function:${source.name}:$id"

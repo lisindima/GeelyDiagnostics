@@ -1,37 +1,73 @@
 package com.geelydiagnostics.app.ui.tabs
 
-import com.geelydiagnostics.app.model.*
-import com.geelydiagnostics.app.ui.catalog.*
-import com.geelydiagnostics.app.ui.components.*
+import com.geelydiagnostics.app.model.AppUiState
+import com.geelydiagnostics.app.ui.catalog.CatalogListFilter
+import com.geelydiagnostics.app.ui.catalog.filterFunctions
+import com.geelydiagnostics.app.ui.catalog.formatUpdateTime
+import com.geelydiagnostics.app.ui.catalog.rememberCurrentTimeMillis
+import com.geelydiagnostics.app.ui.components.CatalogFilterRow
+import com.geelydiagnostics.app.ui.components.CatalogScreen
+import com.geelydiagnostics.app.ui.components.CatalogSearchField
+import com.geelydiagnostics.app.ui.components.DataCard
+import com.geelydiagnostics.app.ui.components.FullscreenValueDialog
+import com.geelydiagnostics.app.ui.components.SourceStateBadge
+import com.geelydiagnostics.app.ui.components.TwoColumnRow
+import com.geelydiagnostics.app.ui.components.ValueLine
+import com.geelydiagnostics.app.ui.components.aggregateReadStatus
+import com.geelydiagnostics.app.ui.components.sourceAttentionDetail
+import com.geelydiagnostics.app.ui.parameters.VehicleParameterDetails
+import com.geelydiagnostics.app.ui.parameters.VehicleParameterErrors
+import com.geelydiagnostics.app.ui.parameters.cardIdLabel
+import com.geelydiagnostics.app.ui.parameters.fieldName
+import com.geelydiagnostics.app.ui.parameters.selectionKey
+import com.geelydiagnostics.app.ui.parameters.sourceLabels
 import com.geelydiagnostics.app.ui.theme.AppSpacing
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.favoriteKey
+import com.geelydiagnostics.app.vehicle.property.primaryReading
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import androidx.compose.ui.Modifier
+import kotlinx.coroutines.flow.Flow
 
 internal object FunctionsTab {
 
     @Composable
-    fun Content(state: AppUiState, onFavoriteToggle: (String) -> Unit) {
-        var expandedId by rememberSaveable { mutableStateOf<Int?>(null) }
+    fun Content(
+        state: AppUiState,
+        onFavoriteToggle: (String) -> Unit,
+        onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
+    ) {
+        var expandedKey by rememberSaveable { mutableStateOf<String?>(null) }
         var query by rememberSaveable { mutableStateOf("") }
         var selectedFilterIndex by rememberSaveable { mutableIntStateOf(CatalogListFilter.ALL.ordinal) }
         val selectedFilter = CatalogListFilter.entries[selectedFilterIndex]
-        val nowMillis = remember(state.functions) { System.currentTimeMillis() }
-        val supportedCount = state.functions.count { it.support.isVisibleAsSupported }
+        val nowMillis by rememberCurrentTimeMillis()
+        val supportedCount = state.functions.count { it.status == VehiclePropertyStatus.AVAILABLE }
         val filtered = filterFunctions(state.functions, selectedFilter, query, state.favoriteKeys)
+        val combinedStatus = aggregateReadStatus(listOf(state.functionStatus, state.vhalStatus))
+        val combinedDetail = listOfNotNull(
+            sourceAttentionDetail("ECARX", state.functionStatus, state.functionDetail),
+            sourceAttentionDetail("VHAL", state.vhalStatus, state.vhalDetail),
+        ).joinToString(" · ")
+
         CatalogScreen(
-            status = state.functionStatus,
-            detail = state.functionDetail,
+            status = combinedStatus,
+            detail = combinedDetail,
             title = "Возможности автомобиля",
-            subtitle = "Возможности, о которых сообщает штатный каталог. Текущее значение показано, если API его возвращает.",
+            subtitle = "Поддерживаемые возможности ECARX и доступные read-only свойства управления VHAL.",
             totalCount = state.functions.size,
             supportedCount = supportedCount,
             displayedCount = filtered.size,
@@ -42,13 +78,22 @@ internal object FunctionsTab {
                     CatalogSearchField(
                         query = query,
                         onQueryChange = { query = it },
-                        placeholder = "Название, API, ID или значение",
+                        placeholder = "Название, API, ID, источник или значение",
                     )
                     CatalogFilterRow(
                         labels = CatalogListFilter.entries.map(CatalogListFilter::title),
                         selectedIndex = selectedFilterIndex,
                         onSelected = { selectedFilterIndex = it },
                     )
+                }
+            },
+            statusSupportingContent = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small),
+                ) {
+                    SourceStateBadge("ECARX", state.functionStatus, Modifier.weight(1f))
+                    SourceStateBadge("VHAL", state.vhalStatus, Modifier.weight(1f))
                 }
             },
         ) { row ->
@@ -58,82 +103,58 @@ internal object FunctionsTab {
                     nowMillis = nowMillis,
                     isFavorite = function.favoriteKey in state.favoriteKeys,
                     onFavoriteToggle = { onFavoriteToggle(function.favoriteKey) },
-                    onClick = { expandedId = function.id },
+                    onClick = { expandedKey = function.selectionKey },
                 )
             }
         }
-        state.functions.firstOrNull { it.id == expandedId }?.let { function ->
+        state.functions.firstOrNull { it.selectionKey == expandedKey }?.let { selected ->
+            val observed by remember(selected.selectionKey) {
+                onObserveParameter(selected)
+            }.collectAsState(initial = selected)
+            val function = observed ?: selected
             FullscreenValueDialog(
                 title = function.title,
-                apiName = function.apiName,
-                idText = "ECARX ID ${function.id}",
-                value = function.cardValue,
-                sourceLabels = listOf(function.source.label),
-                modeLabel = function.supportLabel.uppercase(),
+                apiName = function.fieldName,
+                idText = function.cardIdLabel,
+                value = function.value,
+                sourceLabels = function.sourceLabels,
+                modeLabel = function.primaryReading.modeLabel ?: "ДОСТУПНО ЧЕРЕЗ VHAL",
                 isFavorite = function.favoriteKey in state.favoriteKeys,
                 onFavoriteToggle = { onFavoriteToggle(function.favoriteKey) },
-                onDismiss = { expandedId = null },
+                onDismiss = { expandedKey = null },
             ) {
-                FunctionDetails(function, nowMillis)
+                VehicleParameterDetails(function, nowMillis)
             }
         }
     }
 
     @Composable
     private fun FunctionCard(
-        function: VehicleFunctionRecord,
+        function: VehicleParameter,
         nowMillis: Long,
         isFavorite: Boolean,
         onFavoriteToggle: () -> Unit,
         onClick: () -> Unit,
     ) {
+        val modeLabel = function.primaryReading.modeLabel ?: "ДОСТУПНО ЧЕРЕЗ VHAL"
         DataCard(
             title = function.title,
-            apiName = function.apiName,
-            id = function.id,
-            idLabel = "ECARX ID ${function.id}",
-            value = function.cardValue,
-            sourceLabels = listOf(function.source.label),
-            modeLabel = function.supportLabel.uppercase(),
-            modeIsHighlighted = function.support == ApiSupportStatus.ACTIVE,
+            apiName = function.fieldName,
+            id = function.propertyId?.rawValue ?: function.primaryReading.signalId,
+            idLabel = function.cardIdLabel,
+            value = function.value,
+            sourceLabels = function.sourceLabels,
+            modeLabel = modeLabel,
+            modeIsHighlighted = function.status == VehiclePropertyStatus.AVAILABLE,
             footerText = formatUpdateTime(function.updatedAtMillis, nowMillis),
             isFavorite = isFavorite,
             onFavoriteToggle = onFavoriteToggle,
             onClick = onClick,
         ) {
-            FunctionMetadata(function)
+            function.primaryReading.details.take(2).forEach { detail ->
+                ValueLine(detail.label, detail.value)
+            }
+            VehicleParameterErrors(function)
         }
     }
-
-    @Composable
-    private fun FunctionDetails(function: VehicleFunctionRecord, nowMillis: Long) {
-        ValueLine("Доступность", function.supportLabel)
-        ValueLine("Обновлено", formatUpdateTime(function.updatedAtMillis, nowMillis))
-        FunctionMetadata(function)
-    }
-
-    @Composable
-    private fun FunctionMetadata(function: VehicleFunctionRecord) {
-        if (function.supportedValues.isNotBlank()) {
-            ValueLine("Допустимые raw", function.supportedValues)
-        }
-        if (function.zones.isNotBlank()) ValueLine("Зоны raw", function.zones)
-        if (function.error.isNotBlank()) ValueLine("Примечание", function.error)
-    }
-
-    private val VehicleFunctionRecord.supportLabel: String
-        get() = when (support) {
-            ApiSupportStatus.ACTIVE -> "Доступна"
-            ApiSupportStatus.NOT_ACTIVE -> "Поддерживается · неактивна"
-            ApiSupportStatus.NOT_AVAILABLE -> "Не поддерживается"
-            ApiSupportStatus.ERROR -> "Ошибка проверки"
-            ApiSupportStatus.UNKNOWN -> "Состояние неизвестно"
-        }
-
-    private val VehicleFunctionRecord.cardValue: VehicleDisplayValue
-        get() = if (value == VehicleDisplayValue.unavailable && support.isVisibleAsSupported) {
-            VehicleDisplayValue(display = supportLabel, raw = value.raw)
-        } else {
-            value
-        }
 }

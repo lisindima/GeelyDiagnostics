@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 onFavoriteToggle = viewModel::toggleFavorite,
+                onObserveParameter = viewModel::observeParameter,
                 onClearLog = viewModel::clearLog,
             )
         }

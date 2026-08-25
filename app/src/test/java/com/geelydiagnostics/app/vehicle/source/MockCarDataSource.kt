@@ -6,12 +6,7 @@ import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.key
 
-/**
- * In-memory source for unit tests and explicit debug scenarios.
- *
- * It is never selected by the production repository and cannot write to a vehicle. [emit] only
- * simulates a value arriving from a source through the same sink used by VHAL and ECARX.
- */
+/** In-memory test double. It is not packaged in debug or release APKs. */
 internal class MockCarDataSource(
     private val sink: VehicleParameterSink,
     initialValues: List<CarPropertySnapshot> = emptyList(),
@@ -35,7 +30,7 @@ internal class MockCarDataSource(
         if (started) return
         started = true
         sink.onParameterStatus(source, ReadStatus.CHECKING, "Starting in-memory source")
-        sink.onParameterSnapshot(source, values.values.toList())
+        publishSnapshot()
         sink.onParameterStatus(source, ReadStatus.AVAILABLE, "${values.size} mock values")
     }
 
@@ -47,7 +42,7 @@ internal class MockCarDataSource(
             val validated = value.validated()
             values[validated.key] = validated
         }
-        sink.onParameterSnapshot(source, values.values.toList())
+        publishSnapshot()
     }
 
     @Synchronized
@@ -63,6 +58,10 @@ internal class MockCarDataSource(
         closed = true
         started = false
         values.clear()
+    }
+
+    private fun publishSnapshot() {
+        sink.onParameterSnapshot(source, null, values.values.toList())
     }
 
     private fun checkActive() {

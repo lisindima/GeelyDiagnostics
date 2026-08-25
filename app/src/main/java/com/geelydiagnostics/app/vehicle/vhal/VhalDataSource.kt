@@ -10,7 +10,9 @@ import com.geelydiagnostics.app.vehicle.property.CarPropertyPresentations
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.MappedPropertyDecoder
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.catalogSection
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterSink
 import java.util.concurrent.Executors
@@ -88,7 +90,7 @@ internal class VhalDataSource private constructor(
                 value.copy(autoUpdates = value.sourceSignalId in subscribedIds)
             }
             classified.forEach(::logInitial)
-            listener.onParameterSnapshot(source, classified)
+            listener.onParameterSnapshot(source, null, classified)
             val mappedCount = classified.count { it.propertyId != null }
             val aospMappedCount = classified.count {
                 it.propertyId != null &&
@@ -182,6 +184,9 @@ internal class VhalDataSource private constructor(
             ?.takeIf { it.normalizedMapping == null }
             ?.decode(value.raw)
         return decoded.copy(
+            section = androidProperty?.section
+                ?: signalMapping?.propertyId?.catalogSection
+                ?: VehicleDataSection.PARAMETER,
             value = aospValue?.value ?: decoded.value,
             displayValue = aospValue?.displayValue ?: decoded.displayValue,
             decoded = aospValue?.decoded ?: decoded.decoded,
@@ -204,6 +209,9 @@ internal class VhalDataSource private constructor(
             profileMapping
         }
         return CarPropertySnapshot(
+            section = androidProperty?.section
+                ?: signalMapping?.propertyId?.catalogSection
+                ?: VehicleDataSection.PARAMETER,
             propertyId = signalMapping?.propertyId,
             value = null,
             displayValue = "—",

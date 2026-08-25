@@ -26,6 +26,8 @@ data class VehicleSourceReading(
     val sourceTimestampNanos: Long? = null,
     val autoUpdates: Boolean = false,
     val decoded: Boolean = false,
+    val modeLabel: String? = null,
+    val details: List<VehiclePropertyDetail> = emptyList(),
 )
 
 /**
@@ -33,6 +35,7 @@ data class VehicleSourceReading(
  * several sources can be merged; source-specific AOSP and unknown readings deliberately have no id.
  */
 data class VehicleParameter(
+    val section: VehicleDataSection = VehicleDataSection.PARAMETER,
     val propertyId: CarPropertyId?,
     val areaId: Int,
     val title: String,
@@ -59,8 +62,34 @@ internal val VehicleParameter.primaryReading: VehicleSourceReading
     get() = sourceReadings.first()
 
 internal val VehicleParameter.favoriteKey: String
-    get() = propertyId?.let { "property:${it.rawValue}:$areaId" }
-        ?: primaryReading.let { "signal:${it.source.name}:${it.signalId}:$areaId" }
+    get() = when (section) {
+        VehicleDataSection.PARAMETER -> propertyId?.let { "property:${it.rawValue}:$areaId" }
+            ?: primaryReading.let { "signal:${it.source.name}:${it.signalId}:$areaId" }
+        VehicleDataSection.VEHICLE_INFO -> propertyId?.let { "vehicle:property:${it.rawValue}:$areaId" }
+            ?: primaryReading.let { "vehicle:signal:${it.source.name}:${it.signalId}:$areaId" }
+        VehicleDataSection.CAPABILITY -> propertyId?.let { "function:property:${it.rawValue}:$areaId" }
+            ?: primaryReading.let { "function:signal:${it.source.name}:${it.signalId}:$areaId" }
+    }
 
 internal val VehicleSourceReading.legacyFavoriteKey: String
     get() = "sensor:${source.name}:$signalId:$areaId"
+
+internal val VehicleParameter.legacyFavoriteKeys: Set<String>
+    get() = buildSet {
+        sourceReadings.forEach { reading ->
+            add(reading.legacyFavoriteKey)
+            when (section) {
+                VehicleDataSection.PARAMETER -> Unit
+                VehicleDataSection.VEHICLE_INFO ->
+                    add("vehicle:${reading.source.name}:${reading.signalId}")
+                VehicleDataSection.CAPABILITY ->
+                    add("function:${reading.source.name}:${reading.signalId}")
+            }
+        }
+        if (section != VehicleDataSection.PARAMETER) {
+            add(
+                propertyId?.let { "property:${it.rawValue}:$areaId" }
+                    ?: primaryReading.let { "signal:${it.source.name}:${it.signalId}:$areaId" },
+            )
+        }
+    }

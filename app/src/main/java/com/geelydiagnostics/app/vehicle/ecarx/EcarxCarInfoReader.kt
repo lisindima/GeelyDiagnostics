@@ -1,13 +1,14 @@
 package com.geelydiagnostics.app.vehicle.ecarx
 
-import com.geelydiagnostics.app.model.*
-
 import com.ecarx.xui.adaptapi.car.ICar
 import com.ecarx.xui.adaptapi.car.base.ICarInfo
 import com.geelydiagnostics.app.model.ApiSupportStatus
 import com.geelydiagnostics.app.model.ReadStatus
-import com.geelydiagnostics.app.model.VehicleInfoRecord
+import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 
 internal class EcarxCarInfoReader(
     private val sink: EcarxDataListener,
@@ -27,13 +28,17 @@ internal class EcarxCarInfoReader(
             return
         }
         val records = specs.map { spec -> readValue(manager, spec) }
-        sink.onVehicleInfoChanged(records)
-        val supported = records.count { it.support.isSupported }
+        sink.onParameterSnapshot(
+            VehiclePropertySource.ECARX,
+            VehicleDataSection.VEHICLE_INFO,
+            records,
+        )
+        val supported = records.count { it.status == VehiclePropertyStatus.AVAILABLE }
         sink.onCarInfoStatus(ReadStatus.AVAILABLE, "$supported из ${records.size}")
         sink.onLog("Vehicle info: $supported supported of ${records.size}")
     }
 
-    private fun readValue(manager: ICarInfo, spec: CarInfoSpec): VehicleInfoRecord = try {
+    private fun readValue(manager: ICarInfo, spec: CarInfoSpec): CarPropertySnapshot = try {
         val support = manager.isCarInfoSupported(spec.id).toApiSupport()
         val rawValue: Any? = if (support.isSupported) {
             when (spec.kind) {
@@ -47,25 +52,33 @@ internal class EcarxCarInfoReader(
         } else {
             null
         }
-        VehicleInfoRecord(
-            id = spec.id,
-            apiName = spec.apiName,
-            title = spec.title,
-            value = formatValue(spec, rawValue),
-            support = support,
-            updatedAtMillis = System.currentTimeMillis(),
-        )
+        snapshot(spec, formatValue(spec, rawValue), support)
     } catch (error: Throwable) {
-        VehicleInfoRecord(
-            id = spec.id,
-            apiName = spec.apiName,
-            title = spec.title,
-            value = VehicleDisplayValue.unavailable,
-            support = ApiSupportStatus.ERROR,
-            error = describe(error),
-            updatedAtMillis = System.currentTimeMillis(),
-        )
+        snapshot(spec, VehicleDisplayValue.unavailable, ApiSupportStatus.ERROR, describe(error))
     }
+
+    private fun snapshot(
+        spec: CarInfoSpec,
+        value: VehicleDisplayValue,
+        support: ApiSupportStatus,
+        error: String = "",
+    ) = CarPropertySnapshot(
+        section = VehicleDataSection.VEHICLE_INFO,
+        propertyId = null,
+        value = value.toCarValue(),
+        displayValue = value.display,
+        rawValue = value.toRawVehicleValue(),
+        status = support.toPropertyStatus(),
+        source = VehiclePropertySource.ECARX,
+        sourceSignalId = spec.id,
+        sourceSignalName = spec.apiName,
+        sourceTitle = spec.title,
+        receivedAtMillis = System.currentTimeMillis(),
+        valueKind = spec.kind.name.lowercase(),
+        modeLabel = "СТАТИЧЕСКИЕ ДАННЫЕ",
+        decoded = EcarxCarInfoMetadata.field(spec.apiName) != null,
+        error = error,
+    )
 
     private fun reflectSpecs(): List<CarInfoSpec> = intConstants(ICarInfo::class.java)
         .mapNotNull { (name, id) ->

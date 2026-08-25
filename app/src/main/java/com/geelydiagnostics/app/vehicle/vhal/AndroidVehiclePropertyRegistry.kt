@@ -8,6 +8,7 @@ import com.geelydiagnostics.app.vehicle.mapping.ReadTransformStep
 import com.geelydiagnostics.app.vehicle.mapping.TransformValue
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import java.lang.reflect.Modifier
 
 /** Metadata and semantics-preserving mappings for public Android Automotive properties. */
@@ -232,7 +233,24 @@ internal object AndroidVehiclePropertyRegistry {
             description = AospVehiclePropertyDescriptions.byId[propertyId],
             normalizedMapping = mappingsById[propertyId],
             profileKey = PROFILE_KEY,
+            section = classify(apiName),
         )
+    }
+
+    private fun classify(apiName: String): VehicleDataSection = when {
+        apiName.startsWith("INFO_") || apiName == "VEHICLE_CURB_WEIGHT" ->
+            VehicleDataSection.VEHICLE_INFO
+        apiName.startsWith("HVAC_") && apiName !in HVAC_MEASUREMENTS ->
+            VehicleDataSection.CAPABILITY
+        apiName.endsWith("_ENABLED") ||
+            apiName.endsWith("_SWITCH") ||
+            apiName.endsWith("_COMMAND") ||
+            apiName.endsWith("_MOVE") ||
+            apiName.endsWith("_SET") ||
+            apiName.endsWith("_SELECT") ||
+            apiName.endsWith("_DISPLAY_UNITS") ||
+            apiName in CAPABILITY_PROPERTIES -> VehicleDataSection.CAPABILITY
+        else -> VehicleDataSection.PARAMETER
     }
 
     private fun identityMapping(
@@ -276,6 +294,17 @@ internal object AndroidVehiclePropertyRegistry {
             ),
         ),
     )
+
+    private val HVAC_MEASUREMENTS = setOf(
+        "HVAC_ACTUAL_FAN_SPEED_RPM",
+        "HVAC_TEMPERATURE_CURRENT",
+    )
+
+    private val CAPABILITY_PROPERTIES = setOf(
+        "DISPLAY_BRIGHTNESS",
+        "PER_DISPLAY_BRIGHTNESS",
+        "VALET_MODE_ENABLED",
+    )
 }
 
 internal data class AndroidVehicleProperty(
@@ -285,6 +314,7 @@ internal data class AndroidVehicleProperty(
     val description: String?,
     val normalizedMapping: ReadSignalMapping?,
     val profileKey: String,
+    val section: VehicleDataSection,
 ) {
     fun decode(raw: RawVehicleValue): AospDecodedValue =
         AospVehicleValueDecoder.decode(propertyId, apiName, raw)

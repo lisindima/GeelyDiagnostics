@@ -6,12 +6,21 @@ import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.catalogSection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UnifiedParameterCacheTest {
+    @Test
+    fun normalizedCatalogIdNamespaceDefinesDefaultSection() {
+        assertEquals(VehicleDataSection.PARAMETER, CarPropertyId(10_001).catalogSection)
+        assertEquals(VehicleDataSection.CAPABILITY, CarPropertyId(30_001).catalogSection)
+    }
+
     @Test
     fun decodedAospSignalDoesNotNeedNormalizedPropertyId() {
         val cache = UnifiedParameterCache()
@@ -139,6 +148,29 @@ class UnifiedParameterCacheTest {
         val updated = cache.parameters().single()
         assertEquals("42", updated.value.display)
         assertEquals(VehiclePropertySource.ECARX, updated.sourceReadings.first().source)
+    }
+
+    @Test
+    fun sourceIdsAndNormalizedPropertiesRemainIsolatedBetweenSections() {
+        val cache = UnifiedParameterCache()
+        val parameter = snapshot(VehiclePropertySource.ECARX, 7, 10001, "42")
+        val capability = parameter.copy(
+            section = VehicleDataSection.CAPABILITY,
+            displayValue = "Доступна",
+        )
+
+        cache.replaceSource(VehiclePropertySource.ECARX, listOf(parameter, capability))
+
+        assertEquals(
+            setOf(VehicleDataSection.PARAMETER, VehicleDataSection.CAPABILITY),
+            cache.parameters().map(VehicleParameter::section).toSet(),
+        )
+        cache.replaceSource(
+            VehiclePropertySource.ECARX,
+            emptyList(),
+            VehicleDataSection.CAPABILITY,
+        )
+        assertEquals(VehicleDataSection.PARAMETER, cache.parameters().single().section)
     }
 
     private fun snapshot(

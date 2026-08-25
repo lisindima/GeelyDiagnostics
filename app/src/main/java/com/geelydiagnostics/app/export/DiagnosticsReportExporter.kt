@@ -1,10 +1,10 @@
 package com.geelydiagnostics.app.export
 
-import com.geelydiagnostics.app.model.*
+import com.geelydiagnostics.app.model.AppUiState
+import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.ui.catalog.matchesFavorite
 
-import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
-import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.primaryReading
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,7 +20,7 @@ internal object DiagnosticsReportExporter {
         generatedAtMillis: Long,
         appVersion: String,
     ): String = JSONObject().apply {
-        put("schemaVersion", 5)
+        put("schemaVersion", 6)
         put("application", "Geely Diagnostics")
         put("appVersion", appVersion)
         put("generatedAt", isoTime(generatedAtMillis))
@@ -50,68 +50,17 @@ internal object DiagnosticsReportExporter {
         })
         put("parameters", JSONArray().apply {
             state.parameters.forEach { record ->
-                put(JSONObject().apply {
-                    put("normalizedPropertyId", record.propertyId?.rawValue ?: JSONObject.NULL)
-                    put("title", record.title)
-                    put("display", record.value.display)
-                    put("raw", record.value.raw)
-                    put("status", record.status.name)
-                    put("primarySource", record.primaryReading.source.name)
-                    put("valueKind", record.valueKind)
-                    put("areaId", record.areaId)
-                    put("sourceTimestampNanos", record.sourceTimestampNanos ?: JSONObject.NULL)
-                    put("updatedAt", record.updatedAtMillis.jsonTime())
-                    put("changedSinceScan", record.changedSinceScan)
-                    put("autoUpdates", record.autoUpdates)
-                    put("decoded", record.decoded)
-                    put("favorite", record.matchesFavorite(state.favoriteKeys))
-                    put("error", record.error)
-                    put("sources", JSONArray().apply {
-                        record.sourceReadings.forEach { reading ->
-                            put(JSONObject().apply {
-                                putCommonValue(
-                                    reading.signalId,
-                                    reading.signalName,
-                                    record.title,
-                                    reading.value,
-                                    reading.source,
-                                )
-                                put("status", reading.status.name)
-                                put("profile", reading.profile ?: JSONObject.NULL)
-                                put("areaId", reading.areaId)
-                                put("updatedAt", reading.updatedAtMillis.jsonTime())
-                                put("sourceTimestampNanos", reading.sourceTimestampNanos ?: JSONObject.NULL)
-                                put("autoUpdates", reading.autoUpdates)
-                                put("decoded", reading.decoded)
-                                put("error", reading.error)
-                            })
-                        }
-                    })
-                })
+                put(record.toJson(record.matchesFavorite(state.favoriteKeys)))
             }
         })
         put("vehicleInfo", JSONArray().apply {
             state.vehicleInfo.forEach { record ->
-                put(JSONObject().apply {
-                    putCommonValue(record.id, record.apiName, record.title, record.value, record.source)
-                    put("support", record.support.name)
-                    put("updatedAt", record.updatedAtMillis.jsonTime())
-                    put("favorite", record.favoriteKey in state.favoriteKeys)
-                    put("error", record.error)
-                })
+                put(record.toJson(record.matchesFavorite(state.favoriteKeys)))
             }
         })
         put("functions", JSONArray().apply {
             state.functions.forEach { record ->
-                put(JSONObject().apply {
-                    putCommonValue(record.id, record.apiName, record.title, record.value, record.source)
-                    put("support", record.support.name)
-                    put("supportedValuesRaw", record.supportedValues)
-                    put("zonesRaw", record.zones)
-                    put("updatedAt", record.updatedAtMillis.jsonTime())
-                    put("favorite", record.favoriteKey in state.favoriteKeys)
-                    put("error", record.error)
-                })
+                put(record.toJson(record.matchesFavorite(state.favoriteKeys)))
             }
         })
         put("log", JSONArray(state.logLines))
@@ -124,19 +73,52 @@ internal object DiagnosticsReportExporter {
         })
     }
 
-    private fun JSONObject.putCommonValue(
-        id: Int,
-        apiName: String,
-        title: String,
-        value: VehicleDisplayValue,
-        source: VehiclePropertySource,
-    ) {
-        put("id", id)
-        put("apiName", apiName)
+    private fun VehicleParameter.toJson(favorite: Boolean) = JSONObject().apply {
+        put("section", section.name)
+        put("normalizedPropertyId", propertyId?.rawValue ?: JSONObject.NULL)
         put("title", title)
-        put("source", source.name)
         put("display", value.display)
         put("raw", value.raw)
+        put("status", status.name)
+        put("primarySource", primaryReading.source.name)
+        put("valueKind", valueKind)
+        put("areaId", areaId)
+        put("sourceTimestampNanos", sourceTimestampNanos ?: JSONObject.NULL)
+        put("updatedAt", updatedAtMillis.jsonTime())
+        put("changedSinceScan", changedSinceScan)
+        put("autoUpdates", autoUpdates)
+        put("decoded", decoded)
+        put("favorite", favorite)
+        put("error", error)
+        put("sources", JSONArray().apply {
+            sourceReadings.forEach { reading ->
+                put(JSONObject().apply {
+                    put("id", reading.signalId)
+                    put("apiName", reading.signalName)
+                    put("source", reading.source.name)
+                    put("display", reading.value.display)
+                    put("raw", reading.value.raw)
+                    put("status", reading.status.name)
+                    put("profile", reading.profile ?: JSONObject.NULL)
+                    put("areaId", reading.areaId)
+                    put("updatedAt", reading.updatedAtMillis.jsonTime())
+                    put("sourceTimestampNanos", reading.sourceTimestampNanos ?: JSONObject.NULL)
+                    put("autoUpdates", reading.autoUpdates)
+                    put("decoded", reading.decoded)
+                    put("mode", reading.modeLabel ?: JSONObject.NULL)
+                    put("description", reading.description ?: JSONObject.NULL)
+                    put("details", JSONArray().apply {
+                        reading.details.forEach { detail ->
+                            put(JSONObject().apply {
+                                put("label", detail.label)
+                                put("value", detail.value)
+                            })
+                        }
+                    })
+                    put("error", reading.error)
+                })
+            }
+        })
     }
 
     private fun Long?.jsonTime(): Any = this?.let(::isoTime) ?: JSONObject.NULL

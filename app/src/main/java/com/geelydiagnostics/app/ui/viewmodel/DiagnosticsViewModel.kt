@@ -1,6 +1,6 @@
 package com.geelydiagnostics.app.ui.viewmodel
 
-import com.geelydiagnostics.app.model.*
+import com.geelydiagnostics.app.model.AppUiState
 import com.geelydiagnostics.app.ui.components.chartNumber
 
 import android.app.Application
@@ -12,12 +12,14 @@ import androidx.lifecycle.viewModelScope
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
-import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKey
+import com.geelydiagnostics.app.vehicle.property.legacyFavoriteKeys
 import com.geelydiagnostics.app.vehicle.repository.UnifiedVehicleRepository
 import com.geelydiagnostics.app.vehicle.repository.VehicleRepositoryState
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
 
 internal class DiagnosticsViewModel(application: Application) : AndroidViewModel(application) {
     var uiState by mutableStateOf(
@@ -36,6 +38,9 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             repository.state.collect { repositoryState ->
                 onRepositoryState(repositoryState)
             }
+        }
+        viewModelScope.launch {
+            repository.observeParameters().collect(::onParametersChanged)
         }
         startScan()
     }
@@ -68,29 +73,16 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
 
     fun onLog(message: String, error: Throwable? = null) = repository.onSystemLog(message, error)
 
+    fun observeParameter(parameter: VehicleParameter): Flow<VehicleParameter?> =
+        parameter.propertyId?.let { propertyId ->
+            repository.observe(propertyId, parameter.areaId, parameter.section)
+        } ?: repository.observe(parameter.favoriteKey)
+
     private fun startScan() {
         repository.start(uiState.selectedVhalProfile, uiState.selectedVhalBackend)
     }
 
     private fun onRepositoryState(repositoryState: VehicleRepositoryState) {
-        var history = if (
-            repositoryState.scanStartedAtMillis != null &&
-            repositoryState.scanStartedAtMillis != uiState.scanStartedAtMillis
-        ) {
-            emptyMap()
-        } else {
-            uiState.parameterHistory
-        }
-        repositoryState.parameters.forEach { parameter ->
-            history = history.withSample(
-                parameter,
-                parameter.updatedAtMillis ?: System.currentTimeMillis(),
-            )
-        }
-        val favoriteKeys = migrateParameterFavorites(uiState.favoriteKeys, repositoryState.parameters)
-        if (favoriteKeys != uiState.favoriteKeys) {
-            preferences().edit().putStringSet(KEY_FAVORITES, favoriteKeys).apply()
-        }
         uiState = uiState.copy(
             carStatus = repositoryState.carStatus,
             carDetail = repositoryState.carDetail,
@@ -107,12 +99,36 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             functionStatus = repositoryState.functionStatus,
             functionDetail = repositoryState.functionDetail,
             dtcs = repositoryState.diagnostics.dtcs,
-            parameters = repositoryState.parameters,
-            parameterHistory = history,
-            vehicleInfo = repositoryState.vehicleInfo,
-            functions = repositoryState.functions,
             logLines = repositoryState.logLines,
             scanStartedAtMillis = repositoryState.scanStartedAtMillis,
+        )
+    }
+
+    private fun onParametersChanged(allParameters: List<VehicleParameter>) {
+        val parameters = allParameters.filter { it.section == VehicleDataSection.PARAMETER }
+        var history = if (
+            uiState.scanStartedAtMillis != null &&
+            parameters.isEmpty()
+        ) {
+            emptyMap()
+        } else {
+            uiState.parameterHistory
+        }
+        parameters.forEach { parameter ->
+            history = history.withSample(
+                parameter,
+                parameter.updatedAtMillis ?: System.currentTimeMillis(),
+            )
+        }
+        val favoriteKeys = migrateParameterFavorites(uiState.favoriteKeys, allParameters)
+        if (favoriteKeys != uiState.favoriteKeys) {
+            preferences().edit().putStringSet(KEY_FAVORITES, favoriteKeys).apply()
+        }
+        uiState = uiState.copy(
+            parameters = parameters,
+            parameterHistory = history,
+            vehicleInfo = allParameters.filter { it.section == VehicleDataSection.VEHICLE_INFO },
+            functions = allParameters.filter { it.section == VehicleDataSection.CAPABILITY },
             favoriteKeys = favoriteKeys,
         )
     }
@@ -122,9 +138,8 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         parameters: List<VehicleParameter>,
     ): Set<String> {
         val migrated = current.toMutableSet()
-        parameters.filter { it.propertyId != null }.forEach { parameter ->
-            val legacyKeys = parameter.sourceReadings
-                .map { it.legacyFavoriteKey }
+        parameters.forEach { parameter ->
+            val legacyKeys = parameter.legacyFavoriteKeys
             if (legacyKeys.any(migrated::contains)) {
                 migrated.removeAll(legacyKeys.toSet())
                 migrated += parameter.favoriteKey

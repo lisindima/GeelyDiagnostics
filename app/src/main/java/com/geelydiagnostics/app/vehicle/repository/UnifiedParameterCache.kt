@@ -6,6 +6,7 @@ import com.geelydiagnostics.app.vehicle.property.CarPropertyPresentations
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
@@ -18,11 +19,20 @@ internal class UnifiedParameterCache {
     private val standalone = linkedMapOf<CarPropertyKey, CarPropertySnapshot>()
     private val changed = linkedSetOf<CarPropertyKey>()
 
-    fun replaceSource(source: VehiclePropertySource, values: List<CarPropertySnapshot>) {
-        normalized.values.forEach { candidates -> candidates.keys.removeAll { it.source == source } }
+    fun replaceSource(
+        source: VehiclePropertySource,
+        values: List<CarPropertySnapshot>,
+        section: VehicleDataSection? = null,
+    ) {
+        fun CarPropertyKey.matchesScope(): Boolean =
+            this.source == source && (section == null || this.section == section)
+        normalized.values.forEach { candidates -> candidates.keys.removeAll { it.matchesScope() } }
         normalized.entries.removeAll { it.value.isEmpty() }
-        standalone.keys.removeAll { it.source == source }
-        changed.removeAll { it.source == source }
+        standalone.keys.removeAll { it.matchesScope() }
+        changed.removeAll { it.matchesScope() }
+        require(section == null || values.all { it.section == section }) {
+            "Snapshot section does not match replacement scope $section"
+        }
         values.forEach(::put)
     }
 
@@ -54,7 +64,7 @@ internal class UnifiedParameterCache {
         return if (propertyId == null) {
             standalone.put(value.key, value)
         } else {
-            normalized.getOrPut(NormalizedKey(propertyId, value.areaId)) { linkedMapOf() }
+            normalized.getOrPut(NormalizedKey(value.section, propertyId, value.areaId)) { linkedMapOf() }
                 .put(value.key, value)
         }
     }
@@ -78,6 +88,7 @@ internal class UnifiedParameterCache {
         val presentation = primary.propertyId?.let(CarPropertyPresentations::get)
         val numeric = primary.value is CarValue.IntValue || primary.value is CarValue.FloatValue
         return VehicleParameter(
+            section = primary.section,
             propertyId = primary.propertyId,
             areaId = primary.areaId,
             title = presentation?.title ?: primary.sourceTitle
@@ -115,9 +126,15 @@ internal class UnifiedParameterCache {
         sourceTimestampNanos = sourceTimestampNanos,
         autoUpdates = autoUpdates,
         decoded = readableDecoded,
+        modeLabel = modeLabel,
+        details = details,
     )
 
-    private data class NormalizedKey(val propertyId: CarPropertyId, val areaId: Int)
+    private data class NormalizedKey(
+        val section: VehicleDataSection,
+        val propertyId: CarPropertyId,
+        val areaId: Int,
+    )
 
     companion object {
         private val primaryReadingComparator = compareBy<CarPropertySnapshot> {

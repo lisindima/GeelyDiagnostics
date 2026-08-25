@@ -1,14 +1,16 @@
 package com.geelydiagnostics.app.vehicle.ecarx
 
-import com.geelydiagnostics.app.model.*
-
 import com.ecarx.xui.adaptapi.car.ICar
 import com.ecarx.xui.adaptapi.car.base.ICarFunction
 import com.ecarx.xui.adaptapi.car.vehicle.IVehicle
 import com.geelydiagnostics.app.model.ApiSupportStatus
 import com.geelydiagnostics.app.model.ReadStatus
-import com.geelydiagnostics.app.model.VehicleFunctionRecord
+import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyDetail
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 
 internal class EcarxFunctionReader(
     private val sink: EcarxDataListener,
@@ -28,13 +30,17 @@ internal class EcarxFunctionReader(
             return
         }
         val records = specs.map { spec -> readValue(manager, spec) }
-        sink.onFunctionsChanged(records)
-        val supported = records.count { it.support.isSupported }
+        sink.onParameterSnapshot(
+            VehiclePropertySource.ECARX,
+            VehicleDataSection.CAPABILITY,
+            records,
+        )
+        val supported = records.count { it.status == VehiclePropertyStatus.AVAILABLE }
         sink.onFunctionStatus(ReadStatus.AVAILABLE, "$supported из ${records.size}")
         sink.onLog("Vehicle functions: $supported supported of ${records.size}")
     }
 
-    private fun readValue(manager: ICarFunction, spec: FunctionSpec): VehicleFunctionRecord = try {
+    private fun readValue(manager: ICarFunction, spec: FunctionSpec): CarPropertySnapshot = try {
         val support = manager.isFunctionSupported(spec.id).toApiSupport()
         var rawValue: Int? = null
         var supportedValues = ""
@@ -55,29 +61,58 @@ internal class EcarxFunctionReader(
                 .onSuccess { zones = it?.joinToString().orEmpty() }
                 .onFailure { readErrors += "zones: ${describe(it)}" }
         }
-        VehicleFunctionRecord(
-            id = spec.id,
-            apiName = spec.apiName,
-            title = spec.title,
-            value = rawValue?.let {
+        val decodedValue = rawValue?.let {
                 VendorValueDecoder.function(spec.apiName, it, supportedRawValues)
-            } ?: VehicleDisplayValue.unavailable,
+            } ?: if (support.isSupported) {
+                VehicleDisplayValue(display = support.displayLabel, raw = "—")
+            } else {
+                VehicleDisplayValue.unavailable
+            }
+        snapshot(
+            spec = spec,
+            value = decodedValue,
+            support = support,
             supportedValues = supportedValues,
             zones = zones,
-            support = support,
             error = readErrors.joinToString("; "),
-            updatedAtMillis = System.currentTimeMillis(),
         )
     } catch (error: Throwable) {
-        VehicleFunctionRecord(
-            id = spec.id,
-            apiName = spec.apiName,
-            title = spec.title,
+        snapshot(
+            spec = spec,
+            value = VehicleDisplayValue.unavailable,
             support = ApiSupportStatus.ERROR,
             error = describe(error),
-            updatedAtMillis = System.currentTimeMillis(),
         )
     }
+
+    private fun snapshot(
+        spec: FunctionSpec,
+        value: VehicleDisplayValue,
+        support: ApiSupportStatus,
+        supportedValues: String = "",
+        zones: String = "",
+        error: String = "",
+    ) = CarPropertySnapshot(
+        section = VehicleDataSection.CAPABILITY,
+        propertyId = null,
+        value = value.toCarValue(),
+        displayValue = value.display,
+        rawValue = value.toRawVehicleValue(),
+        status = support.toPropertyStatus(),
+        source = VehiclePropertySource.ECARX,
+        sourceSignalId = spec.id,
+        sourceSignalName = spec.apiName,
+        sourceTitle = spec.title,
+        receivedAtMillis = System.currentTimeMillis(),
+        valueKind = "function/int",
+        modeLabel = support.displayLabel.uppercase(),
+        details = buildList {
+            if (supportedValues.isNotBlank()) add(VehiclePropertyDetail("Допустимые raw", supportedValues))
+            if (zones.isNotBlank()) add(VehiclePropertyDetail("Зоны raw", zones))
+        },
+        decoded = EcarxFunctionMetadata.fields[spec.apiName] != null,
+        error = error,
+    )
 
     private fun reflectSpecs(): List<FunctionSpec> =
         intConstants(IVehicle::class.java, "SETTING_FUNC_")

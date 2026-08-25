@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.flow.Flow
 
 internal object ParametersTab {
 
@@ -49,6 +51,7 @@ internal object ParametersTab {
         onVhalProfileSelected: (VehicleProfile) -> Unit,
         onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
         onFavoriteToggle: (String) -> Unit,
+        onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
     ) {
         var expandedParameterKey by rememberSaveable { mutableStateOf<String?>(null) }
         var query by rememberSaveable { mutableStateOf("") }
@@ -98,7 +101,11 @@ internal object ParametersTab {
             onFavoriteToggle = onFavoriteToggle,
             onParameterSelected = { expandedParameterKey = it.selectionKey },
         )
-        state.parameters.firstOrNull { it.selectionKey == expandedParameterKey }?.let { parameter ->
+        state.parameters.firstOrNull { it.selectionKey == expandedParameterKey }?.let { selected ->
+            val observed by remember(selected.selectionKey) {
+                onObserveParameter(selected)
+            }.collectAsState(initial = selected)
+            val parameter = observed ?: selected
             ParameterFullscreenDialog(
                 parameter = parameter,
                 history = state.parameterHistory[parameter.favoriteKey].orEmpty(),
@@ -382,38 +389,6 @@ internal object ParametersTab {
     }
 
     @Composable
-    private fun SourceStateBadge(label: String, status: ReadStatus, modifier: Modifier = Modifier) {
-        val colors = when (status) {
-            ReadStatus.AVAILABLE -> MaterialTheme.colorScheme.primaryContainer to
-                MaterialTheme.colorScheme.onPrimaryContainer
-            ReadStatus.PARTIAL, ReadStatus.CHECKING -> MaterialTheme.colorScheme.tertiaryContainer to
-                MaterialTheme.colorScheme.onTertiaryContainer
-            ReadStatus.ERROR -> MaterialTheme.colorScheme.errorContainer to
-                MaterialTheme.colorScheme.onErrorContainer
-            ReadStatus.NOT_CHECKED -> MaterialTheme.colorScheme.surfaceVariant to
-                MaterialTheme.colorScheme.onSurfaceVariant
-        }
-        Surface(
-            modifier = modifier,
-            color = colors.first,
-            contentColor = colors.second,
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Row(
-                modifier = Modifier.padding(
-                    horizontal = AppSpacing.Medium,
-                    vertical = AppSpacing.Small,
-                ),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(label, fontSize = AppType.Label, fontWeight = FontWeight.Bold)
-                Text(status.labelForSource, fontSize = AppType.Label)
-            }
-        }
-    }
-
-    @Composable
     private fun ParameterCard(
         parameter: VehicleParameter,
         nowMillis: Long,
@@ -448,22 +423,5 @@ internal object ParametersTab {
             }
         }
     }
-
-    private val ReadStatus.labelForSource: String
-        get() = when (this) {
-            ReadStatus.NOT_CHECKED -> "не проверено"
-            ReadStatus.CHECKING -> "проверка"
-            ReadStatus.PARTIAL -> "частично доступен"
-            ReadStatus.AVAILABLE -> "доступен"
-            ReadStatus.ERROR -> "ошибка"
-        }
-
-    private fun sourceAttentionDetail(
-        label: String,
-        status: ReadStatus,
-        detail: String,
-    ): String? = statusAttentionDetail(status, detail)
-        .ifBlank { null }
-        ?.let { "$label: $it" }
 
 }

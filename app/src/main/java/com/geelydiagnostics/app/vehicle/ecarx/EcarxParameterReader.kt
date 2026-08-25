@@ -1,7 +1,5 @@
 package com.geelydiagnostics.app.vehicle.ecarx
 
-import com.geelydiagnostics.app.model.*
-
 import com.ecarx.xui.adaptapi.FunctionStatus
 import com.ecarx.xui.adaptapi.car.ICar
 import com.ecarx.xui.adaptapi.car.sensor.ISensor
@@ -12,6 +10,7 @@ import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.EcarxNormalizedPropertyRegistry
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 
@@ -79,7 +78,7 @@ internal class EcarxParameterReader(
         val initial = specs.map { readSensor(current, it) }
         snapshotsById.clear()
         snapshotsById += initial.associateBy(CarPropertySnapshot::sourceSignalId)
-        sink.onParameterSnapshot(VehiclePropertySource.ECARX, initial)
+        sink.onParameterSnapshot(VehiclePropertySource.ECARX, VehicleDataSection.PARAMETER, initial)
 
         if (!listenerRegistered) {
             initial.filter { it.status == VehiclePropertyStatus.AVAILABLE }.forEach { snapshot ->
@@ -107,7 +106,7 @@ internal class EcarxParameterReader(
         }
         snapshotsById.clear()
         snapshotsById += classified.associateBy(CarPropertySnapshot::sourceSignalId)
-        sink.onParameterSnapshot(VehiclePropertySource.ECARX, classified)
+        sink.onParameterSnapshot(VehiclePropertySource.ECARX, VehicleDataSection.PARAMETER, classified)
         val supported = classified.count { it.status == VehiclePropertyStatus.AVAILABLE }
         sink.onParameterStatus(
             VehiclePropertySource.ECARX,
@@ -238,10 +237,4 @@ internal class EcarxParameterReader(
         private const val SENSOR_TYPE_FLOAT = 0x100000
         private const val STALE_AFTER_MILLIS = 15_000L
     }
-}
-
-private fun ApiSupportStatus.toPropertyStatus(): VehiclePropertyStatus = when (this) {
-    ApiSupportStatus.ACTIVE, ApiSupportStatus.NOT_ACTIVE -> VehiclePropertyStatus.AVAILABLE
-    ApiSupportStatus.NOT_AVAILABLE, ApiSupportStatus.UNKNOWN -> VehiclePropertyStatus.UNAVAILABLE
-    ApiSupportStatus.ERROR -> VehiclePropertyStatus.ERROR
 }

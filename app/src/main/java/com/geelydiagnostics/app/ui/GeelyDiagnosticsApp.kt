@@ -39,6 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
+import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import kotlinx.coroutines.flow.Flow
 
 private const val MIN_HEAD_UNIT_FONT_SCALE = 1.5f
 
@@ -59,6 +61,7 @@ internal fun GeelyDiagnosticsApp(
     onVhalProfileSelected: (VehicleProfile) -> Unit,
     onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
     onFavoriteToggle: (String) -> Unit,
+    onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
     onClearLog: () -> Unit,
     initialTab: AppTab = AppTab.DIAGNOSTICS,
 ) {
@@ -107,6 +110,7 @@ internal fun GeelyDiagnosticsApp(
                         onVhalProfileSelected = onVhalProfileSelected,
                         onVhalBackendSelected = onVhalBackendSelected,
                         onFavoriteToggle = onFavoriteToggle,
+                        onObserveParameter = onObserveParameter,
                         onClearLog = onClearLog,
                     )
                 }
@@ -139,6 +143,7 @@ private fun AppTabContent(
     onVhalProfileSelected: (VehicleProfile) -> Unit,
     onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
     onFavoriteToggle: (String) -> Unit,
+    onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
     onClearLog: () -> Unit,
 ) {
     when (tab) {
@@ -159,24 +164,29 @@ private fun AppTabContent(
             onVhalProfileSelected,
             onVhalBackendSelected,
             onFavoriteToggle,
+            onObserveParameter,
         )
         AppTab.VEHICLE -> {
             val tabState = remember(
                 state.carInfoStatus,
                 state.carInfoDetail,
+                state.vhalStatus,
+                state.vhalDetail,
                 state.vehicleInfo,
                 state.favoriteKeys,
             ) { state }
-            VehicleTab.Content(tabState, onFavoriteToggle)
+            VehicleTab.Content(tabState, onFavoriteToggle, onObserveParameter)
         }
         AppTab.FUNCTIONS -> {
             val tabState = remember(
                 state.functionStatus,
                 state.functionDetail,
+                state.vhalStatus,
+                state.vhalDetail,
                 state.functions,
                 state.favoriteKeys,
             ) { state }
-            FunctionsTab.Content(tabState, onFavoriteToggle)
+            FunctionsTab.Content(tabState, onFavoriteToggle, onObserveParameter)
         }
         AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
     }

@@ -1,9 +1,7 @@
 package com.geelydiagnostics.app.ui.parameters
 
 import androidx.compose.runtime.Composable
-import com.geelydiagnostics.app.ui.catalog.formatUpdateTime
 import com.geelydiagnostics.app.ui.catalog.isStale
-import com.geelydiagnostics.app.ui.components.DescriptionBlock
 import com.geelydiagnostics.app.ui.components.FullscreenValueDialog
 import com.geelydiagnostics.app.ui.components.ParameterHistoryChart
 import com.geelydiagnostics.app.ui.components.ValueLine
@@ -51,39 +49,25 @@ internal fun ParameterFullscreenDialog(
 
 @Composable
 private fun ParameterDetails(parameter: VehicleParameter, nowMillis: Long) {
-    parameter.sourceReadings
-        .mapNotNull { reading -> reading.description?.let { reading.badgeLabel to it } }
-        .distinct()
-        .forEach { (source, description) ->
-            DescriptionBlock("Описание $source", description)
-        }
-    ValueLine("Тип", parameter.valueKind)
-    ValueLine(
-        "Обновлено",
-        formatUpdateTime(parameter.updatedAtMillis, nowMillis) +
-            if (parameter.isStale(nowMillis)) " · УСТАРЕЛО" else "",
-    )
-    ValueLine(
-        "Обновление",
-        if (parameter.autoUpdates) "автоматически по подписке" else "только вручную",
-    )
-    if (parameter.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
-    ValueLine(
-        "Расшифровка",
-        when {
-            !parameter.decoded -> "нет — показано исходное значение"
-            parameter.propertyId != null -> "расшифровано и объединено с общим параметром"
-            parameter.sourceReadings.any { it.profile == "AOSP" } -> "по стандартным правилам AOSP"
-            else -> "по выбранному профилю автомобиля"
-        },
-    )
-    parameter.sourceReadings.forEach { reading ->
-        val label = reading.badgeLabel
-        ValueLine("$label · сигнал", reading.signalLabel)
-        ValueLine("$label · raw", reading.value.raw)
-        reading.sourceTimestampNanos?.let {
-            ValueLine("$label · timestamp", "$it нс от запуска системы")
-        }
-        if (reading.error.isNotBlank()) ValueLine("$label · ошибка", reading.error)
+    VehicleParameterDetails(
+        parameter = parameter,
+        nowMillis = nowMillis,
+        updatedSuffix = if (parameter.isStale(nowMillis)) " · УСТАРЕЛО" else "",
+    ) {
+        ValueLine(
+            "Обновление",
+            if (parameter.autoUpdates) "автоматически по подписке" else "только вручную",
+        )
+        if (parameter.changedSinceScan) ValueLine("Состояние", "изменилось после сканирования")
+        ValueLine(
+            "Расшифровка",
+            when {
+                !parameter.decoded -> "нет — показано исходное значение"
+                parameter.propertyId != null -> "расшифровано и объединено с общим параметром"
+                parameter.sourceReadings.any { it.profile == "AOSP" } ->
+                    "по стандартным правилам AOSP"
+                else -> "по выбранному профилю автомобиля"
+            },
+        )
     }
 }
