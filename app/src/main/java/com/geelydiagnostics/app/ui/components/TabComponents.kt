@@ -242,7 +242,6 @@ internal fun CatalogSearchField(
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyLarge.copy(
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = FontFamily.SansSerif,
             fontSize = AppType.Body,
         ),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),

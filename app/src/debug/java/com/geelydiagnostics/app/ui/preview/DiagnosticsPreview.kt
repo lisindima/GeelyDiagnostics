@@ -6,7 +6,6 @@ import com.geelydiagnostics.app.ui.components.*
 import com.geelydiagnostics.app.ui.tabs.DataCategory
 import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsDarkColors
 import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsShapes
-import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsTypography
 import com.geelydiagnostics.app.vehicle.ecarx.VendorValueDecoder
 
 import android.content.res.Configuration
@@ -131,7 +130,6 @@ private fun FullscreenParameterPreview() {
         MaterialTheme(
             colorScheme = GeelyDiagnosticsDarkColors,
             shapes = GeelyDiagnosticsShapes,
-            typography = GeelyDiagnosticsTypography,
         ) {
             FullscreenValueScreen(
                 title = "Оставшееся топливо",

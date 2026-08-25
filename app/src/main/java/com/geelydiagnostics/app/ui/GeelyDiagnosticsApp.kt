@@ -79,7 +79,6 @@ internal fun GeelyDiagnosticsApp(
         MaterialTheme(
             colorScheme = colorScheme,
             shapes = GeelyDiagnosticsShapes,
-            typography = GeelyDiagnosticsTypography,
         ) {
             var selectedTabIndex by rememberSaveable { mutableIntStateOf(initialTab.ordinal) }
             Surface(

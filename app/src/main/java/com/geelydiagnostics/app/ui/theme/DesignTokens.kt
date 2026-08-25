@@ -2,11 +2,9 @@ package com.geelydiagnostics.app.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -65,27 +63,6 @@ internal val GeelyDiagnosticsDarkColors = darkColorScheme(
     outline = Color(0xFF8D929D),
     outlineVariant = Color(0xFF454A55),
     scrim = Color(0xFF000000),
-)
-
-private val MaterialTypography = Typography()
-
-/** Roboto/system sans for UI copy; monospace remains opt-in for raw and API labels. */
-internal val GeelyDiagnosticsTypography = Typography(
-    displayLarge = MaterialTypography.displayLarge.copy(fontFamily = FontFamily.SansSerif),
-    displayMedium = MaterialTypography.displayMedium.copy(fontFamily = FontFamily.SansSerif),
-    displaySmall = MaterialTypography.displaySmall.copy(fontFamily = FontFamily.SansSerif),
-    headlineLarge = MaterialTypography.headlineLarge.copy(fontFamily = FontFamily.SansSerif),
-    headlineMedium = MaterialTypography.headlineMedium.copy(fontFamily = FontFamily.SansSerif),
-    headlineSmall = MaterialTypography.headlineSmall.copy(fontFamily = FontFamily.SansSerif),
-    titleLarge = MaterialTypography.titleLarge.copy(fontFamily = FontFamily.SansSerif),
-    titleMedium = MaterialTypography.titleMedium.copy(fontFamily = FontFamily.SansSerif),
-    titleSmall = MaterialTypography.titleSmall.copy(fontFamily = FontFamily.SansSerif),
-    bodyLarge = MaterialTypography.bodyLarge.copy(fontFamily = FontFamily.SansSerif),
-    bodyMedium = MaterialTypography.bodyMedium.copy(fontFamily = FontFamily.SansSerif),
-    bodySmall = MaterialTypography.bodySmall.copy(fontFamily = FontFamily.SansSerif),
-    labelLarge = MaterialTypography.labelLarge.copy(fontFamily = FontFamily.SansSerif),
-    labelMedium = MaterialTypography.labelMedium.copy(fontFamily = FontFamily.SansSerif),
-    labelSmall = MaterialTypography.labelSmall.copy(fontFamily = FontFamily.SansSerif),
 )
 
 /**
