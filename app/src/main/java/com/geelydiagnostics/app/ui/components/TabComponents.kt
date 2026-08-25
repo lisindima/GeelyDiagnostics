@@ -4,31 +4,34 @@ import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.theme.*
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -217,13 +220,44 @@ internal fun CatalogSearchField(
     onQueryChange: (String) -> Unit,
     placeholder: String,
 ) {
-    OutlinedTextField(
+    BasicTextField(
         value = query,
         onValueChange = onQueryChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = AppSizes.SearchFieldMinHeight)
+            .background(
+                color = MaterialTheme.colorScheme.surface,
+                shape = MaterialTheme.shapes.medium,
+            )
+            .border(
+                width = AppSizes.Border,
+                color = MaterialTheme.colorScheme.outline,
+                shape = MaterialTheme.shapes.medium,
+            )
+            .padding(
+                horizontal = AppSpacing.Default,
+                vertical = AppSpacing.Medium,
+            ),
         singleLine = true,
-        placeholder = { Text(placeholder) },
-        shape = MaterialTheme.shapes.medium,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = MaterialTheme.colorScheme.onSurface,
+            fontFamily = FontFamily.SansSerif,
+            fontSize = AppType.Body,
+        ),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        decorationBox = { innerTextField ->
+            Box(contentAlignment = Alignment.CenterStart) {
+                if (query.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = AppType.Body,
+                    )
+                }
+                innerTextField()
+            }
+        },
     )
 }
 
@@ -233,27 +267,49 @@ internal fun CatalogFilterRow(
     selectedIndex: Int,
     onSelected: (Int) -> Unit,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small)) {
+    LazyRow(
+        contentPadding = PaddingValues(vertical = AppSpacing.XSmall),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small),
+    ) {
         itemsIndexed(labels) { index, label ->
             val selected = selectedIndex == index
-            FilterChip(
-                selected = selected,
+            Surface(
                 onClick = { onSelected(index) },
+                modifier = Modifier.heightIn(min = AppSizes.FilterChipMinHeight),
                 shape = MaterialTheme.shapes.medium,
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    Color.Transparent
+                },
+                contentColor = if (selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                border = BorderStroke(
+                    AppSizes.Border,
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
                 ),
-                label = {
+            ) {
+                Box(
+                    modifier = Modifier.padding(
+                        horizontal = AppSpacing.Default,
+                        vertical = AppSpacing.Small,
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text(
                         text = label,
                         fontSize = AppType.Body,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = FontWeight.Bold,
                     )
-                },
-            )
+                }
+            }
         }
     }
 }

@@ -118,6 +118,8 @@ internal object AppSizes {
     val DialogElevation = 8.dp
     val HeaderActionMinHeight = 40.dp
     val FavoriteButton = 36.dp
+    val FilterChipMinHeight = 44.dp
+    val SearchFieldMinHeight = 52.dp
     val SettingsDialogMaxWidth = 560.dp
     val ChartHeight = 300.dp
     val ChartLine = 4.dp
@@ -131,32 +133,32 @@ internal object AppBreakpoints {
 
 /** Semantic type scale. Font sizes are independent from the 4 dp layout grid. */
 internal object AppType {
-    val Technical = 10.sp
-    val Label = 11.sp
-    val Supporting = 12.sp
-    val Body = 13.sp
-    val BodyEmphasis = 14.sp
-    val Standard = 15.sp
-    val Action = 16.sp
-    val CardTitle = 16.sp
-    val Count = 28.sp
-    val SectionTitle = 22.sp
-    val DialogTitle = 26.sp
-    val HeaderTitle = 24.sp
-    val DialogFavorite = 30.sp
-    val DialogClose = 34.sp
-    val CardValue = 28.sp
-    val DialogValue = 58.sp
+    val Technical = 12.sp
+    val Label = 13.sp
+    val Supporting = 15.sp
+    val Body = 16.sp
+    val BodyEmphasis = 17.sp
+    val Standard = 18.sp
+    val Action = 19.sp
+    val CardTitle = 21.sp
+    val Count = 34.sp
+    val SectionTitle = 26.sp
+    val DialogTitle = 30.sp
+    val HeaderTitle = 32.sp
+    val DialogFavorite = 34.sp
+    val DialogClose = 38.sp
+    val CardValue = 42.sp
+    val DialogValue = 64.sp
 
-    val ValueLabelLine = 16.sp
-    val SupportingLine = 17.sp
-    val BodyLine = 18.sp
-    val CardTitleLine = 22.sp
-    val DialogRawLine = 28.sp
-    val DialogTitleLine = 32.sp
-    val DialogCloseLine = 34.sp
-    val CardValueLine = 34.sp
-    val DialogValueLine = 66.sp
+    val ValueLabelLine = 20.sp
+    val SupportingLine = 20.sp
+    val BodyLine = 22.sp
+    val CardTitleLine = 27.sp
+    val DialogRawLine = 32.sp
+    val DialogTitleLine = 38.sp
+    val DialogCloseLine = 40.sp
+    val CardValueLine = 50.sp
+    val DialogValueLine = 72.sp
 }
 
 /** Material 3 shape scale; cards use the 12 dp medium radius. */
