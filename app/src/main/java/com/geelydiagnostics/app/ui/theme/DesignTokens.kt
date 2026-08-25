@@ -32,7 +32,8 @@ internal object AppSpacing {
 internal object AppSizes {
     val Border = 1.dp
     val CardElevation = 1.dp
-    val TabMinWidth = 152.dp
+    val DialogElevation = 8.dp
+    val SettingsDialogMaxWidth = 560.dp
     val ChartHeight = 300.dp
     val ChartLine = 4.dp
     val ChartPoint = 8.dp
@@ -41,7 +42,6 @@ internal object AppSizes {
 
 internal object AppBreakpoints {
     val TwoColumns = 900.dp
-    val FixedTabs = 1000.dp
 }
 
 /** Semantic type scale. Font sizes are independent from the 4 dp layout grid. */
@@ -54,8 +54,7 @@ internal object AppType {
     val Standard = 16.sp
     val Action = 17.sp
     val CardTitle = 18.sp
-    val Count = 20.sp
-    val Status = 21.sp
+    val Count = 28.sp
     val SectionTitle = 22.sp
     val DialogTitle = 26.sp
     val HeaderTitle = 28.sp

@@ -15,12 +15,6 @@ internal enum class ParameterValueFilter(val title: String) {
     FAVORITES("Избранное"),
 }
 
-internal enum class CatalogListFilter(val title: String) {
-    ALL("Все"),
-    FAVORITES("Избранное"),
-    ERRORS("Ошибки"),
-}
-
 internal fun filterParameters(
     records: List<VehicleParameter>,
     valueFilter: ParameterValueFilter,
@@ -45,39 +39,6 @@ internal fun filterParameters(
         compareBy<VehicleParameter> { it.title.lowercase(Locale.ROOT) }
             .thenBy { it.propertyId?.rawValue ?: it.sourceReadings.first().signalId },
     )
-    .toList()
-
-internal fun filterVehicleInfo(
-    records: List<VehicleParameter>,
-    filter: CatalogListFilter,
-    query: String,
-    favoriteKeys: Set<String>,
-): List<VehicleParameter> = filterCatalogRecords(records, filter, query, favoriteKeys)
-
-internal fun filterFunctions(
-    records: List<VehicleParameter>,
-    filter: CatalogListFilter,
-    query: String,
-    favoriteKeys: Set<String>,
-): List<VehicleParameter> = filterCatalogRecords(records, filter, query, favoriteKeys)
-
-private fun filterCatalogRecords(
-    records: List<VehicleParameter>,
-    filter: CatalogListFilter,
-    query: String,
-    favoriteKeys: Set<String>,
-): List<VehicleParameter> = records.asSequence()
-    .filter { record ->
-        when (filter) {
-            CatalogListFilter.ALL -> record.status == VehiclePropertyStatus.AVAILABLE
-            CatalogListFilter.FAVORITES ->
-                record.status == VehiclePropertyStatus.AVAILABLE && record.matchesFavorite(favoriteKeys)
-            CatalogListFilter.ERRORS -> record.status == VehiclePropertyStatus.ERROR ||
-                record.error.isNotBlank() || record.sourceReadings.any { it.error.isNotBlank() }
-        }
-    }
-    .filter { record -> record.matchesQuery(query) }
-    .sortedBy { it.title.lowercase(Locale.ROOT) }
     .toList()
 
 private fun VehicleParameter.matchesQuery(query: String): Boolean = matchesAllTokens(

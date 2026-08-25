@@ -4,9 +4,9 @@ import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.tabs.*
 import com.geelydiagnostics.app.ui.theme.*
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,12 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -46,10 +44,8 @@ private const val MIN_HEAD_UNIT_FONT_SCALE = 1.5f
 
 internal enum class AppTab(val title: String) {
     DIAGNOSTICS("Диагностика"),
-    PARAMETERS("Параметры"),
-    VEHICLE("Автомобиль"),
-    FUNCTIONS("Возможности"),
-    LOG("Лог"),
+    DATA("Данные"),
+    LOG("Журнал"),
 }
 
 @Composable
@@ -64,6 +60,7 @@ internal fun GeelyDiagnosticsApp(
     onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
     onClearLog: () -> Unit,
     initialTab: AppTab = AppTab.DIAGNOSTICS,
+    initialDataCategory: DataCategory = DataCategory.PARAMETERS,
 ) {
     val systemDensity = LocalDensity.current
     val readableDensity = Density(
@@ -88,25 +85,14 @@ internal fun GeelyDiagnosticsApp(
                         onExport = onExport,
                         isRefreshInProgress = state.isScanInProgress,
                     )
-                    BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        if (maxWidth < AppBreakpoints.FixedTabs) {
-                            PrimaryScrollableTabRow(
-                                selectedTabIndex = selectedTabIndex,
-                                edgePadding = AppSpacing.None,
-                                minTabWidth = AppSizes.TabMinWidth,
-                            ) {
-                                AppTabs(selectedTabIndex) { selectedTabIndex = it }
-                            }
-                        } else {
-                            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                                AppTabs(selectedTabIndex) { selectedTabIndex = it }
-                            }
-                        }
+                    PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                        AppTabs(selectedTabIndex) { selectedTabIndex = it }
                     }
                     val selectedTab = AppTab.entries[selectedTabIndex]
                     AppTabContent(
                         tab = selectedTab,
                         state = state,
+                        initialDataCategory = initialDataCategory,
                         onVhalProfileSelected = onVhalProfileSelected,
                         onVhalBackendSelected = onVhalBackendSelected,
                         onFavoriteToggle = onFavoriteToggle,
@@ -140,6 +126,7 @@ private fun AppTabs(selectedTabIndex: Int, onSelected: (Int) -> Unit) {
 private fun AppTabContent(
     tab: AppTab,
     state: AppUiState,
+    initialDataCategory: DataCategory,
     onVhalProfileSelected: (VehicleProfile) -> Unit,
     onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
     onFavoriteToggle: (String) -> Unit,
@@ -159,35 +146,14 @@ private fun AppTabContent(
             ) { state }
             DiagnosticsTab.Content(tabState)
         }
-        AppTab.PARAMETERS -> ParametersTab.Content(
-            state,
-            onVhalProfileSelected,
-            onVhalBackendSelected,
-            onFavoriteToggle,
-            onObserveParameter,
+        AppTab.DATA -> DataTab.Content(
+            state = state,
+            initialCategory = initialDataCategory,
+            onVhalProfileSelected = onVhalProfileSelected,
+            onVhalBackendSelected = onVhalBackendSelected,
+            onFavoriteToggle = onFavoriteToggle,
+            onObserveParameter = onObserveParameter,
         )
-        AppTab.VEHICLE -> {
-            val tabState = remember(
-                state.carInfoStatus,
-                state.carInfoDetail,
-                state.vhalStatus,
-                state.vhalDetail,
-                state.vehicleInfo,
-                state.favoriteKeys,
-            ) { state }
-            VehicleTab.Content(tabState, onFavoriteToggle, onObserveParameter)
-        }
-        AppTab.FUNCTIONS -> {
-            val tabState = remember(
-                state.functionStatus,
-                state.functionDetail,
-                state.vhalStatus,
-                state.vhalDetail,
-                state.functions,
-                state.favoriteKeys,
-            ) { state }
-            FunctionsTab.Content(tabState, onFavoriteToggle, onObserveParameter)
-        }
         AppTab.LOG -> LogTab.Content(state.logLines, onClearLog)
     }
 }
@@ -265,7 +231,7 @@ private fun HeaderTitle(modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = "Диагностика и параметры автомобиля",
+            text = "Диагностика и данные автомобиля",
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             fontSize = AppType.Standard,
         )
@@ -275,12 +241,16 @@ private fun HeaderTitle(modifier: Modifier = Modifier) {
 @Composable
 private fun ReadOnlyBadge() {
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shape = MaterialTheme.shapes.small,
+        border = androidx.compose.foundation.BorderStroke(
+            AppSizes.Border,
+            MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
     ) {
         Text(
-            text = "ТОЛЬКО ЧТЕНИЕ",
+            text = "READ ONLY",
             modifier = Modifier.padding(
                 horizontal = AppSpacing.Small,
                 vertical = AppSpacing.XSmall,
@@ -298,27 +268,17 @@ private fun HeaderActions(
     isRefreshInProgress: Boolean,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small)) {
-        Button(
-            onClick = onExport,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                contentColor = MaterialTheme.colorScheme.primaryContainer,
-            ),
-        ) {
-            Text("Экспорт", fontSize = AppType.Action)
-        }
-        Button(
+        OutlinedButton(
             onClick = onRefresh,
             enabled = !isRefreshInProgress,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                contentColor = MaterialTheme.colorScheme.primaryContainer,
-            ),
         ) {
             Text(
                 text = if (isRefreshInProgress) "Обновление…" else "Обновить",
                 fontSize = AppType.Action,
             )
+        }
+        OutlinedButton(onClick = onExport) {
+            Text("Экспорт", fontSize = AppType.Action)
         }
     }
 }

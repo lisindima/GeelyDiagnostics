@@ -8,16 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
@@ -41,55 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import java.util.Locale
-
-@Composable
-internal fun <T> CatalogScreen(
-    status: ReadStatus,
-    detail: String,
-    title: String,
-    subtitle: String,
-    totalCount: Int,
-    supportedCount: Int,
-    displayedCount: Int,
-    emptyText: String,
-    rows: List<List<T>>,
-    controls: @Composable () -> Unit,
-    statusSupportingContent: (@Composable () -> Unit)? = null,
-    rowContent: @Composable (List<T>) -> Unit,
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            top = AppSpacing.ScreenTop,
-            bottom = AppSpacing.ScreenBottom,
-        ),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Default),
-    ) {
-        item {
-            StatusCard(
-                modifier = Modifier.fillMaxWidth(),
-                title = title,
-                description = subtitle,
-                status = status,
-                detail = statusAttentionDetail(status, detail),
-                supportingContent = statusSupportingContent,
-            )
-        }
-        item { controls() }
-        item {
-            CountSummary(
-                title = "Показано",
-                count = displayedCount,
-                detail = "Поддерживается $supportedCount · проверено $totalCount",
-            )
-        }
-        if (rows.isEmpty()) {
-            item { EmptyMessage(emptyText) }
-        } else {
-            items(rows) { row -> rowContent(row) }
-        }
-    }
-}
 
 @Composable
 internal fun <T> TwoColumnRow(items: List<T>, content: @Composable (T) -> Unit) {
@@ -121,7 +67,6 @@ internal fun DataCard(
     value: VehicleDisplayValue,
     sourceLabels: List<String>,
     modeLabel: String? = null,
-    modeIsHighlighted: Boolean = false,
     idLabel: String = "id $id",
     footerText: String? = null,
     footerIsError: Boolean = false,
@@ -145,25 +90,10 @@ internal fun DataCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
             ) {
-                Column(
+                SourceBadges(
+                    labels = sourceLabels + listOfNotNull(modeLabel),
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(AppSpacing.XSmall),
-                ) {
-                    SourceBadges(sourceLabels)
-                    if (modeLabel != null) {
-                        Text(
-                            text = modeLabel,
-                            color = if (modeIsHighlighted) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = AppType.Technical,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
+                )
                 IconButton(
                     onClick = onFavoriteToggle,
                     modifier = Modifier.semantics {
@@ -229,33 +159,17 @@ internal fun DataCard(
 
             content()
 
-            Spacer(Modifier.height(AppSpacing.XSmall))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (footerText == null) {
-                    Spacer(Modifier.weight(1f))
-                } else {
-                    Text(
-                        text = footerText,
-                        modifier = Modifier.weight(1f),
-                        color = if (footerIsError) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        fontSize = AppType.Label,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            if (footerText != null) {
                 Text(
-                    text = "ОТКРЫТЬ ↗",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = AppType.Technical,
-                    fontWeight = FontWeight.Bold,
+                    text = footerText,
+                    color = if (footerIsError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontSize = AppType.Label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -281,32 +195,16 @@ internal fun TechnicalLabel(apiName: String, idLabel: String, fontSize: TextUnit
 
 @Composable
 internal fun SourceBadges(labels: List<String>, modifier: Modifier = Modifier) {
-    Row(
+    Text(
+        text = labels.distinct().joinToString(" · "),
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        labels.distinct().forEach { label ->
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text(
-                    text = label,
-                    modifier = Modifier.padding(
-                        horizontal = AppSpacing.Small,
-                        vertical = AppSpacing.XSmall,
-                    ),
-                    fontSize = AppType.Label,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
+        color = MaterialTheme.colorScheme.primary,
+        fontSize = AppType.Label,
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable
@@ -412,6 +310,7 @@ internal fun StatusCard(
     status: ReadStatus,
     detail: String,
     supportingContent: (@Composable () -> Unit)? = null,
+    action: (@Composable () -> Unit)? = null,
 ) {
     val (statusContainer, statusContent) = statusColors(status)
     Card(
@@ -424,36 +323,51 @@ internal fun StatusCard(
             modifier = Modifier.padding(AppSpacing.CardContent),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Small),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.XSmall)) {
-                Text(title, fontSize = AppType.Standard, fontWeight = FontWeight.SemiBold)
-                Text(
-                    description,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = AppType.Supporting,
-                )
-            }
-            Surface(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                color = statusContainer,
-                contentColor = statusContent,
-                shape = MaterialTheme.shapes.medium,
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Medium),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
-                    Modifier.padding(
-                        horizontal = AppSpacing.Default,
-                        vertical = AppSpacing.Medium,
-                    ),
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.XSmall),
+                ) {
+                    Text(title, fontSize = AppType.CardTitle, fontWeight = FontWeight.Bold)
+                    Text(
+                        description,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = AppType.Supporting,
+                    )
+                }
+                action?.invoke()
+                Surface(
+                    color = statusContainer,
+                    contentColor = statusContent,
+                    shape = MaterialTheme.shapes.medium,
                 ) {
                     Text(
                         text = status.label,
+                        modifier = Modifier.padding(
+                            horizontal = AppSpacing.Medium,
+                            vertical = AppSpacing.Small,
+                        ),
                         fontWeight = FontWeight.Bold,
-                        fontSize = AppType.Status,
+                        fontSize = AppType.Label,
+                        maxLines = 1,
                     )
-                    if (detail.isNotBlank()) {
-                        Spacer(Modifier.height(AppSpacing.XSmall))
-                        Text(text = detail, fontSize = AppType.Supporting, maxLines = 3)
-                    }
                 }
+            }
+            if (detail.isNotBlank()) {
+                Text(
+                    text = detail,
+                    color = if (status == ReadStatus.ERROR) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontSize = AppType.Supporting,
+                    maxLines = 3,
+                )
             }
             supportingContent?.invoke()
         }

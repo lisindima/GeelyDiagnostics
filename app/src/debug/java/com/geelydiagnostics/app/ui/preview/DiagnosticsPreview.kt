@@ -64,11 +64,11 @@ private fun DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
 @HeadUnitPreviews
 @Composable
-private fun ParametersPreview() = PreviewApp(AppTab.PARAMETERS)
+private fun DataParametersPreview() = PreviewApp(AppTab.DATA)
 
 @Preview(
     name = "Cityray / Atlas · частичная доступность",
-    group = "Состояния параметров · Cityray / Atlas",
+    group = "Состояния данных · Cityray / Atlas",
     device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     showSystemUi = false,
@@ -76,8 +76,8 @@ private fun ParametersPreview() = PreviewApp(AppTab.PARAMETERS)
 @Composable
 private fun ParametersPartialPreview() {
     PreviewApp(
-        AppTab.PARAMETERS,
-        previewState().copy(
+        tab = AppTab.DATA,
+        state = previewState().copy(
             ecarxParameterStatus = ReadStatus.ERROR,
             ecarxParameterDetail = "ECARX API недоступен",
             vhalStatus = ReadStatus.AVAILABLE,
@@ -87,19 +87,19 @@ private fun ParametersPartialPreview() {
 
 @Preview(
     name = "Cityray / Atlas · RAW",
-    group = "Состояния параметров · Cityray / Atlas",
+    group = "Состояния данных · Cityray / Atlas",
     device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     showSystemUi = false,
 )
 @Composable
 private fun ParametersRawPreview() {
-    PreviewApp(AppTab.PARAMETERS, rawProfilePreviewState())
+    PreviewApp(AppTab.DATA, rawProfilePreviewState())
 }
 
 @Preview(
     name = "Cityray / Atlas · источники недоступны",
-    group = "Состояния параметров · Cityray / Atlas",
+    group = "Состояния данных · Cityray / Atlas",
     device = CITYRAY_ATLAS_DEVICE,
     locale = "ru",
     showSystemUi = false,
@@ -107,8 +107,8 @@ private fun ParametersRawPreview() {
 @Composable
 private fun ParametersErrorPreview() {
     PreviewApp(
-        AppTab.PARAMETERS,
-        previewState().copy(
+        tab = AppTab.DATA,
+        state = previewState().copy(
             ecarxParameterStatus = ReadStatus.ERROR,
             ecarxParameterDetail = "ECARX API недоступен",
             vhalStatus = ReadStatus.ERROR,
@@ -167,11 +167,17 @@ private fun previewChartSamples(): List<VehicleParameterSample> = listOf(
 
 @HeadUnitPreviews
 @Composable
-private fun VehiclePreview() = PreviewApp(AppTab.VEHICLE)
+private fun VehicleCategoryPreview() = PreviewApp(
+    tab = AppTab.DATA,
+    dataCategory = DataCategory.VEHICLE,
+)
 
 @HeadUnitPreviews
 @Composable
-private fun FunctionsPreview() = PreviewApp(AppTab.FUNCTIONS)
+private fun CapabilitiesCategoryPreview() = PreviewApp(
+    tab = AppTab.DATA,
+    dataCategory = DataCategory.CAPABILITIES,
+)
 
 @HeadUnitPreviews
 @Composable
@@ -200,7 +206,11 @@ private fun LightThemePreview() = PreviewApp(AppTab.DIAGNOSTICS)
 private fun DarkThemePreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
 @Composable
-private fun PreviewApp(tab: AppTab, state: AppUiState = previewState()) {
+private fun PreviewApp(
+    tab: AppTab,
+    state: AppUiState = previewState(),
+    dataCategory: DataCategory = DataCategory.PARAMETERS,
+) {
     GeelyDiagnosticsApp(
         state = state,
         onRefresh = {},
@@ -211,6 +221,7 @@ private fun PreviewApp(tab: AppTab, state: AppUiState = previewState()) {
         onObserveParameter = { flowOf(it) },
         onClearLog = {},
         initialTab = tab,
+        initialDataCategory = dataCategory,
     )
 }
 

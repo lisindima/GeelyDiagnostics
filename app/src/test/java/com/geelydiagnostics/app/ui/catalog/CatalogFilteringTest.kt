@@ -118,7 +118,7 @@ class CatalogFilteringTest {
     }
 
     @Test
-    fun vehicleAndFunctionCatalogsSupportFavoritesAndErrors() {
+    fun everyCatalogSectionUsesTheSameFavoritesAndErrorsFilters() {
         val info = parameter(
             id = 1,
             title = "VIN",
@@ -137,11 +137,21 @@ class CatalogFilteringTest {
 
         assertEquals(
             listOf(info),
-            filterVehicleInfo(listOf(info), CatalogListFilter.FAVORITES, "vin", setOf(info.favoriteKey)),
+            filterParameters(
+                listOf(info),
+                ParameterValueFilter.FAVORITES,
+                "vin",
+                setOf(info.favoriteKey),
+            ),
         )
         assertEquals(
             listOf(functionError),
-            filterFunctions(listOf(functionError), CatalogListFilter.ERRORS, "", emptySet()),
+            filterParameters(
+                listOf(functionError),
+                ParameterValueFilter.ERRORS,
+                "",
+                emptySet(),
+            ),
         )
     }
 
