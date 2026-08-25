@@ -1,6 +1,7 @@
 package com.geelydiagnostics.app.ui.components
 
 import com.geelydiagnostics.app.model.*
+import com.geelydiagnostics.app.ui.theme.*
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -38,8 +39,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import java.util.Locale
 
@@ -59,8 +58,11 @@ internal fun <T> CatalogScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(
+            top = AppSpacing.ScreenTop,
+            bottom = AppSpacing.ScreenBottom,
+        ),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Default),
     ) {
         item {
             StatusCard(
@@ -90,14 +92,14 @@ internal fun <T> CatalogScreen(
 @Composable
 internal fun <T> TwoColumnRow(items: List<T>, content: @Composable (T) -> Unit) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        if (maxWidth < 900.dp) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (maxWidth < AppBreakpoints.TwoColumns) {
+            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Default)) {
                 items.forEach { item -> content(item) }
             }
         } else {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Default),
                 verticalAlignment = Alignment.Top,
             ) {
                 items.forEach { item ->
@@ -130,12 +132,12 @@ internal fun DataCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = AppSizes.CardElevation),
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(AppSpacing.CardContent),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Medium),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -143,7 +145,7 @@ internal fun DataCard(
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.XSmall),
                 ) {
                     SourceBadges(sourceLabels)
                     if (modeLabel != null) {
@@ -155,7 +157,7 @@ internal fun DataCard(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
+                            fontSize = AppType.Technical,
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
@@ -173,7 +175,7 @@ internal fun DataCard(
                     Text(
                         text = if (isFavorite) "★" else "☆",
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 26.sp,
+                        fontSize = AppType.DialogTitle,
                     )
                 }
             }
@@ -187,9 +189,12 @@ internal fun DataCard(
                 SelectionContainer {
                     Text(
                         text = value.display,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
-                        fontSize = 38.sp,
-                        lineHeight = 44.sp,
+                        modifier = Modifier.padding(
+                            horizontal = AppSpacing.Default,
+                            vertical = AppSpacing.Default,
+                        ),
+                        fontSize = AppType.CardValue,
+                        lineHeight = AppType.CardValueLine,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -197,31 +202,32 @@ internal fun DataCard(
                 }
             }
 
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 18.sp,
-                lineHeight = 24.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            SelectionContainer {
+            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Technical)) {
                 Text(
-                    text = "RAW · ${value.raw}",
-                    modifier = Modifier.padding(horizontal = 2.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
+                    text = title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = AppType.CardTitle,
+                    lineHeight = AppType.CardTitleLine,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                SelectionContainer {
+                    Text(
+                        text = "RAW · ${value.raw}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = AppType.Label,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TechnicalLabel(apiName = apiName, idLabel = idLabel, fontSize = AppType.Technical)
             }
-            TechnicalLabel(apiName = apiName, idLabel = idLabel, fontSize = 11.sp)
 
             content()
 
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(AppSpacing.XSmall))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -237,7 +243,7 @@ internal fun DataCard(
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                        fontSize = 12.sp,
+                        fontSize = AppType.Label,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -246,7 +252,7 @@ internal fun DataCard(
                     text = "ОТКРЫТЬ ↗",
                     color = MaterialTheme.colorScheme.primary,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
+                    fontSize = AppType.Technical,
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -275,7 +281,7 @@ internal fun TechnicalLabel(apiName: String, idLabel: String, fontSize: TextUnit
 internal fun SourceBadges(labels: List<String>, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         labels.distinct().forEach { label ->
@@ -286,8 +292,11 @@ internal fun SourceBadges(labels: List<String>, modifier: Modifier = Modifier) {
             ) {
                 Text(
                     text = label,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    fontSize = 12.sp,
+                    modifier = Modifier.padding(
+                        horizontal = AppSpacing.Small,
+                        vertical = AppSpacing.XSmall,
+                    ),
+                    fontSize = AppType.Label,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -320,7 +329,7 @@ internal fun CatalogFilterRow(
     selectedIndex: Int,
     onSelected: (Int) -> Unit,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small)) {
         itemsIndexed(labels) { index, label ->
             val selected = selectedIndex == index
             FilterChip(
@@ -336,7 +345,7 @@ internal fun CatalogFilterRow(
                 label = {
                     Text(
                         text = label,
-                        fontSize = 14.sp,
+                        fontSize = AppType.Body,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                     )
                 },
@@ -350,23 +359,23 @@ internal fun ValueLine(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = AppSpacing.XSmall),
         verticalAlignment = Alignment.Top,
     ) {
         Text(
             text = "$label:",
             modifier = Modifier.weight(0.34f),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 13.sp,
-            lineHeight = 17.sp,
+            fontSize = AppType.Supporting,
+            lineHeight = AppType.ValueLabelLine,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         SelectionContainer(modifier = Modifier.weight(0.66f)) {
             Text(
                 text = value,
-                fontSize = 14.sp,
-                lineHeight = 19.sp,
+                fontSize = AppType.Body,
+                lineHeight = AppType.BodyLine,
             )
         }
     }
@@ -385,19 +394,19 @@ internal fun StatusCard(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = AppSizes.CardElevation),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(AppSpacing.CardContent),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Small),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.XSmall)) {
+                Text(title, fontSize = AppType.Standard, fontWeight = FontWeight.SemiBold)
                 Text(
                     description,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
+                    fontSize = AppType.Supporting,
                 )
             }
             Surface(
@@ -406,15 +415,20 @@ internal fun StatusCard(
                 contentColor = statusContent,
                 shape = MaterialTheme.shapes.medium,
             ) {
-                Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Column(
+                    Modifier.padding(
+                        horizontal = AppSpacing.Default,
+                        vertical = AppSpacing.Medium,
+                    ),
+                ) {
                     Text(
                         text = status.label,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 21.sp,
+                        fontSize = AppType.Status,
                     )
                     if (detail.isNotBlank()) {
-                        Spacer(Modifier.height(5.dp))
-                        Text(text = detail, fontSize = 13.sp, maxLines = 3)
+                        Spacer(Modifier.height(AppSpacing.XSmall))
+                        Text(text = detail, fontSize = AppType.Supporting, maxLines = 3)
                     }
                 }
             }
@@ -425,7 +439,7 @@ internal fun StatusCard(
 
 @Composable
 internal fun EmptyMessage(text: String) {
-    Text(text = text, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 17.sp)
+    Text(text = text, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = AppType.Action)
 }
 
 @Composable
@@ -438,30 +452,30 @@ internal fun CountSummary(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = AppSpacing.XSmall, vertical = AppSpacing.XSmall),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Default),
         verticalAlignment = Alignment.Top,
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.XSmall),
         ) {
             Text(
                 text = title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 18.sp,
+                fontSize = AppType.CardTitle,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = detail,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 13.sp,
+                fontSize = AppType.Supporting,
             )
         }
         Text(
             text = count.toString(),
             color = MaterialTheme.colorScheme.primary,
-            fontSize = 20.sp,
+            fontSize = AppType.Count,
             fontWeight = FontWeight.Bold,
         )
     }

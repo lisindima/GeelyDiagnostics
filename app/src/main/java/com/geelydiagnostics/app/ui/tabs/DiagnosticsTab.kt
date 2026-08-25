@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.ui.tabs
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.catalog.*
 import com.geelydiagnostics.app.ui.components.*
+import com.geelydiagnostics.app.ui.theme.*
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,8 +51,11 @@ internal object DiagnosticsTab {
         ).joinToString(" · ")
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(
+                top = AppSpacing.ScreenTop,
+                bottom = AppSpacing.ScreenBottom,
+            ),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Default),
         ) {
             item {
                 StatusCard(
@@ -85,7 +87,7 @@ internal object DiagnosticsTab {
         val noCodesReturned = dtcs.all { it.code.isBlank() }
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Default),
         ) {
             if (noCodesReturned) {
                 Card(
@@ -97,8 +99,8 @@ internal object DiagnosticsTab {
                     Text(
                         text = "Получены данные по ${recordsByEcu.size} блокам, но ни одного DTC-кода не передано. Вероятно, активных кодов ошибок нет; точная семантика vendor API не документирована.",
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(16.dp),
+                        fontSize = AppType.BodyEmphasis,
+                        modifier = Modifier.padding(AppSpacing.CardContent),
                     )
                 }
             }
@@ -108,7 +110,7 @@ internal object DiagnosticsTab {
             Text(
                 text = "* Статус показан raw. Время преобразовано из tickTime как Unix milliseconds; нестандартные значения останутся raw.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
+                fontSize = AppType.Label,
             )
         }
     }
@@ -119,8 +121,8 @@ internal object DiagnosticsTab {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = AppSizes.CardElevation),
         ) {
             Column {
                 Surface(
@@ -129,13 +131,13 @@ internal object DiagnosticsTab {
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        modifier = Modifier.padding(AppSpacing.CardContent),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = "Блок $ecuType",
                             modifier = Modifier.weight(1f),
-                            fontSize = 18.sp,
+                            fontSize = AppType.CardTitle,
                             fontWeight = FontWeight.Bold,
                         )
                         Surface(
@@ -157,14 +159,22 @@ internal object DiagnosticsTab {
                                 } else {
                                     "Кодов ошибок: $codeCount"
                                 },
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                fontSize = 13.sp,
+                                modifier = Modifier.padding(
+                                    horizontal = AppSpacing.Small,
+                                    vertical = AppSpacing.XSmall,
+                                ),
+                                fontSize = AppType.Supporting,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
                     }
                 }
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Column(
+                    Modifier.padding(
+                        horizontal = AppSpacing.CardContent,
+                        vertical = AppSpacing.Medium,
+                    ),
+                ) {
                     DtcRecordRow("Код ошибки", "DTC ID", "Статус*", "Время ГУ*", true)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     records.forEachIndexed { index, record ->
@@ -197,11 +207,11 @@ internal object DiagnosticsTab {
             MaterialTheme.colorScheme.onSurface
         }
         val fontWeight = if (isHeader) FontWeight.SemiBold else FontWeight.Normal
-        val fontSize = if (isHeader) 13.sp else 15.sp
+        val fontSize = if (isHeader) AppType.Supporting else AppType.BodyEmphasis
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 9.dp),
+                .padding(vertical = AppSpacing.Small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TableCell(

@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.ui.tabs
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.catalog.*
 import com.geelydiagnostics.app.ui.components.*
+import com.geelydiagnostics.app.ui.theme.AppSpacing
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.dp
 
 internal object VehicleTab {
 
@@ -37,7 +37,7 @@ internal object VehicleTab {
             emptyText = "По выбранному фильтру сведения не найдены.",
             rows = filtered.chunked(2),
             controls = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Small)) {
                     CatalogSearchField(
                         query = query,
                         onQueryChange = { query = it },

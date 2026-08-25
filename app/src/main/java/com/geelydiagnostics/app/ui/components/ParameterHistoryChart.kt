@@ -1,6 +1,7 @@
 package com.geelydiagnostics.app.ui.components
 
 import com.geelydiagnostics.app.model.*
+import com.geelydiagnostics.app.ui.theme.*
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -23,8 +24,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
 import java.math.BigDecimal
@@ -59,12 +58,15 @@ internal fun ParameterHistoryChart(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = AppSizes.CardElevation),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(
+                horizontal = AppSpacing.XLarge,
+                vertical = AppSpacing.Large,
+            ),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Default),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -73,14 +75,14 @@ internal fun ParameterHistoryChart(
                 Text(
                     text = "График",
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 22.sp,
+                    fontSize = AppType.SectionTitle,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = "${finiteSamples.size} точек · ${formatDuration(duration)}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 15.sp,
+                    fontSize = AppType.BodyEmphasis,
                 )
             }
 
@@ -92,21 +94,21 @@ internal fun ParameterHistoryChart(
                     Text(
                         text = "min ${formatChartValue(minimum)}",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 16.sp,
+                        fontSize = AppType.Standard,
                     )
                     Text(
                         text = "max ${formatChartValue(maximum)}",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 16.sp,
+                        fontSize = AppType.Standard,
                     )
                 }
 
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
+                        .height(AppSizes.ChartHeight),
                 ) {
-                    val inset = 12.dp.toPx()
+                    val inset = AppSpacing.Medium.toPx()
                     val graphWidth = max(1f, size.width - inset * 2f)
                     val graphHeight = max(1f, size.height - inset * 2f)
                     val rawRange = maximum - minimum
@@ -127,7 +129,7 @@ internal fun ParameterHistoryChart(
                             color = gridColor,
                             start = Offset(inset, y),
                             end = Offset(size.width - inset, y),
-                            strokeWidth = 1.dp.toPx(),
+                            strokeWidth = AppSizes.ChartGridLine.toPx(),
                         )
                     }
 
@@ -142,7 +144,7 @@ internal fun ParameterHistoryChart(
                     if (finiteSamples.size == 1) {
                         drawCircle(
                             color = lineColor,
-                            radius = 7.dp.toPx(),
+                            radius = AppSizes.ChartPoint.toPx(),
                             center = Offset(size.width / 2f, size.height / 2f),
                         )
                     } else {
@@ -156,14 +158,14 @@ internal fun ParameterHistoryChart(
                             path = path,
                             color = lineColor,
                             style = Stroke(
-                                width = 5.dp.toPx(),
+                                width = AppSizes.ChartLine.toPx(),
                                 cap = StrokeCap.Round,
                                 join = StrokeJoin.Round,
                             ),
                         )
                         drawCircle(
                             color = lineColor,
-                            radius = 6.dp.toPx(),
+                            radius = AppSizes.ChartPoint.toPx(),
                             center = point(finiteSamples.last()),
                         )
                     }
@@ -178,13 +180,13 @@ internal fun ParameterHistoryChart(
                         "Для графика нужны новые измерения; сейчас это значение обновляется вручную."
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 15.sp,
+                    fontSize = AppType.BodyEmphasis,
                 )
             } else {
                 Text(
                     text = "История текущего сканирования · последние 2 минуты",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp,
+                    fontSize = AppType.Body,
                 )
             }
         }

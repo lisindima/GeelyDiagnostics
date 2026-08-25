@@ -1,6 +1,7 @@
 package com.geelydiagnostics.app.ui.components
 
 import com.geelydiagnostics.app.model.*
+import com.geelydiagnostics.app.ui.theme.*
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -30,8 +31,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.geelydiagnostics.app.vehicle.property.VehicleDisplayValue
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -95,8 +94,11 @@ internal fun FullscreenValueScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 40.dp, vertical = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                contentPadding = PaddingValues(
+                    horizontal = AppSpacing.Huge,
+                    vertical = AppSpacing.XXXLarge,
+                ),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.XLarge),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 item {
@@ -110,10 +112,10 @@ internal fun FullscreenValueScreen(
                                 text = modeLabel,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
+                                fontSize = AppType.Supporting,
                             )
                         }
-                        Spacer(Modifier.width(20.dp))
+                        Spacer(Modifier.width(AppSpacing.Large))
                         IconButton(
                             onClick = onFavoriteToggle,
                             modifier = Modifier.semantics {
@@ -127,10 +129,10 @@ internal fun FullscreenValueScreen(
                             Text(
                                 text = if (isFavorite) "★" else "☆",
                                 color = MaterialTheme.colorScheme.primary,
-                                fontSize = 30.sp,
+                                fontSize = AppType.DialogFavorite,
                             )
                         }
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(AppSpacing.Small))
                         IconButton(
                             onClick = onDismiss,
                             modifier = Modifier.semantics { contentDescription = "Закрыть" },
@@ -138,8 +140,8 @@ internal fun FullscreenValueScreen(
                             Text(
                                 text = "×",
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 34.sp,
-                                lineHeight = 34.sp,
+                                fontSize = AppType.DialogClose,
+                                lineHeight = AppType.DialogCloseLine,
                             )
                         }
                     }
@@ -150,24 +152,27 @@ internal fun FullscreenValueScreen(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface,
                         ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
                     ) {
                         Column {
                             Column(
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(
+                                    horizontal = AppSpacing.XLarge,
+                                    vertical = AppSpacing.Default,
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(AppSpacing.Technical),
                             ) {
                                 Text(
                                     text = title,
                                     modifier = Modifier.fillMaxWidth(),
-                                    fontSize = 26.sp,
-                                    lineHeight = 32.sp,
+                                    fontSize = AppType.DialogTitle,
+                                    lineHeight = AppType.DialogTitleLine,
                                     fontWeight = FontWeight.Bold,
                                 )
                                 TechnicalLabel(
                                     apiName = apiName,
                                     idLabel = idText,
-                                    fontSize = 14.sp,
+                                    fontSize = AppType.Body,
                                 )
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -181,10 +186,13 @@ internal fun FullscreenValueScreen(
                                         text = value.display,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 24.dp, vertical = 28.dp),
+                                            .padding(
+                                                horizontal = AppSpacing.XLarge,
+                                                vertical = AppSpacing.XXLarge,
+                                            ),
                                         textAlign = TextAlign.Center,
-                                        fontSize = 58.sp,
-                                        lineHeight = 66.sp,
+                                        fontSize = AppType.DialogValue,
+                                        lineHeight = AppType.DialogValueLine,
                                         fontWeight = FontWeight.Bold,
                                     )
                                 }
@@ -201,25 +209,28 @@ internal fun FullscreenValueScreen(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface,
                         ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
                     ) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(
+                                horizontal = AppSpacing.XLarge,
+                                vertical = AppSpacing.Large,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Medium),
                         ) {
                             Text(
                                 text = "ИСХОДНОЕ ЗНАЧЕНИЕ",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
+                                fontSize = AppType.Supporting,
                                 fontWeight = FontWeight.Bold,
                             )
                             SelectionContainer {
                                 Text(
                                     text = "raw  ${value.raw}",
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 22.sp,
-                                    lineHeight = 28.sp,
+                                    fontSize = AppType.SectionTitle,
+                                    lineHeight = AppType.DialogRawLine,
                                 )
                             }
                             details()
@@ -228,7 +239,7 @@ internal fun FullscreenValueScreen(
                 }
                 item {
                     Button(onClick = onDismiss) {
-                        Text("Вернуться к списку", fontSize = 20.sp)
+                        Text("Вернуться к списку", fontSize = AppType.Count)
                     }
                 }
             }

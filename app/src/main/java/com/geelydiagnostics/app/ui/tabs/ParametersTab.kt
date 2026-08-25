@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.ui.tabs
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.catalog.*
 import com.geelydiagnostics.app.ui.components.*
+import com.geelydiagnostics.app.ui.theme.*
 
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
@@ -39,8 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import java.util.Locale
 
 internal object ParametersTab {
@@ -142,31 +141,34 @@ internal object ParametersTab {
             color = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             shape = MaterialTheme.shapes.medium,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary),
+            border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.tertiary),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(
+                    horizontal = AppSpacing.Default,
+                    vertical = AppSpacing.Small,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Medium),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = "Транспорт VHAL · временный переключатель",
-                        fontSize = 12.sp,
+                        fontSize = AppType.Label,
                     )
                     Text(
                         text = selected.title,
-                        fontSize = 15.sp,
+                        fontSize = AppType.BodyEmphasis,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = selected.description,
-                        fontSize = 11.sp,
+                        fontSize = AppType.Technical,
                     )
                 }
                 Box {
                     OutlinedButton(onClick = { expanded = true }) {
-                        Text("Изменить", fontSize = 13.sp)
+                        Text("Изменить", fontSize = AppType.Supporting)
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         VhalGatewayBackend.entries.forEach { backend ->
@@ -174,7 +176,7 @@ internal object ParametersTab {
                                 text = {
                                     Column {
                                         Text(backend.title, fontWeight = FontWeight.SemiBold)
-                                        Text(backend.description, fontSize = 11.sp)
+                                        Text(backend.description, fontSize = AppType.Technical)
                                     }
                                 },
                                 onClick = {
@@ -200,26 +202,29 @@ internal object ParametersTab {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 2.dp),
+                .padding(top = AppSpacing.XSmall),
             color = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             shape = MaterialTheme.shapes.medium,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            border = BorderStroke(AppSizes.Border, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(
+                    horizontal = AppSpacing.Default,
+                    vertical = AppSpacing.Small,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Medium),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = "Расшифровка VHAL",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
+                        fontSize = AppType.Label,
                     )
                     Text(
                         text = "${selected.key} · ${selected.vehicle}",
-                        fontSize = 15.sp,
+                        fontSize = AppType.BodyEmphasis,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
@@ -229,14 +234,14 @@ internal object ParametersTab {
                             "Расшифровано $decodedCount из $totalCount VHAL-сигналов"
                         },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 11.sp,
+                        fontSize = AppType.Technical,
                     )
                 }
                 Box {
                     OutlinedButton(
                         onClick = { expanded = true },
                     ) {
-                        Text("Изменить", fontSize = 13.sp)
+                        Text("Изменить", fontSize = AppType.Supporting)
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         VehicleProfile.entries.forEach { profile ->
@@ -294,8 +299,11 @@ internal object ParametersTab {
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(
+                top = AppSpacing.ScreenTop,
+                bottom = AppSpacing.ScreenBottom,
+            ),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Default),
         ) {
             item {
                 StatusCard(
@@ -307,7 +315,7 @@ internal object ParametersTab {
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small),
                     ) {
                         SourceStateBadge("ECARX", state.ecarxParameterStatus, Modifier.weight(1f))
                         SourceStateBadge(
@@ -389,7 +397,7 @@ internal object ParametersTab {
             title = title,
             count = count,
             detail = subtitle,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = AppSpacing.Small),
         )
     }
 
@@ -412,12 +420,15 @@ internal object ParametersTab {
             shape = MaterialTheme.shapes.medium,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.padding(
+                    horizontal = AppSpacing.Medium,
+                    vertical = AppSpacing.Small,
+                ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text(status.labelForSource, fontSize = 12.sp)
+                Text(label, fontSize = AppType.Label, fontWeight = FontWeight.Bold)
+                Text(status.labelForSource, fontSize = AppType.Label)
             }
         }
     }
@@ -451,7 +462,7 @@ internal object ParametersTab {
                 Text(
                     text = "${reading.badgeLabel}: ${reading.error}",
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp,
+                    fontSize = AppType.Label,
                     maxLines = 2,
                 )
             }

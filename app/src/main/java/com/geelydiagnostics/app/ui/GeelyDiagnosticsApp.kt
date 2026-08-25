@@ -2,6 +2,7 @@ package com.geelydiagnostics.app.ui
 
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.tabs.*
+import com.geelydiagnostics.app.ui.theme.*
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,8 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
@@ -70,13 +69,16 @@ internal fun GeelyDiagnosticsApp(
     )
     CompositionLocalProvider(LocalDensity provides readableDensity) {
         val colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
-        MaterialTheme(colorScheme = colorScheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            shapes = GeelyDiagnosticsShapes,
+        ) {
             var selectedTabIndex by rememberSaveable { mutableIntStateOf(initialTab.ordinal) }
             Surface(modifier = Modifier.fillMaxSize()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = AppSpacing.ScreenHorizontal),
                 ) {
                     AppHeader(
                         onRefresh = onRefresh,
@@ -84,11 +86,11 @@ internal fun GeelyDiagnosticsApp(
                         isRefreshInProgress = state.isScanInProgress,
                     )
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        if (maxWidth < 1000.dp) {
+                        if (maxWidth < AppBreakpoints.FixedTabs) {
                             PrimaryScrollableTabRow(
                                 selectedTabIndex = selectedTabIndex,
-                                edgePadding = 0.dp,
-                                minTabWidth = 150.dp,
+                                edgePadding = AppSpacing.None,
+                                minTabWidth = AppSizes.TabMinWidth,
                             ) {
                                 AppTabs(selectedTabIndex) { selectedTabIndex = it }
                             }
@@ -122,7 +124,7 @@ private fun AppTabs(selectedTabIndex: Int, onSelected: (Int) -> Unit) {
             text = {
                 Text(
                     text = tab.title,
-                    fontSize = 16.sp,
+                    fontSize = AppType.Standard,
                     fontWeight = FontWeight.SemiBold,
                 )
             },
@@ -200,16 +202,19 @@ private fun AppHeader(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = AppSpacing.Medium),
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         BoxWithConstraints {
-            if (maxWidth < 900.dp) {
+            if (maxWidth < AppBreakpoints.TwoColumns) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(
+                        horizontal = AppSpacing.Large,
+                        vertical = AppSpacing.Default,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Medium),
                 ) {
                     HeaderTitle()
                     ReadOnlyBadge()
@@ -221,12 +226,15 @@ private fun AppHeader(
                 }
             } else {
                 Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    modifier = Modifier.padding(
+                        horizontal = AppSpacing.Large,
+                        vertical = AppSpacing.Default,
+                    ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     HeaderTitle(Modifier.weight(1f))
                     ReadOnlyBadge()
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(AppSpacing.Small))
                     HeaderActions(
                         onRefresh = onRefresh,
                         onExport = onExport,
@@ -243,13 +251,13 @@ private fun HeaderTitle(modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(
             text = "Geely Diagnostics",
-            fontSize = 28.sp,
+            fontSize = AppType.HeaderTitle,
             fontWeight = FontWeight.Bold,
         )
         Text(
             text = "Диагностика и параметры автомобиля",
             color = MaterialTheme.colorScheme.onPrimaryContainer,
-            fontSize = 16.sp,
+            fontSize = AppType.Standard,
         )
     }
 }
@@ -263,8 +271,11 @@ private fun ReadOnlyBadge() {
     ) {
         Text(
             text = "ТОЛЬКО ЧТЕНИЕ",
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            fontSize = 12.sp,
+            modifier = Modifier.padding(
+                horizontal = AppSpacing.Small,
+                vertical = AppSpacing.XSmall,
+            ),
+            fontSize = AppType.Label,
             fontWeight = FontWeight.Bold,
         )
     }
@@ -276,7 +287,7 @@ private fun HeaderActions(
     onExport: () -> Unit,
     isRefreshInProgress: Boolean,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(AppSpacing.Small)) {
         Button(
             onClick = onExport,
             colors = ButtonDefaults.buttonColors(
@@ -284,7 +295,7 @@ private fun HeaderActions(
                 contentColor = MaterialTheme.colorScheme.primaryContainer,
             ),
         ) {
-            Text("Экспорт", fontSize = 17.sp)
+            Text("Экспорт", fontSize = AppType.Action)
         }
         Button(
             onClick = onRefresh,
@@ -296,7 +307,7 @@ private fun HeaderActions(
         ) {
             Text(
                 text = if (isRefreshInProgress) "Обновление…" else "Обновить",
-                fontSize = 17.sp,
+                fontSize = AppType.Action,
             )
         }
     }

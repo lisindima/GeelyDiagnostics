@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.ui.tabs
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.catalog.*
 import com.geelydiagnostics.app.ui.components.*
+import com.geelydiagnostics.app.ui.theme.*
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,8 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 internal object LogTab {
 
@@ -49,8 +48,11 @@ internal object LogTab {
         val filtered = lines.filter { line -> line.matches(selectedFilter) }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(
+                top = AppSpacing.ScreenTop,
+                bottom = AppSpacing.ScreenBottom,
+            ),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Default),
         ) {
             item {
                 Surface(
@@ -60,18 +62,18 @@ internal object LogTab {
                     shape = MaterialTheme.shapes.large,
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(AppSpacing.CardContent),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Журнал",
-                                fontSize = 22.sp,
+                                fontSize = AppType.SectionTitle,
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
                                 text = "Показано ${filtered.size} из ${lines.size} строк",
-                                fontSize = 13.sp,
+                                fontSize = AppType.Supporting,
                             )
                         }
                         Button(
@@ -81,7 +83,7 @@ internal object LogTab {
                                 contentColor = MaterialTheme.colorScheme.primaryContainer,
                             ),
                         ) {
-                            Text("Очистить", fontSize = 17.sp)
+                            Text("Очистить", fontSize = AppType.Action)
                         }
                     }
                 }
@@ -105,28 +107,28 @@ internal object LogTab {
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             shape = MaterialTheme.shapes.medium,
         ) {
-            Box(Modifier.padding(14.dp)) {
+            Box(Modifier.padding(AppSpacing.CardContent)) {
                 SelectionContainer {
                     if (lines.isEmpty()) {
                         Text(
                             text = "Журнал пуст",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
+                            fontSize = AppType.Supporting,
                         )
                     } else {
                         Column {
                             lines.forEachIndexed { index, line ->
                                 Text(
                                     text = line,
-                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    modifier = Modifier.padding(vertical = AppSpacing.XSmall),
                                     color = if (line.isErrorLine) {
                                         MaterialTheme.colorScheme.error
                                     } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 13.sp,
-                                    lineHeight = 18.sp,
+                                    fontSize = AppType.Supporting,
+                                    lineHeight = AppType.SupportingLine,
                                 )
                                 if (index != lines.lastIndex) {
                                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
