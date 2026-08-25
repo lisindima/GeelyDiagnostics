@@ -9,8 +9,33 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.lang.reflect.Modifier
 
 class AndroidVehiclePropertyRegistryTest {
+    @Test
+    fun containsEveryPublishedAospPropertyIncludingIdsNewerThanCompileSdk() {
+        assertEquals(250, AospVehiclePropertyIds.namesById.size)
+        val acceleratorPedal = requireNotNull(
+            AndroidVehiclePropertyRegistry.property(291_504_911),
+        )
+
+        assertEquals("ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE", acceleratorPedal.apiName)
+        assertEquals("Accelerator pedal compression percentage", acceleratorPedal.title)
+        assertEquals("AOSP", acceleratorPedal.profileKey)
+    }
+
+    @Test
+    fun explicitAospCatalogIncludesEveryPropertyAvailableInCompileSdk() {
+        val compileSdkProperties = VehiclePropertyIds::class.java.fields
+            .filter { field ->
+                field.type == Int::class.javaPrimitiveType && Modifier.isStatic(field.modifiers)
+            }
+
+        compileSdkProperties.forEach { field ->
+            assertEquals(field.name, AospVehiclePropertyIds.namesById[field.getInt(null)])
+        }
+    }
+
     @Test
     fun namesEveryPublicAndroidPropertyWithoutGuessingVendorIds() {
         val model = requireNotNull(

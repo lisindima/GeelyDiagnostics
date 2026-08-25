@@ -14,13 +14,14 @@ internal object AndroidVehiclePropertyRegistry {
     const val PROFILE_KEY = "AOSP"
 
     private val namesById: Map<Int, String> by lazy {
-        VehiclePropertyIds::class.java.fields
+        val runtimeNames = VehiclePropertyIds::class.java.fields
             .asSequence()
             .filter { field ->
                 field.type == Int::class.javaPrimitiveType && Modifier.isStatic(field.modifiers)
             }
             .mapNotNull { field -> runCatching { field.getInt(null) to field.name }.getOrNull() }
             .toMap()
+        AospVehiclePropertyIds.namesById + runtimeNames
     }
 
     private val mappingsById = listOf(
