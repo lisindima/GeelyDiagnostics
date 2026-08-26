@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /** Observable normalized parameter state shared by every repository consumer. */
-internal class UnifiedParameterStore {
+internal class UnifiedParameterStore(private val clock: () -> Long = System::currentTimeMillis) {
     private val cache = UnifiedParameterCache()
     private val mutableParameters = MutableStateFlow<List<VehicleParameter>>(emptyList())
 
@@ -35,6 +35,16 @@ internal class UnifiedParameterStore {
         val changed = cache.update(value)
         publish()
         return changed
+    }
+
+    /** Re-select cached readings only. This never reads or subscribes to vehicle APIs. */
+    @Synchronized
+    fun refreshSelection() = publish()
+
+    @Synchronized
+    fun sourceAvailable(source: VehiclePropertySource, available: Boolean) {
+        cache.sourceAvailable(source, available)
+        publish()
     }
 
     /** Observe one stable normalized property. Area zero represents a global property. */
@@ -62,6 +72,6 @@ internal class UnifiedParameterStore {
     }
 
     private fun publish() {
-        mutableParameters.value = cache.parameters()
+        mutableParameters.value = cache.parameters(clock())
     }
 }

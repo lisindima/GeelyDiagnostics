@@ -12,6 +12,7 @@ import com.geelydiagnostics.app.vehicle.property.MappedPropertyDecoder
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
+import com.geelydiagnostics.app.vehicle.property.VehicleDiscoveryProgress
 import com.geelydiagnostics.app.vehicle.property.catalogSection
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterSink
@@ -30,9 +31,15 @@ internal class VhalDataSource private constructor(
     private val mapping = dependencies.mapping
     private val decoder = MappedPropertyDecoder(dependencies.catalog)
     private val gateway = dependencies.gateway
-    private val configsById = mutableMapOf<Int, VhalPropertyConfig>()
+    private val events = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "VhalEvents").apply { isDaemon = true }
+    }
+    private val reads = VhalReadScheduler(::read, ::unavailable)
+    @Volatile private var configsById = emptyMap<Int, VhalPropertyConfig>()
     private val lastRawByKey = mutableMapOf<Pair<Int, Int>, String>()
-    private var subscribedIds = emptySet<Int>()
+    private val latestByKey = linkedMapOf<Pair<Int, Int>, CarPropertySnapshot>()
+    private val lastEventAtNanos = mutableMapOf<Pair<Int, Int>, Long>()
+    @Volatile private var subscribedIds = emptySet<Int>()
 
     @Volatile
     private var closed = false
@@ -75,50 +82,85 @@ internal class VhalDataSource private constructor(
         if (closed) return
         try {
             gateway.connect()
+            if (closed) { gateway.close(); return }
             val configs = gateway.readConfigs()
+            if (closed) return
             if (configs.isEmpty()) error("getAllPropConfigs() returned an empty catalog")
-            configsById += configs.associateBy(VhalPropertyConfig::propertyId)
-            val initial = configs.flatMap { config ->
-                config.areaIds.map { areaId -> read(config, areaId) }
+            configsById = configs.associateBy(VhalPropertyConfig::propertyId)
+            val (mapped, raw) = configs.partition {
+                AndroidVehiclePropertyRegistry.property(it.propertyId)?.normalizedMapping != null ||
+                    mapping.forSignal(it.propertyId) != null
+            }
+            subscribe(mapped)
+            reads.readAll(mapped, ::queueInitial)
+            dispatch {
+                listener.onParameterDiscovery(source, VehicleDiscoveryProgress(
+                    mappedBootstrapReady = true, rawDiscoveryRunning = raw.isNotEmpty(),
+                    rawDiscoveryCompleted = raw.isEmpty(),
+                ))
+                listener.onParameterStatus(source, ReadStatus.PARTIAL,
+                    "${latestByKey.size} значений · ${backend.title} · загрузка остального каталога")
             }
             if (closed) return
-            subscribedIds = runCatching {
-                gateway.subscribe(configs, ::queueValue)
-            }.onFailure { listener.onParameterLog(source, "subscriptions unavailable: ${describe(it)}") }
-                .getOrDefault(emptySet())
-            val classified = initial.map { value ->
-                value.copy(autoUpdates = value.sourceSignalId in subscribedIds)
+            subscribe(raw)
+            reads.readAll(raw, ::queueInitial)
+            dispatch {
+                val classified = latestByKey.values.toList()
+                val mappedCount = classified.count { it.propertyId != null }
+                val aospMappedCount = classified.count {
+                    it.propertyId != null &&
+                        it.profileKey == AndroidVehiclePropertyRegistry.PROFILE_KEY
+                }
+                val profileMappedCount = mappedCount - aospMappedCount
+                val rawCount = classified.size - mappedCount
+                val mappingDetail = if (mappedCount == 0) {
+                    "без нормализации"
+                } else {
+                    buildList {
+                        if (aospMappedCount > 0) add("$aospMappedCount AOSP")
+                        if (profileMappedCount > 0) add("$profileMappedCount ${profile.key}")
+                        if (rawCount > 0) add("$rawCount raw")
+                    }.joinToString(" · ")
+                }
+                listener.onParameterStatus(
+                    source,
+                    ReadStatus.AVAILABLE,
+                    "${classified.size} значений · ${backend.title} · $mappingDetail · " +
+                        "подписки: ${subscribedIds.size}",
+                )
+                listener.onParameterDiscovery(source, VehicleDiscoveryProgress(
+                    mappedBootstrapReady = true, rawDiscoveryCompleted = true,
+                ))
             }
-            classified.forEach(::logInitial)
-            listener.onParameterSnapshot(source, null, classified)
-            val mappedCount = classified.count { it.propertyId != null }
-            val aospMappedCount = classified.count {
-                it.propertyId != null &&
-                    it.profileKey == AndroidVehiclePropertyRegistry.PROFILE_KEY
-            }
-            val profileMappedCount = mappedCount - aospMappedCount
-            val rawCount = classified.size - mappedCount
-            val mappingDetail = if (mappedCount == 0) {
-                "без нормализации"
-            } else {
-                buildList {
-                    if (aospMappedCount > 0) add("$aospMappedCount AOSP")
-                    if (profileMappedCount > 0) add("$profileMappedCount ${profile.key}")
-                    if (rawCount > 0) add("$rawCount raw")
-                }.joinToString(" · ")
-            }
-            listener.onParameterStatus(
-                source,
-                ReadStatus.AVAILABLE,
-                "${classified.size} значений · ${backend.title} · $mappingDetail · " +
-                    "подписки: ${subscribedIds.size}",
-            )
         } catch (error: Throwable) {
-            if (!closed) {
+            dispatch {
                 listener.onParameterStatus(source, ReadStatus.ERROR, describe(error))
                 listener.onParameterLog(source, describe(error), error)
+                listener.onParameterDiscovery(source, VehicleDiscoveryProgress())
             }
         }
+    }
+
+    private fun subscribe(configs: List<VhalPropertyConfig>) {
+        if (closed || configs.isEmpty()) return
+        subscribedIds = subscribedIds + runCatching { gateway.subscribe(configs, ::queueValue) }
+            .onFailure { listener.onParameterLog(source, "subscriptions unavailable: ${describe(it)}") }
+            .getOrDefault(emptySet())
+    }
+
+    private fun dispatch(action: () -> Unit) {
+        if (closed) return
+        runCatching { events.execute { if (!closed) action() } }
+    }
+
+    private fun queueInitial(value: CarPropertySnapshot, readStartedAtNanos: Long) = dispatch {
+        val key = value.sourceSignalId to value.areaId
+        // A callback arriving during a synchronous read is newer than that read's snapshot.
+        if ((lastEventAtNanos[key] ?: Long.MIN_VALUE) > readStartedAtNanos) return@dispatch
+        val classified = value.copy(autoUpdates = value.sourceSignalId in subscribedIds)
+        latestByKey[key] = classified
+        logInitial(classified)
+        listener.onParameterValue(classified)
     }
 
     private fun read(config: VhalPropertyConfig, areaId: Int): CarPropertySnapshot {
@@ -138,15 +180,15 @@ internal class VhalDataSource private constructor(
     }
 
     private fun queueValue(value: VhalPropertyValue) {
-        if (closed) return
-        runCatching {
-            executor.execute {
-                if (closed) return@execute
-                val config = configsById[value.propertyId] ?: return@execute
-                val decoded = decode(value, config, autoUpdates = true)
-                logChanged(decoded)
-                listener.onParameterValue(decoded)
-            }
+        val arrived = System.nanoTime()
+        dispatch {
+            val config = configsById[value.propertyId] ?: return@dispatch
+            val key = value.propertyId to value.areaId
+            lastEventAtNanos[key] = arrived
+            val decoded = decode(value, config, autoUpdates = true)
+            latestByKey[key] = decoded
+            logChanged(decoded)
+            listener.onParameterValue(decoded)
         }
     }
 
@@ -155,42 +197,43 @@ internal class VhalDataSource private constructor(
         config: VhalPropertyConfig,
         autoUpdates: Boolean,
     ): CarPropertySnapshot {
+        value.error?.let { return unavailable(config, value.areaId, it).copy(
+            autoUpdates = autoUpdates, sourceTimestampNanos = value.sourceTimestampNanos,
+        ) }
         val androidProperty = AndroidVehiclePropertyRegistry.property(value.propertyId)
         val profileMapping = mapping.forSignal(value.propertyId)
-        val signalMapping = if (androidProperty != null) {
-            androidProperty.normalizedMapping
-        } else {
-            profileMapping
-        }
+        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
+        val usesProfile = signalMapping != null && androidProperty?.normalizedMapping == null
         val decoded = decoder.decode(
             mapping = signalMapping,
             raw = value.raw,
             sourceSignalId = value.propertyId,
-            sourceSignalName = androidProperty?.apiName
-                ?: signalMapping?.signalName
+            sourceSignalName = signalMapping?.signalName
+                ?: androidProperty?.apiName
                 ?: "VHAL_${value.propertyId.hex()}",
             areaId = value.areaId,
             profileKey = when {
+                usesProfile -> profile.key
                 androidProperty != null -> androidProperty.profileKey
-                profileMapping != null -> profile.key
                 else -> null
             },
             sourceTimestampNanos = value.sourceTimestampNanos,
             receivedAtMillis = System.currentTimeMillis(),
             autoUpdates = autoUpdates,
-            sourceTitle = androidProperty?.titleForArea(value.areaId),
+            sourceTitle = androidProperty?.takeUnless { usesProfile }?.titleForArea(value.areaId),
         )
         val aospValue = androidProperty
-            ?.takeIf { it.normalizedMapping == null }
+            ?.takeIf { signalMapping == null }
             ?.decode(value.raw)
         return decoded.copy(
-            section = androidProperty?.section
-                ?: signalMapping?.propertyId?.catalogSection
+            section = signalMapping?.propertyId?.catalogSection
+                ?: androidProperty?.section
                 ?: VehicleDataSection.PARAMETER,
             value = aospValue?.value ?: decoded.value,
             displayValue = aospValue?.displayValue ?: decoded.displayValue,
             decoded = aospValue?.decoded ?: decoded.decoded,
-            sourceDescription = androidProperty?.description,
+            sourceDescription = androidProperty?.takeUnless { usesProfile }?.description,
+            backend = backend.name,
             valueKind = propertyType(value.propertyId),
             expectedUpdateIntervalMillis = if (config.continuous) STALE_AFTER_MILLIS else null,
         )
@@ -203,14 +246,11 @@ internal class VhalDataSource private constructor(
     ): CarPropertySnapshot {
         val androidProperty = AndroidVehiclePropertyRegistry.property(config.propertyId)
         val profileMapping = mapping.forSignal(config.propertyId)
-        val signalMapping = if (androidProperty != null) {
-            androidProperty.normalizedMapping
-        } else {
-            profileMapping
-        }
+        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
+        val usesProfile = signalMapping != null && androidProperty?.normalizedMapping == null
         return CarPropertySnapshot(
-            section = androidProperty?.section
-                ?: signalMapping?.propertyId?.catalogSection
+            section = signalMapping?.propertyId?.catalogSection
+                ?: androidProperty?.section
                 ?: VehicleDataSection.PARAMETER,
             propertyId = signalMapping?.propertyId,
             value = null,
@@ -219,15 +259,15 @@ internal class VhalDataSource private constructor(
             status = VehiclePropertyStatus.ERROR,
             source = VehiclePropertySource.VHAL,
             sourceSignalId = config.propertyId,
-            sourceSignalName = androidProperty?.apiName
-                ?: signalMapping?.signalName
+            sourceSignalName = signalMapping?.signalName
+                ?: androidProperty?.apiName
                 ?: "VHAL_${config.propertyId.hex()}",
-            sourceTitle = androidProperty?.titleForArea(areaId),
-            sourceDescription = androidProperty?.description,
+            sourceTitle = androidProperty?.takeUnless { usesProfile }?.titleForArea(areaId),
+            sourceDescription = androidProperty?.takeUnless { usesProfile }?.description,
             areaId = areaId,
             profileKey = when {
+                usesProfile -> profile.key
                 androidProperty != null -> androidProperty.profileKey
-                profileMapping != null -> profile.key
                 else -> null
             },
             receivedAtMillis = System.currentTimeMillis(),
@@ -235,6 +275,9 @@ internal class VhalDataSource private constructor(
             valueKind = propertyType(config.propertyId),
             expectedUpdateIntervalMillis = if (config.continuous) STALE_AFTER_MILLIS else null,
             error = error,
+            decoded = false,
+            backend = backend.name,
+            readTransform = signalMapping?.transform,
         )
     }
 
@@ -273,8 +316,10 @@ internal class VhalDataSource private constructor(
 
     override fun close() {
         closed = true
-        gateway.close()
+        reads.close()
+        events.shutdownNow()
         executor.shutdownNow()
+        gateway.close()
     }
 
     companion object {

@@ -6,6 +6,7 @@ import com.ecarx.xui.adaptapi.car.sensor.ISensor
 import com.geelydiagnostics.app.model.ApiSupportStatus
 import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
+import com.geelydiagnostics.app.vehicle.property.CarPropertyCatalog
 import com.geelydiagnostics.app.vehicle.property.CarValue
 import com.geelydiagnostics.app.vehicle.property.EcarxNormalizedPropertyRegistry
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
@@ -16,7 +17,9 @@ import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 
 internal class EcarxParameterReader(
     private val sink: EcarxDataListener,
+    catalog: CarPropertyCatalog,
 ) : EcarxReader {
+    private val normalizedDecoder = EcarxNormalizedValueDecoder(catalog)
     private var manager: ISensor? = null
     private var listenerRegistered = false
     private val subscribedIds = linkedSetOf<Int>()
@@ -27,10 +30,7 @@ internal class EcarxParameterReader(
     private val listener = object : ISensor.ISensorListener {
         override fun onSensorEventChanged(type: Int, value: Int) {
             if (closed) return
-            val spec = specsById[type]
-            val decoded = spec?.let { VendorValueDecoder.sensor(it.apiName, value) }
-                ?: VehicleDisplayValue.raw(value.toString())
-            publishValue(type, decoded)
+            publishValue(type, value)
         }
 
         override fun onSensorSupportChanged(type: Int, status: FunctionStatus?) {
@@ -39,10 +39,7 @@ internal class EcarxParameterReader(
 
         override fun onSensorValueChanged(type: Int, value: Float) {
             if (closed) return
-            val apiName = specsById[type]?.apiName
-            val decoded = apiName?.let { VendorValueDecoder.sensor(it, value) }
-                ?: VehicleDisplayValue.raw(formatFloat(value))
-            publishValue(type, decoded)
+            publishValue(type, value)
         }
     }
 
@@ -81,7 +78,8 @@ internal class EcarxParameterReader(
         sink.onParameterSnapshot(VehiclePropertySource.ECARX, VehicleDataSection.PARAMETER, initial)
 
         if (!listenerRegistered) {
-            initial.filter { it.status == VehiclePropertyStatus.AVAILABLE }.forEach { snapshot ->
+            // A readable but unknown enum still needs callbacks so it can recover on the next value.
+            initial.filter { it.hasEcarxSample }.forEach { snapshot ->
                 runCatching {
                     val id = snapshot.sourceSignalId
                     val registered = if (specsById.getValue(id).continuous) {
@@ -107,7 +105,7 @@ internal class EcarxParameterReader(
         snapshotsById.clear()
         snapshotsById += classified.associateBy(CarPropertySnapshot::sourceSignalId)
         sink.onParameterSnapshot(VehiclePropertySource.ECARX, VehicleDataSection.PARAMETER, classified)
-        val supported = classified.count { it.status == VehiclePropertyStatus.AVAILABLE }
+        val supported = classified.count { it.hasEcarxSample }
         sink.onParameterStatus(
             VehiclePropertySource.ECARX,
             ReadStatus.AVAILABLE,
@@ -121,26 +119,26 @@ internal class EcarxParameterReader(
 
     private fun readSensor(manager: ISensor, spec: SensorSpec): CarPropertySnapshot = try {
         val support = manager.isSensorSupported(spec.id).toApiSupport()
-        val value = if (support.isSupported) {
+        val value: Number? = if (support.isSupported) {
             if (spec.continuous) {
-                VendorValueDecoder.sensor(spec.apiName, manager.getSensorLatestValue(spec.id))
+                manager.getSensorLatestValue(spec.id)
             } else {
-                VendorValueDecoder.sensor(spec.apiName, manager.getSensorEvent(spec.id))
+                manager.getSensorEvent(spec.id)
             }
         } else {
-            VehicleDisplayValue.unavailable
+            null
         }
         snapshot(spec, value, support.toPropertyStatus())
     } catch (error: Throwable) {
         snapshot(
             spec,
-            VehicleDisplayValue.unavailable,
+            null,
             VehiclePropertyStatus.ERROR,
             describe(error),
         )
     }
 
-    private fun publishValue(type: Int, value: VehicleDisplayValue) {
+    private fun publishValue(type: Int, value: Number) {
         val spec = specsById[type] ?: return
         val previous = snapshotsById[type] ?: return
         val updated = snapshot(
@@ -166,30 +164,47 @@ internal class EcarxParameterReader(
 
     private fun snapshot(
         spec: SensorSpec,
-        value: VehicleDisplayValue,
+        value: Number?,
         status: VehiclePropertyStatus,
         error: String = "",
         autoUpdates: Boolean = false,
     ): CarPropertySnapshot {
-        val rawText = value.raw.takeUnless { value == VehicleDisplayValue.unavailable }
+        val rawText = value?.toString()
         val number = rawText?.toDoubleOrNull()
+        val receivedAt = System.currentTimeMillis()
+        if (rawText != null && status == VehiclePropertyStatus.AVAILABLE) {
+            normalizedDecoder.decode(spec.apiName, spec.id, RawVehicleValue(rawText, number), receivedAt)
+                ?.let { normalized ->
+                    return normalized.copy(
+                        sourceTitle = spec.title,
+                        autoUpdates = autoUpdates,
+                        valueKind = if (spec.continuous) "float" else "event/int",
+                        expectedUpdateIntervalMillis = if (spec.continuous) STALE_AFTER_MILLIS else null,
+                    )
+                }
+        }
         val typedValue = when {
             rawText == null -> null
             spec.continuous && number != null -> CarValue.FloatValue(number)
             number != null -> CarValue.IntValue(number.toInt())
             else -> CarValue.StringValue(rawText)
         }
+        val display = when (value) {
+            null -> VehicleDisplayValue.unavailable
+            is Float -> VendorValueDecoder.sensor(spec.apiName, value)
+            else -> VendorValueDecoder.sensor(spec.apiName, value.toInt())
+        }
         return CarPropertySnapshot(
             propertyId = EcarxNormalizedPropertyRegistry.sensorProperty(spec.apiName),
             value = typedValue,
-            displayValue = value.display,
+            displayValue = display.display,
             rawValue = rawText?.let { RawVehicleValue(it, number) },
             status = status,
             source = VehiclePropertySource.ECARX,
             sourceSignalId = spec.id,
             sourceSignalName = spec.apiName,
             sourceTitle = spec.title,
-            receivedAtMillis = System.currentTimeMillis(),
+            receivedAtMillis = receivedAt,
             autoUpdates = autoUpdates,
             valueKind = if (spec.continuous) "float" else "event/int",
             expectedUpdateIntervalMillis = if (spec.continuous) STALE_AFTER_MILLIS else null,

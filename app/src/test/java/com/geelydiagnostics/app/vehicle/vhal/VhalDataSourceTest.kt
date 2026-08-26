@@ -9,6 +9,9 @@ import com.geelydiagnostics.app.vehicle.property.CarPropertyDefinition
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.CarValueType
+import com.geelydiagnostics.app.vehicle.property.CarValue
+import com.geelydiagnostics.app.vehicle.property.VehicleDiscoveryProgress
+import com.geelydiagnostics.app.vehicle.property.VehicleMappingOrigin
 import com.geelydiagnostics.app.vehicle.property.RawVehicleValue
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
@@ -24,12 +27,12 @@ import org.junit.Test
 
 class VhalDataSourceTest {
     @Test
-    fun standardAospDecoderWinsOverVehicleProfileForSameSignalId() {
-        val ignitionId = 289_408_009
+    fun knownAospPropertyWithoutNormalizedMappingUsesProfile() {
+        val ignitionId = 289_475_088 // HW_KEY_INPUT
         val gateway = FakeGateway(
             configs = listOf(config(ignitionId, dynamic = true)),
             initialValues = mapOf(
-                (ignitionId to 0) to value(ignitionId, "4", 4.0, 10L),
+                (ignitionId to 0) to value(ignitionId, "[0, 1, 2]", null, 10L),
             ),
         )
         val listener = RecordingListener()
@@ -38,10 +41,10 @@ class VhalDataSourceTest {
             listener = listener,
             mapping = VehicleProfileMapping(
                 VehicleProfile.G426,
-                listOf(ReadSignalMapping(CarPropertyId.VEHICLE_SPEED, ignitionId, "vendor_speed")),
+                listOf(ReadSignalMapping(CarPropertyId(10037), ignitionId, "HW_KEY_INPUT")),
             ),
             catalog = catalog(
-                CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.FLOAT, "speed"),
+                CarPropertyDefinition(CarPropertyId(10037), CarValueType.STRING, "key event"),
             ),
             gateway = gateway,
         )
@@ -51,11 +54,14 @@ class VhalDataSourceTest {
             assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
 
             val ignition = listener.snapshot.single()
-            assertNull(ignition.propertyId)
-            assertEquals("IGNITION_STATE", ignition.sourceSignalName)
-            assertEquals("Зажигание включено", ignition.displayValue)
-            assertEquals("Обозначает состояние зажигания.", ignition.sourceDescription)
-            assertEquals("AOSP", ignition.profileKey)
+            assertEquals(CarPropertyId(10037), ignition.propertyId)
+            assertEquals("HW_KEY_INPUT", ignition.sourceSignalName)
+            assertEquals("[0, 1, 2]", ignition.displayValue)
+            assertEquals(CarValue.StringValue("[0, 1, 2]"), ignition.value)
+            assertNull(ignition.sourceDescription)
+            assertEquals("G426", ignition.profileKey)
+            assertEquals(VehicleMappingOrigin.PROFILE, ignition.mappingOrigin)
+            assertEquals("HIDL", ignition.backend)
             assertTrue(ignition.decoded)
         } finally {
             source.close()
@@ -73,9 +79,11 @@ class VhalDataSourceTest {
         )
         val listener = RecordingListener()
         val source = VhalDataSource(
-            profile = VehicleProfile.RAW,
+            profile = VehicleProfile.G426,
             listener = listener,
-            mapping = VehicleProfileMapping.raw(),
+            mapping = VehicleProfileMapping(VehicleProfile.G426, listOf(
+                ReadSignalMapping(CarPropertyId.GEAR, androidSpeedId, "conflicting_profile_signal"),
+            )),
             catalog = catalog(
                 CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.INT, "speed"),
             ),
@@ -189,17 +197,113 @@ class VhalDataSourceTest {
         }
     }
 
-    private class RecordingListener : VehicleParameterSink {
+    @Test
+    fun mappedBootstrapAndLiveEventsDoNotWaitForRawDiscovery() {
+        val rawReadEntered = CountDownLatch(1)
+        val releaseRaw = CountDownLatch(1)
+        val liveArrived = CountDownLatch(1)
+        val listener = RecordingListener { if (it.rawValue?.text == "37") liveArrived.countDown() }
+        val gateway = FakeGateway(
+            listOf(config(UNKNOWN_SIGNAL_ID, false), config(SPEED_SIGNAL_ID, true)),
+            mapOf((SPEED_SIGNAL_ID to 0) to value(SPEED_SIGNAL_ID, "36", 36.0, 1),
+                (UNKNOWN_SIGNAL_ID to 0) to value(UNKNOWN_SIGNAL_ID, "1", 1.0, 1)),
+        ) { id -> if (id == UNKNOWN_SIGNAL_ID) {
+            rawReadEntered.countDown()
+            releaseRaw.await(2, TimeUnit.SECONDS)
+        } }
+        val source = mappedSource(listener, gateway)
+        try {
+            source.start()
+            assertTrue(rawReadEntered.await(2, TimeUnit.SECONDS))
+            assertTrue(listener.bootstrapLatch.await(2, TimeUnit.SECONDS))
+            assertTrue(listener.progress.rawDiscoveryRunning)
+            assertFalse(listener.progress.rawDiscoveryCompleted)
+            assertEquals("36 км/ч", listener.snapshot.single().displayValue)
+            assertTrue(SPEED_SIGNAL_ID in gateway.subscribedIds)
+            gateway.emit(value(SPEED_SIGNAL_ID, "37", 37.0, 2))
+            assertTrue(liveArrived.await(2, TimeUnit.SECONDS))
+            releaseRaw.countDown()
+            assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+            assertEquals("37 км/ч", listener.snapshot.single { it.sourceSignalId == SPEED_SIGNAL_ID }.displayValue)
+            assertEquals(2, listener.snapshot.size)
+        } finally { releaseRaw.countDown(); source.close() }
+    }
+
+    @Test
+    fun lateInitialReadCannotOverwriteCallbackAndErrorsReachCache() {
+        val readEntered = CountDownLatch(1)
+        val releaseRead = CountDownLatch(1)
+        val eventArrived = CountDownLatch(1)
+        val errorArrived = CountDownLatch(1)
+        val listener = RecordingListener {
+            if (it.rawValue?.text == "37") eventArrived.countDown()
+            if (it.status == VehiclePropertyStatus.ERROR) errorArrived.countDown()
+        }
+        val gateway = FakeGateway(listOf(config(SPEED_SIGNAL_ID, true)),
+            mapOf((SPEED_SIGNAL_ID to 0) to value(SPEED_SIGNAL_ID, "36", 36.0, 1))) {
+            readEntered.countDown()
+            releaseRead.await(2, TimeUnit.SECONDS)
+        }
+        val source = mappedSource(listener, gateway)
+        try {
+            source.start()
+            assertTrue(readEntered.await(2, TimeUnit.SECONDS))
+            gateway.emit(value(SPEED_SIGNAL_ID, "37", 37.0, 2))
+            assertTrue(eventArrived.await(2, TimeUnit.SECONDS))
+            releaseRead.countDown()
+            assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+            assertEquals("37 км/ч", listener.snapshot.single().displayValue)
+            gateway.emit(value(SPEED_SIGNAL_ID, "—", null, 3).copy(error = "unavailable"))
+            assertTrue(errorArrived.await(2, TimeUnit.SECONDS))
+            assertEquals(VehiclePropertyStatus.ERROR, listener.snapshot.single().status)
+        } finally { releaseRead.countDown(); source.close() }
+    }
+
+    @Test
+    fun unavailableKnownAospPropertyKeepsProfileMappingIdentity() {
+        val id = 289_475_088
+        val listener = RecordingListener()
+        val source = VhalDataSource(VehicleProfile.G426, listener,
+            VehicleProfileMapping(VehicleProfile.G426, listOf(ReadSignalMapping(CarPropertyId(10037), id, "HW_KEY_INPUT"))),
+            catalog(CarPropertyDefinition(CarPropertyId(10037), CarValueType.STRING, "keys")),
+            FakeGateway(listOf(VhalPropertyConfig(id, 0, 0, listOf(0))), emptyMap()))
+        try {
+            source.start()
+            assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+            val failed = listener.snapshot.single()
+            assertEquals(CarPropertyId(10037), failed.propertyId)
+            assertEquals("G426", failed.profileKey)
+            assertEquals(VehicleMappingOrigin.PROFILE, failed.mappingOrigin)
+            assertFalse(failed.decoded)
+        } finally { source.close() }
+    }
+
+    private fun mappedSource(listener: RecordingListener, gateway: VhalGateway) = VhalDataSource(
+        VehicleProfile.G426, listener,
+        VehicleProfileMapping(VehicleProfile.G426, listOf(ReadSignalMapping(CarPropertyId.VEHICLE_SPEED, SPEED_SIGNAL_ID, "speed"))),
+        catalog(CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.FLOAT, "speed")), gateway,
+    )
+
+    private class RecordingListener(private val observe: (CarPropertySnapshot) -> Unit = {}) : VehicleParameterSink {
         val snapshotLatch = CountDownLatch(1)
         val valueLatch = CountDownLatch(1)
-        var snapshot = emptyList<CarPropertySnapshot>()
-        var liveValue: CarPropertySnapshot? = null
+        val bootstrapLatch = CountDownLatch(1)
+        @Volatile var progress = VehicleDiscoveryProgress()
+        @Volatile var snapshot = emptyList<CarPropertySnapshot>()
+        @Volatile var liveValue: CarPropertySnapshot? = null
 
         override fun onParameterStatus(
             source: VehiclePropertySource,
             status: ReadStatus,
             detail: String,
-        ) = Unit
+        ) {
+            if (status == ReadStatus.AVAILABLE) snapshotLatch.countDown()
+        }
+
+        override fun onParameterDiscovery(source: VehiclePropertySource, progress: VehicleDiscoveryProgress) {
+            this.progress = progress
+            if (progress.mappedBootstrapReady) bootstrapLatch.countDown()
+        }
 
         override fun onParameterSnapshot(
             source: VehiclePropertySource,
@@ -211,8 +315,12 @@ class VhalDataSourceTest {
         }
 
         override fun onParameterValue(value: CarPropertySnapshot) {
+            snapshot = snapshot.filterNot {
+                it.sourceSignalId == value.sourceSignalId && it.areaId == value.areaId
+            } + value
             liveValue = value
-            valueLatch.countDown()
+            if (snapshotLatch.count == 0L) valueLatch.countDown()
+            observe(value)
         }
 
         override fun onParameterLog(
@@ -225,8 +333,9 @@ class VhalDataSourceTest {
     private class FakeGateway(
         private val configs: List<VhalPropertyConfig>,
         private val initialValues: Map<Pair<Int, Int>, VhalPropertyValue>,
+        private val beforeRead: (Int) -> Unit = {},
     ) : VhalGateway {
-        private var callback: ((VhalPropertyValue) -> Unit)? = null
+        @Volatile private var callback: ((VhalPropertyValue) -> Unit)? = null
         var subscribedIds = emptySet<Int>()
             private set
         var closed = false
@@ -236,18 +345,21 @@ class VhalDataSourceTest {
 
         override fun readConfigs(): List<VhalPropertyConfig> = configs
 
-        override fun read(propertyId: Int, areaId: Int): VhalPropertyValue =
-            requireNotNull(initialValues[propertyId to areaId])
+        override fun read(propertyId: Int, areaId: Int): VhalPropertyValue {
+            beforeRead(propertyId)
+            return requireNotNull(initialValues[propertyId to areaId])
+        }
 
         override fun subscribe(
             configs: List<VhalPropertyConfig>,
             onValue: (VhalPropertyValue) -> Unit,
         ): Set<Int> {
             callback = onValue
-            subscribedIds = configs.filter(VhalPropertyConfig::dynamic)
+            val added = configs.filter(VhalPropertyConfig::dynamic)
                 .map(VhalPropertyConfig::propertyId)
                 .toSet()
-            return subscribedIds
+            subscribedIds += added
+            return added
         }
 
         fun emit(value: VhalPropertyValue) {

@@ -9,6 +9,7 @@ import com.ecarx.xui.adaptapi.binder.IConnectable
 import com.ecarx.xui.adaptapi.car.Car
 import com.ecarx.xui.adaptapi.car.ICar
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
+import com.geelydiagnostics.app.vehicle.mapping.VehicleMetadataStore
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
 import java.util.concurrent.Executors
 
@@ -25,7 +26,7 @@ internal class EcarxDataSource(
     }
     private val readers: List<EcarxReader> = listOf(
         EcarxDiagnosticsReader(sink),
-        EcarxParameterReader(sink),
+        EcarxParameterReader(sink, VehicleMetadataStore(appContext).properties),
         EcarxCarInfoReader(sink),
         EcarxFunctionReader(sink),
     )

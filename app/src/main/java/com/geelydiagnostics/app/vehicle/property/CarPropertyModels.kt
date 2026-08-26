@@ -1,5 +1,7 @@
 package com.geelydiagnostics.app.vehicle.property
 
+import com.geelydiagnostics.app.vehicle.mapping.ReadTransform
+
 @JvmInline
 value class CarPropertyId(val rawValue: Int) {
     override fun toString(): String = rawValue.toString()
@@ -70,6 +72,14 @@ enum class VehiclePropertySource(val label: String) {
     MOCK("MOCK"),
 }
 
+enum class VehicleMappingOrigin { PROFILE, AOSP, ECARX, NONE }
+
+data class VehicleDiscoveryProgress(
+    val mappedBootstrapReady: Boolean = false,
+    val rawDiscoveryRunning: Boolean = false,
+    val rawDiscoveryCompleted: Boolean = false,
+)
+
 /** Logical application section. It is part of signal identity to avoid collisions between APIs. */
 enum class VehicleDataSection {
     PARAMETER,
@@ -120,7 +130,24 @@ data class CarPropertySnapshot(
     val details: List<VehiclePropertyDetail> = emptyList(),
     val error: String = "",
     val decoded: Boolean = propertyId != null,
+    val backend: String? = null,
+    val readTransform: ReadTransform? = null,
+    val mappingOrigin: VehicleMappingOrigin = when {
+        propertyId == null -> VehicleMappingOrigin.NONE
+        source == VehiclePropertySource.ECARX -> VehicleMappingOrigin.ECARX
+        profileKey == "AOSP" -> VehicleMappingOrigin.AOSP
+        source == VehiclePropertySource.VHAL && profileKey != null && profileKey != "RAW" ->
+            VehicleMappingOrigin.PROFILE
+        else -> VehicleMappingOrigin.NONE
+    },
 )
+
+internal val CarValue.numericValue: Double?
+    get() = when (this) {
+        is CarValue.FloatValue -> value
+        is CarValue.IntValue -> value.toDouble()
+        else -> null
+    }
 
 data class CarPropertyKey(
     val section: VehicleDataSection,

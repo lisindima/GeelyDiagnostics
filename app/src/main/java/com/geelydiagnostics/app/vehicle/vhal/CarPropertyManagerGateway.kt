@@ -54,18 +54,25 @@ internal class CarPropertyManagerGateway(
         onValue: (VhalPropertyValue) -> Unit,
     ): Set<Int> {
         val propertyManager = requireManager()
-        val eventCallback = object : CarPropertyManager.CarPropertyEventCallback {
+        val eventCallback = callback ?: object : CarPropertyManager.CarPropertyEventCallback {
             override fun onChangeEvent(value: CarPropertyValue<*>) {
                 runCatching { value.toGatewayValue() }
                     .onSuccess(onValue)
-                    .onFailure { log("Car API event skipped: ${describe(it)}", it) }
+                    .onFailure {
+                        log("Car API event failed: ${describe(it)}", it)
+                        onValue(VhalPropertyValue(value.propertyId, value.areaId, RawVehicleValue("—"),
+                            value.timestamp, describe(it)))
+                    }
             }
 
             override fun onErrorEvent(propertyId: Int, areaId: Int) {
                 log("Car API callback error property=${propertyId.hex()} area=${areaId.hex()}", null)
+                onValue(VhalPropertyValue(propertyId, areaId, RawVehicleValue("—"), null,
+                    "Car API callback error"))
             }
         }
-        val dynamicConfigs = configs.filter(VhalPropertyConfig::dynamic)
+        callback = eventCallback
+        val dynamicConfigs = configs.filter { it.dynamic && it.propertyId !in subscribedIds }
         val successful = dynamicConfigs.mapNotNull { config ->
             val rate = if (config.continuous) {
                 CarPropertyManager.SENSOR_RATE_NORMAL
@@ -77,7 +84,7 @@ internal class CarPropertyManagerGateway(
             }.onFailure { error ->
                 log("Car API subscribe ${config.propertyId.hex()}: ${describe(error)}", error)
             }.getOrDefault(false).let { registered ->
-                config.propertyId.takeIf { registered }
+                config.propertyId.takeIf { registered }?.also { subscribedIds += it }
             }
         }
         if (dynamicConfigs.isNotEmpty() && successful.isEmpty()) {

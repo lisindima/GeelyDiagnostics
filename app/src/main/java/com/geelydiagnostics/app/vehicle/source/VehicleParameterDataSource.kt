@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.vehicle.source
 import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
+import com.geelydiagnostics.app.vehicle.property.VehicleDiscoveryProgress
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import java.io.Closeable
 
@@ -14,6 +15,8 @@ internal interface VehicleParameterDataSource : Closeable {
 
 /** Source events are raw snapshots; normalization and source selection belong to the repository. */
 internal interface VehicleParameterSink {
+    fun onParameterDiscovery(source: VehiclePropertySource, progress: VehicleDiscoveryProgress) = Unit
+
     fun onParameterStatus(source: VehiclePropertySource, status: ReadStatus, detail: String = "")
 
     /** [section] scopes a partial catalog replacement; null replaces the source's whole catalog. */

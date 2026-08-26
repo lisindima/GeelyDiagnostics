@@ -18,6 +18,11 @@ internal class UnifiedParameterCache {
     private val normalized = linkedMapOf<NormalizedKey, LinkedHashMap<CarPropertyKey, CarPropertySnapshot>>()
     private val standalone = linkedMapOf<CarPropertyKey, CarPropertySnapshot>()
     private val changed = linkedSetOf<CarPropertyKey>()
+    private val unavailableSources = mutableSetOf<VehiclePropertySource>()
+
+    fun sourceAvailable(source: VehiclePropertySource, available: Boolean) {
+        if (available) unavailableSources.remove(source) else unavailableSources.add(source)
+    }
 
     fun replaceSource(
         source: VehiclePropertySource,
@@ -37,15 +42,16 @@ internal class UnifiedParameterCache {
     }
 
     fun update(value: CarPropertySnapshot): Boolean {
+        if (value.status == VehiclePropertyStatus.AVAILABLE) unavailableSources.remove(value.source)
         val previous = put(value)
         val didChange = previous != null && previous.rawValue?.text != value.rawValue?.text
         if (didChange) changed += value.key
         return didChange
     }
 
-    fun parameters(): List<VehicleParameter> {
-        val normalizedParameters = normalized.values.map { merge(it.values.toList()) }
-        val standaloneParameters = standalone.values.map { merge(listOf(it)) }
+    fun parameters(nowMillis: Long = System.currentTimeMillis()): List<VehicleParameter> {
+        val normalizedParameters = normalized.values.map { merge(it.values.toList(), nowMillis) }
+        val standaloneParameters = standalone.values.map { merge(listOf(it), nowMillis) }
         return (normalizedParameters + standaloneParameters).sortedWith(
             compareBy<VehicleParameter> { it.title.lowercase() }
                 .thenBy { it.propertyId?.rawValue ?: Int.MAX_VALUE }
@@ -57,6 +63,7 @@ internal class UnifiedParameterCache {
         normalized.clear()
         standalone.clear()
         changed.clear()
+        unavailableSources.clear()
     }
 
     private fun put(value: CarPropertySnapshot): CarPropertySnapshot? {
@@ -69,14 +76,14 @@ internal class UnifiedParameterCache {
         }
     }
 
-    private fun merge(values: List<CarPropertySnapshot>): VehicleParameter {
-        val primary = values.asSequence()
-            .filter { it.readableDecoded }
-            .maxWithOrNull(primaryReadingComparator)
-            ?: values.asSequence()
-                .filter { it.status == VehiclePropertyStatus.AVAILABLE && it.rawValue != null }
-                .maxWithOrNull(primaryReadingComparator)
-            ?: values.maxWithOrNull(primaryReadingComparator)
+    private fun merge(original: List<CarPropertySnapshot>, nowMillis: Long): VehicleParameter {
+        val values = original.map { value ->
+            if (value.source in unavailableSources) value.copy(
+                status = VehiclePropertyStatus.UNAVAILABLE,
+                error = value.error.ifBlank { "Источник недоступен" },
+            ) else value
+        }
+        val primary = values.maxWithOrNull(VehicleSourcePriorityPolicy.comparator(nowMillis))
             ?: error("Cannot merge an empty parameter group")
         val readings = values
             .sortedWith(
@@ -106,11 +113,12 @@ internal class UnifiedParameterCache {
             chartable = numeric && (primary.autoUpdates || presentation?.unit != null),
             decoded = primary.readableDecoded,
             sourceReadings = readings,
+            normalizedValue = primary.value.takeIf { primary.readableDecoded && primary.propertyId != null },
         )
     }
 
     private val CarPropertySnapshot.readableDecoded: Boolean
-        get() = decoded && status == VehiclePropertyStatus.AVAILABLE && rawValue != null
+        get() = decoded && status == VehiclePropertyStatus.AVAILABLE && rawValue != null && value != null
 
     private fun CarPropertySnapshot.toSourceReading() = VehicleSourceReading(
         source = source,
@@ -128,6 +136,11 @@ internal class UnifiedParameterCache {
         decoded = readableDecoded,
         modeLabel = modeLabel,
         details = details,
+        normalizedValue = value.takeIf { readableDecoded && propertyId != null },
+        backend = backend,
+        readTransform = readTransform,
+        mappingOrigin = mappingOrigin,
+        unit = propertyId?.let { CarPropertyPresentations.get(it).unit },
     )
 
     private data class NormalizedKey(
@@ -136,15 +149,6 @@ internal class UnifiedParameterCache {
         val areaId: Int,
     )
 
-    companion object {
-        private val primaryReadingComparator = compareBy<CarPropertySnapshot> {
-            it.receivedAtMillis
-        }.thenBy {
-            it.sourceTimestampNanos ?: Long.MIN_VALUE
-        }.thenBy {
-            it.source == VehiclePropertySource.VHAL
-        }
-    }
 }
 
 private fun Int.identity(source: VehiclePropertySource): String = if (source == VehiclePropertySource.VHAL) {

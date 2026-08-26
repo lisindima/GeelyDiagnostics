@@ -26,6 +26,11 @@ class ValueFreshnessTest {
     }
 
     @Test
+    fun manualReadingDoesNotExpectSubscriptionEvents() {
+        assertFalse(parameter(10_000, 15_000).copy(autoUpdates = false).isStale(1_000_000))
+    }
+
+    @Test
     fun updateLabelContainsRelativeAge() {
         assertTrue(formatUpdateTime(10_000L, 15_000L).endsWith("5 с назад"))
     }
@@ -39,6 +44,7 @@ class ValueFreshnessTest {
         status = VehiclePropertyStatus.AVAILABLE,
         updatedAtMillis = updatedAt,
         expectedUpdateIntervalMillis = staleAfter,
+        autoUpdates = true,
         sourceReadings = listOf(
             VehicleSourceReading(
                 source = VehiclePropertySource.VHAL,

@@ -1,5 +1,7 @@
 package com.geelydiagnostics.app.vehicle.property
 
+import com.geelydiagnostics.app.vehicle.mapping.ReadTransform
+
 /** Text prepared for presentation while retaining the exact value returned by the source. */
 data class VehicleDisplayValue(
     val display: String,
@@ -28,6 +30,11 @@ data class VehicleSourceReading(
     val decoded: Boolean = false,
     val modeLabel: String? = null,
     val details: List<VehiclePropertyDetail> = emptyList(),
+    val normalizedValue: CarValue? = null,
+    val backend: String? = null,
+    val readTransform: ReadTransform? = null,
+    val mappingOrigin: VehicleMappingOrigin = VehicleMappingOrigin.NONE,
+    val unit: String? = null,
 )
 
 /**
@@ -51,6 +58,7 @@ data class VehicleParameter(
     val chartable: Boolean = false,
     val decoded: Boolean = false,
     val sourceReadings: List<VehicleSourceReading>,
+    val normalizedValue: CarValue? = null,
 )
 
 data class VehicleParameterSample(

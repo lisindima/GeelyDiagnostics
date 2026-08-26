@@ -31,12 +31,14 @@ internal data class VhalPropertyValue(
     val areaId: Int,
     val raw: RawVehicleValue,
     val sourceTimestampNanos: Long?,
+    val error: String? = null,
 )
 
 internal interface VhalGateway : Closeable {
     fun connect()
     fun readConfigs(): List<VhalPropertyConfig>
     fun read(propertyId: Int, areaId: Int): VhalPropertyValue
+    /** Adds subscriptions without replacing callbacks already installed by a previous batch. */
     fun subscribe(
         configs: List<VhalPropertyConfig>,
         onValue: (VhalPropertyValue) -> Unit,

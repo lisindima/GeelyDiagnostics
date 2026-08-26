@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.model
 import androidx.compose.runtime.Immutable
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehicleDiscoveryProgress
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
@@ -42,6 +43,7 @@ data class AppUiState(
     val ecarxParameterDetail: String = "",
     val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val vhalDetail: String = "",
+    val vhalDiscovery: VehicleDiscoveryProgress = VehicleDiscoveryProgress(),
     val selectedVhalProfile: VehicleProfile = VehicleProfile.RAW,
     val selectedVhalBackend: VhalGatewayBackend = VhalGatewayBackend.CAR_PROPERTY_MANAGER,
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,

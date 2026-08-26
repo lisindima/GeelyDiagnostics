@@ -34,7 +34,7 @@ class BundledVehicleAssetsTest {
             assertFalse("property ${item.getInt("propertyId")}", item.has("access"))
         }
         assertEquals(
-            "剩余油量体积-整数-升值",
+            "剩余油量体积-浮点-升值",
             catalog.definition(CarPropertyId.REMAINING_FUEL_LITERS)?.description,
         )
     }

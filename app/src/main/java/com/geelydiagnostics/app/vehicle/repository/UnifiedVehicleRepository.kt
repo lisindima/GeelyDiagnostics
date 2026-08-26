@@ -10,6 +10,7 @@ import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.CarPropertyId
 import com.geelydiagnostics.app.vehicle.property.CarPropertySnapshot
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.VehicleDiscoveryProgress
 import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.source.VehicleParameterDataSource
@@ -19,6 +20,9 @@ import java.io.Closeable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +35,7 @@ internal data class VehicleRepositoryState(
     val ecarxParameterDetail: String = "",
     val vhalStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val vhalDetail: String = "",
+    val vhalDiscovery: VehicleDiscoveryProgress = VehicleDiscoveryProgress(),
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carInfoDetail: String = "",
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
@@ -49,6 +54,11 @@ internal class UnifiedVehicleRepository(
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
     private val mutableState = MutableStateFlow(VehicleRepositoryState())
     private val parameterStore = UnifiedParameterStore()
+    private val freshnessExecutor = Executors.newSingleThreadScheduledExecutor { task ->
+        Thread(task, "VehicleSourceSelection").apply { isDaemon = true }
+    }
+    private var freshnessTask: ScheduledFuture<*>? = null
+    private var session: VehicleSourceSession? = null
 
     val state: StateFlow<VehicleRepositoryState> = mutableState.asStateFlow()
 
@@ -64,6 +74,9 @@ internal class UnifiedVehicleRepository(
 
     @Synchronized
     fun start(profile: VehicleProfile, vhalBackend: VhalGatewayBackend) {
+        freshnessTask?.cancel(false)
+        session?.close()
+        val newSession = VehicleSourceSession(this, this).also { session = it }
         val previousLog = mutableState.value.logLines
         sources.forEach { runCatching { it.close() } }
         sources.clear()
@@ -80,8 +93,12 @@ internal class UnifiedVehicleRepository(
             scanStartedAtMillis = System.currentTimeMillis(),
         )
         onSystemLog("=== Новый опрос источников ===")
+        // Re-evaluate cached freshness, never poll vehicle APIs. Equal StateFlow values are suppressed.
+        freshnessTask = freshnessExecutor.scheduleWithFixedDelay(
+            { parameterStore.refreshSelection() }, 1, 1, TimeUnit.SECONDS,
+        )
         try {
-            sources += EcarxDataSource(appContext, this).also { it.start() }
+            sources += EcarxDataSource(appContext, newSession).also { it.start() }
         } catch (error: Throwable) {
             onCarStatus(ReadStatus.ERROR, describe(error))
             onDiagnosticsStatus(ReadStatus.ERROR, "ECARX API unavailable")
@@ -96,7 +113,7 @@ internal class UnifiedVehicleRepository(
             appendLog("ECARX", "initialization failed: ${describe(error)}", error)
         }
         try {
-            sources += VhalDataSource(appContext, profile, vhalBackend, this).also { it.start() }
+            sources += VhalDataSource(appContext, profile, vhalBackend, newSession).also { it.start() }
         } catch (error: Throwable) {
             onParameterStatus(VehiclePropertySource.VHAL, ReadStatus.ERROR, describe(error))
             appendLog("VHAL", "initialization failed: ${describe(error)}", error)
@@ -104,8 +121,9 @@ internal class UnifiedVehicleRepository(
     }
 
     @Synchronized
-    override fun onCarStatus(status: ReadStatus, detail: String) = update {
-        copy(carStatus = status, carDetail = detail)
+    override fun onCarStatus(status: ReadStatus, detail: String) {
+        if (status == ReadStatus.ERROR) parameterStore.sourceAvailable(VehiclePropertySource.ECARX, false)
+        update { copy(carStatus = status, carDetail = detail) }
     }
 
     @Synchronized
@@ -141,12 +159,22 @@ internal class UnifiedVehicleRepository(
         source: VehiclePropertySource,
         status: ReadStatus,
         detail: String,
-    ) = update {
-        when (source) {
-            VehiclePropertySource.ECARX -> copy(ecarxParameterStatus = status, ecarxParameterDetail = detail)
-            VehiclePropertySource.VHAL -> copy(vhalStatus = status, vhalDetail = detail)
-            VehiclePropertySource.MOCK -> this
+    ) {
+        if (status == ReadStatus.ERROR || status == ReadStatus.AVAILABLE) {
+            parameterStore.sourceAvailable(source, status == ReadStatus.AVAILABLE)
         }
+        update {
+            when (source) {
+                VehiclePropertySource.ECARX -> copy(ecarxParameterStatus = status, ecarxParameterDetail = detail)
+                VehiclePropertySource.VHAL -> copy(vhalStatus = status, vhalDetail = detail)
+                VehiclePropertySource.MOCK -> this
+            }
+        }
+    }
+
+    @Synchronized
+    override fun onParameterDiscovery(source: VehiclePropertySource, progress: VehicleDiscoveryProgress) {
+        if (source == VehiclePropertySource.VHAL) update { copy(vhalDiscovery = progress) }
     }
 
     @Synchronized
@@ -196,7 +224,11 @@ internal class UnifiedVehicleRepository(
         mutableState.value = mutableState.value.block()
     }
 
+    @Synchronized
     override fun close() {
+        session?.close()
+        freshnessTask?.cancel(false)
+        freshnessExecutor.shutdownNow()
         sources.forEach { runCatching { it.close() } }
         sources.clear()
     }

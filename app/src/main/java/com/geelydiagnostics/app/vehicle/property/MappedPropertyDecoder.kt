@@ -75,6 +75,7 @@ internal class MappedPropertyDecoder(
                     sourceTimestampNanos = sourceTimestampNanos,
                     receivedAtMillis = receivedAtMillis,
                     autoUpdates = autoUpdates,
+                    readTransform = mapping.transform,
                 )
             }
         }
@@ -106,6 +107,8 @@ internal class MappedPropertyDecoder(
         receivedAtMillis = receivedAtMillis,
         autoUpdates = autoUpdates,
         error = error,
+        decoded = false,
+        readTransform = mapping.transform,
     )
 
     private fun format(id: CarPropertyId, value: TransformValue): String {
@@ -143,7 +146,7 @@ private fun TransformValue.toCarValue(type: CarValueType): CarValue? = when (typ
     }
     CarValueType.INT -> asNumber()?.let { number ->
         val integer = number.toInt()
-        if (integer.toDouble() == number) CarValue.IntValue(integer) else CarValue.FloatValue(number)
+        if (integer.toDouble() == number) CarValue.IntValue(integer) else null
     }
     CarValueType.FLOAT -> asNumber()?.let(CarValue::FloatValue)
     CarValueType.STRING -> CarValue.StringValue(asText())
@@ -154,7 +157,7 @@ private fun TransformValue.asNumber(): Double? = when (this) {
     is TransformValue.NumberValue -> value
     is TransformValue.StringValue -> value.toDoubleOrNull()
     is TransformValue.BooleanValue -> null
-}
+}?.takeIf(Double::isFinite)
 
 private fun TransformValue.asText(): String = when (this) {
     is TransformValue.BooleanValue -> value.toString()

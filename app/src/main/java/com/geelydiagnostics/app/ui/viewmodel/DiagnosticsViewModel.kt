@@ -11,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
+import com.geelydiagnostics.app.vehicle.property.numericValue
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
 import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
@@ -94,6 +95,7 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             ecarxParameterDetail = repositoryState.ecarxParameterDetail,
             vhalStatus = repositoryState.vhalStatus,
             vhalDetail = repositoryState.vhalDetail,
+            vhalDiscovery = repositoryState.vhalDiscovery,
             carInfoStatus = repositoryState.carInfoStatus,
             carInfoDetail = repositoryState.carInfoDetail,
             functionStatus = repositoryState.functionStatus,
@@ -156,7 +158,9 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         timestampMillis: Long,
     ): Map<String, List<VehicleParameterSample>> {
         if (!parameter.chartable) return this
-        val numericValue = parameter.value.chartNumber() ?: return this
+        val numericValue = parameter.normalizedValue?.numericValue
+            ?: parameter.value.chartNumber().takeIf { parameter.propertyId == null }
+            ?: return this
         val key = parameter.favoriteKey
         val sample = VehicleParameterSample(timestampMillis = timestampMillis, value = numericValue)
         val existing = get(key).orEmpty()

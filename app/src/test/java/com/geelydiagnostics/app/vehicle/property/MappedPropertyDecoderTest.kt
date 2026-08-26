@@ -13,7 +13,7 @@ class MappedPropertyDecoderTest {
     private val catalog = object : CarPropertyCatalog {
         private val fuel = CarPropertyDefinition(
             CarPropertyId.REMAINING_FUEL_LITERS,
-            CarValueType.INT,
+            CarValueType.FLOAT,
             "fuel",
             1,
         )
@@ -192,6 +192,17 @@ class MappedPropertyDecoderTest {
         assertEquals("2", result.displayValue)
         assertEquals("2", result.rawValue?.text)
         assertTrue(result.error.contains("BOOLEAN"))
+    }
+
+    @Test
+    fun integerContractRejectsFractionInsteadOfSilentlyReturningFloat() {
+        val id = CarPropertyId(10004)
+        val decoder = MappedPropertyDecoder(catalogOf(CarPropertyDefinition(id, CarValueType.INT, "gear")))
+        val result = decoder.decode(ReadSignalMapping(id, 1, "gear"), RawVehicleValue("1.5", 1.5),
+            1, "gear", 0, "G426", null, 100, false)
+        assertNull(result.value)
+        assertEquals(VehiclePropertyStatus.ERROR, result.status)
+        assertEquals("1.5", result.rawValue?.text)
     }
 
     private fun catalogOf(vararg definitions: CarPropertyDefinition): CarPropertyCatalog =

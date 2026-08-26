@@ -34,6 +34,7 @@ internal fun formatUpdateTime(updatedAtMillis: Long?, nowMillis: Long): String {
 }
 
 internal fun VehicleParameter.isStale(nowMillis: Long): Boolean {
+    if (!autoUpdates) return false
     val updatedAt = updatedAtMillis ?: return expectedUpdateIntervalMillis != null
     val limit = expectedUpdateIntervalMillis ?: return false
     return nowMillis - updatedAt > limit

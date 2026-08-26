@@ -30,6 +30,7 @@ class UnifiedParameterCacheTest {
                 snapshot(VehiclePropertySource.VHAL, 289_408_009, null, "Зажигание включено")
                     .copy(
                         decoded = true,
+                        value = CarValue.StringValue("Зажигание включено"),
                         profileKey = "AOSP",
                         sourceDescription = "Обозначает состояние зажигания.",
                     ),
@@ -128,7 +129,7 @@ class UnifiedParameterCacheTest {
     }
 
     @Test
-    fun freshestDecodedReadingBecomesPrimary() {
+    fun newerEcarxCallbackDoesNotReplaceProfileVhal() {
         val cache = UnifiedParameterCache()
         cache.replaceSource(
             VehiclePropertySource.VHAL,
@@ -146,8 +147,9 @@ class UnifiedParameterCacheTest {
         )
 
         val updated = cache.parameters().single()
-        assertEquals("42", updated.value.display)
-        assertEquals(VehiclePropertySource.ECARX, updated.sourceReadings.first().source)
+        assertEquals("41", updated.value.display)
+        assertEquals(VehiclePropertySource.VHAL, updated.sourceReadings.first().source)
+        assertEquals("42", updated.sourceReadings.last().value.display)
     }
 
     @Test
@@ -188,6 +190,7 @@ class UnifiedParameterCacheTest {
         rawValue = raw?.let { RawVehicleValue(it, it.toDoubleOrNull()) },
         status = status,
         source = source,
+        profileKey = if (source == VehiclePropertySource.VHAL) "G426" else null,
         sourceSignalId = signalId,
         sourceSignalName = "signal_$signalId",
         sourceTitle = "Signal $signalId",

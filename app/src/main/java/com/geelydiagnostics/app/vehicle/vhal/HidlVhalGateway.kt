@@ -102,11 +102,12 @@ internal class HidlVhalGateway(
         val (type, connected) = requireConnected()
         val dynamicConfigs = configs.asSequence()
             .filter(VhalPropertyConfig::dynamic)
+            .filter { it.propertyId !in subscribedIds }
             .distinctBy(VhalPropertyConfig::propertyId)
             .toList()
         if (dynamicConfigs.isEmpty()) return emptySet()
 
-        val vehicleCallback = object : IVehicleCallback.Stub() {
+        val vehicleCallback = callback ?: object : IVehicleCallback.Stub() {
             override fun onPropertyEvent(values: ArrayList<VehiclePropValue>) {
                 values.forEach { value ->
                     runCatching { parseValue(value) }
@@ -124,6 +125,7 @@ internal class HidlVhalGateway(
                 )
             }
         }
+        callback = vehicleCallback
         val subscribe = (type.methods.asSequence() + connected.javaClass.methods.asSequence())
             .firstOrNull { method ->
                 method.name == "subscribe" && method.parameterCount == 2 &&
@@ -147,8 +149,11 @@ internal class HidlVhalGateway(
                 null,
             )
             dynamicConfigs.zip(options).mapNotNull { (config, option) ->
-                val result = subscribe.status(connected, vehicleCallback, arrayListOf(option))
-                config.propertyId.takeIf { result == STATUS_OK }
+                val result = runCatching {
+                    subscribe.status(connected, vehicleCallback, arrayListOf(option))
+                }.onFailure { log("VHAL subscribe ${config.propertyId.hex()}: ${describe(it)}", it) }
+                    .getOrNull()
+                config.propertyId.takeIf { result == STATUS_OK }?.also { subscribedIds += it }
             }
         }
         if (successful.isEmpty()) {
@@ -183,6 +188,10 @@ internal class HidlVhalGateway(
         val propertyId = type.getField("prop").getInt(property)
         val areaId = type.getField("areaId").getInt(property)
         val timestamp = runCatching { type.getField("timestamp").getLong(property) }.getOrNull()
+        val status = runCatching { type.getField("status").getInt(property) }.getOrDefault(STATUS_OK)
+        if (status != STATUS_OK) return VhalPropertyValue(
+            propertyId, areaId, RawVehicleValue("—"), timestamp, "Vehicle property status=$status",
+        )
         val rawContainer = type.getField("value").get(property)
             ?: throw IllegalStateException("VehiclePropValue.value is null")
         return VhalPropertyValue(
