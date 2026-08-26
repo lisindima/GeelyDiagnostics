@@ -5,7 +5,37 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class VehicleSourcePriorityPolicyTest {
-    @Test fun profileThenAospThenEcarxRegardlessOfCallbackOrder() {
+    @Test fun profileFuelLitersWinOverAospAndKeepRawAndValueTogether() {
+        // Deliberately different test readings, not an assertion about actual tank capacity.
+        val profile = snapshot(VehiclePropertySource.VHAL, 561025054, "G426", 100).copy(
+            propertyId = CarPropertyId.REMAINING_FUEL_LITERS,
+            value = CarValue.FloatValue(50.0), displayValue = "50 л",
+            rawValue = RawVehicleValue("50000", 50000.0),
+        )
+        val aosp = snapshot(VehiclePropertySource.VHAL, 291504903, "AOSP", 101).copy(
+            propertyId = CarPropertyId.REMAINING_FUEL_LITERS,
+            value = CarValue.FloatValue(15.0), displayValue = "15 л",
+            rawValue = RawVehicleValue("15000", 15000.0),
+        )
+        listOf(listOf(profile, aosp), listOf(aosp, profile)).forEach { readings ->
+            val cache = UnifiedParameterCache()
+            readings.forEach(cache::update)
+            val fuel = cache.parameters(110).single()
+            assertEquals(profile.sourceSignalId, fuel.primaryReading.signalId)
+            assertEquals("50 л", fuel.value.display)
+            assertEquals("50000", fuel.value.raw)
+            assertEquals(CarValue.FloatValue(50.0), fuel.normalizedValue)
+            assertEquals(2, fuel.sourceReadings.size)
+
+            cache.update(profile.copy(status = VehiclePropertyStatus.ERROR))
+            val fallback = cache.parameters(110).single()
+            assertEquals(aosp.sourceSignalId, fallback.primaryReading.signalId)
+            assertEquals("15 л", fallback.value.display)
+            assertEquals("15000", fallback.value.raw)
+        }
+    }
+
+    @Test fun profileThenEcarxThenAospRegardlessOfCallbackOrder() {
         val cache = UnifiedParameterCache()
         val profile = snapshot(VehiclePropertySource.VHAL, 1, "FX12", 100)
         val aosp = snapshot(VehiclePropertySource.VHAL, 2, "AOSP", 101)
@@ -13,14 +43,43 @@ class VehicleSourcePriorityPolicyTest {
         listOf(ecarx, aosp, profile).forEach(cache::update)
         assertEquals(1, cache.parameters(110).single().primaryReading.signalId)
         cache.update(profile.copy(status = VehiclePropertyStatus.ERROR))
-        assertEquals(2, cache.parameters(110).single().primaryReading.signalId)
-        cache.update(aosp.copy(status = VehiclePropertyStatus.UNAVAILABLE))
         assertEquals(3, cache.parameters(110).single().primaryReading.signalId)
+        cache.update(ecarx.copy(status = VehiclePropertyStatus.UNAVAILABLE))
+        assertEquals(2, cache.parameters(110).single().primaryReading.signalId)
         cache.update(profile.copy(receivedAtMillis = 111))
         val recovered = cache.parameters(111).single()
         assertEquals(1, recovered.primaryReading.signalId)
         assertEquals(3, recovered.sourceReadings.size)
         assertEquals(CarValue.FloatValue(42.0), recovered.normalizedValue)
+    }
+
+    @Test fun newerAospCallbackCannotReplaceEcarxRange() {
+        val ecarx = snapshot(VehiclePropertySource.ECARX, 1054720, null, 100).copy(
+            propertyId = CarPropertyId.REMAINING_RANGE,
+            value = CarValue.FloatValue(690.0), displayValue = "690 км",
+            rawValue = RawVehicleValue("690", 690.0),
+        )
+        val aosp = snapshot(VehiclePropertySource.VHAL, 0x11600308, "AOSP", 101).copy(
+            propertyId = CarPropertyId.REMAINING_RANGE,
+            value = CarValue.FloatValue(50.0), displayValue = "50 км",
+            rawValue = RawVehicleValue("50000", 50000.0),
+        )
+        listOf(listOf(ecarx, aosp), listOf(aosp, ecarx)).forEach { readings ->
+            val cache = UnifiedParameterCache()
+            readings.forEach(cache::update)
+            cache.update(aosp.copy(receivedAtMillis = 110))
+            val range = cache.parameters(110).single()
+            assertEquals(ecarx.sourceSignalId, range.primaryReading.signalId)
+            assertEquals("690 км", range.value.display)
+            assertEquals("690", range.value.raw)
+            assertEquals(CarValue.FloatValue(690.0), range.normalizedValue)
+            assertEquals(2, range.sourceReadings.size)
+
+            cache.update(ecarx.copy(status = VehiclePropertyStatus.ERROR))
+            assertEquals("50 км", cache.parameters(110).single().value.display)
+            cache.update(ecarx.copy(receivedAtMillis = 111))
+            assertEquals("690 км", cache.parameters(111).single().value.display)
+        }
     }
 
     @Test fun staleProfileFallsBackAndRecoversWithoutDiscardingSources() {

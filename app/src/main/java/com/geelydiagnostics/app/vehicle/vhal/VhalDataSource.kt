@@ -213,8 +213,8 @@ internal class VhalDataSource private constructor(
         ) }
         val androidProperty = AndroidVehiclePropertyRegistry.property(value.propertyId)
         val profileMapping = mapping.forSignal(value.propertyId)
-        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
-        val usesProfile = signalMapping != null && androidProperty?.normalizedMapping == null
+        val signalMapping = profileMapping ?: androidProperty?.normalizedMapping
+        val usesProfile = profileMapping != null
         val decoded = decoder.decode(
             mapping = signalMapping,
             raw = value.raw,
@@ -257,8 +257,8 @@ internal class VhalDataSource private constructor(
     ): CarPropertySnapshot {
         val androidProperty = AndroidVehiclePropertyRegistry.property(config.propertyId)
         val profileMapping = mapping.forSignal(config.propertyId)
-        val signalMapping = androidProperty?.normalizedMapping ?: profileMapping
-        val usesProfile = signalMapping != null && androidProperty?.normalizedMapping == null
+        val signalMapping = profileMapping ?: androidProperty?.normalizedMapping
+        val usesProfile = profileMapping != null
         return CarPropertySnapshot(
             section = signalMapping?.propertyId?.catalogSection
                 ?: androidProperty?.section

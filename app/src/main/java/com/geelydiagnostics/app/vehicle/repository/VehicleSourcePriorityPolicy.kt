@@ -22,8 +22,8 @@ internal object VehicleSourcePriorityPolicy {
 
     private fun priority(value: CarPropertySnapshot): Int = if (!value.decoded) 0 else when (value.mappingOrigin) {
         VehicleMappingOrigin.PROFILE -> 300
-        VehicleMappingOrigin.AOSP -> 200
-        VehicleMappingOrigin.ECARX -> 100
+        VehicleMappingOrigin.ECARX -> 200
+        VehicleMappingOrigin.AOSP -> 100
         VehicleMappingOrigin.NONE -> 0
     }
 }

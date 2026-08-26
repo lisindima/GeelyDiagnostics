@@ -82,7 +82,7 @@ class VhalDataSourceTest {
     }
 
     @Test
-    fun appliesAndroidRegistryBeforeVehicleProfileMapping() {
+    fun appliesVehicleProfileBeforeAndroidRegistryForReadsAndEvents() {
         val androidSpeedId = 0x11600207
         val gateway = FakeGateway(
             configs = listOf(config(androidSpeedId, dynamic = true)),
@@ -95,7 +95,7 @@ class VhalDataSourceTest {
             profile = VehicleProfile.G426,
             listener = listener,
             mapping = VehicleProfileMapping(VehicleProfile.G426, listOf(
-                ReadSignalMapping(CarPropertyId.GEAR, androidSpeedId, "conflicting_profile_signal"),
+                ReadSignalMapping(CarPropertyId.VEHICLE_SPEED, androidSpeedId, "profile_speed"),
             )),
             catalog = catalog(
                 CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.INT, "speed"),
@@ -109,14 +109,79 @@ class VhalDataSourceTest {
 
             val speed = listener.snapshot.single()
             assertEquals(CarPropertyId.VEHICLE_SPEED, speed.propertyId)
+            assertEquals("10 км/ч", speed.displayValue)
+            assertEquals("10", speed.rawValue?.text)
+            assertEquals("profile_speed", speed.sourceSignalName)
+            assertNull(speed.sourceTitle)
+            assertNull(speed.sourceDescription)
+            assertEquals("G426", speed.profileKey)
+            assertEquals(VehicleMappingOrigin.PROFILE, speed.mappingOrigin)
+
+            gateway.emit(value(androidSpeedId, "20", 20.0, 20L))
+            assertTrue(listener.valueLatch.await(2, TimeUnit.SECONDS))
+            val updated = requireNotNull(listener.liveValue)
+            assertEquals("20 км/ч", updated.displayValue)
+            assertEquals("20", updated.rawValue?.text)
+            assertEquals(VehicleMappingOrigin.PROFILE, updated.mappingOrigin)
+        } finally {
+            source.close()
+        }
+    }
+
+    @Test
+    fun usesAndroidRegistryWhenSelectedProfileDoesNotMapSignal() {
+        val androidSpeedId = 0x11600207
+        val listener = RecordingListener()
+        val source = VhalDataSource(
+            VehicleProfile.G426,
+            listener,
+            VehicleProfileMapping(VehicleProfile.G426, emptyList()),
+            catalog(CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.INT, "speed")),
+            FakeGateway(
+                listOf(config(androidSpeedId, dynamic = true)),
+                mapOf((androidSpeedId to 0) to value(androidSpeedId, "10", 10.0, 10L)),
+            ),
+        )
+        try {
+            source.start()
+            assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+            val speed = listener.snapshot.single()
+            assertEquals(CarPropertyId.VEHICLE_SPEED, speed.propertyId)
             assertEquals("36 км/ч", speed.displayValue)
             assertEquals("10", speed.rawValue?.text)
             assertEquals("PERF_VEHICLE_SPEED", speed.sourceSignalName)
             assertEquals("Скорость автомобиля", speed.sourceTitle)
             assertEquals("AOSP", speed.profileKey)
-        } finally {
-            source.close()
-        }
+            assertEquals(VehicleMappingOrigin.AOSP, speed.mappingOrigin)
+        } finally { source.close() }
+    }
+
+    @Test
+    fun unavailableSignalKeepsProfileIdentityEvenWhenAospHasNormalizedMapping() {
+        val androidSpeedId = 0x11600207
+        val listener = RecordingListener()
+        val source = VhalDataSource(
+            VehicleProfile.G426,
+            listener,
+            VehicleProfileMapping(VehicleProfile.G426, listOf(
+                ReadSignalMapping(CarPropertyId.VEHICLE_SPEED, androidSpeedId, "profile_speed"),
+            )),
+            catalog(CarPropertyDefinition(CarPropertyId.VEHICLE_SPEED, CarValueType.INT, "speed")),
+            FakeGateway(listOf(config(androidSpeedId, dynamic = true)), emptyMap()),
+        )
+        try {
+            source.start()
+            assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+            val failed = listener.snapshot.single()
+            assertEquals(VehiclePropertyStatus.ERROR, failed.status)
+            assertEquals(CarPropertyId.VEHICLE_SPEED, failed.propertyId)
+            assertEquals("profile_speed", failed.sourceSignalName)
+            assertEquals("G426", failed.profileKey)
+            assertEquals(VehicleMappingOrigin.PROFILE, failed.mappingOrigin)
+            assertNull(failed.sourceTitle)
+            assertNull(failed.sourceDescription)
+            assertFalse(failed.decoded)
+        } finally { source.close() }
     }
 
     @Test
