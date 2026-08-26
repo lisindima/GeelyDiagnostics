@@ -22,7 +22,7 @@ internal object DiagnosticsReportExporter {
         generatedAtMillis: Long,
         appVersion: String,
     ): String = JSONObject().apply {
-        put("schemaVersion", 7)
+        put("schemaVersion", 8)
         put("application", "Geely Diagnostics")
         put("appVersion", appVersion)
         put("generatedAt", isoTime(generatedAtMillis))
@@ -35,6 +35,8 @@ internal object DiagnosticsReportExporter {
             put("rawDiscoveryCompleted", state.vhalDiscovery.rawDiscoveryCompleted)
         })
         put("scanStartedAt", state.scanStartedAtMillis.jsonTime())
+        put("ecarxDiagnostics", state.ecarxDiagnosticDetails.toJson())
+        put("obd2", state.obd2.toJson())
         put("statuses", JSONObject().apply {
             putStatus("ecarx", state.carStatus, state.carDetail)
             putStatus("diagnostics", state.diagnosticsStatus, state.diagnosticsDetail)
@@ -50,6 +52,7 @@ internal object DiagnosticsReportExporter {
                     put("code", record.code)
                     put("id", record.id)
                     put("ecuType", record.ecuType)
+                    put("ecuName", com.geelydiagnostics.app.model.EcarxEcuNames.name(record.ecuType))
                     put("statusRaw", record.status)
                     put("tickTimeRaw", record.tickTime)
                 })

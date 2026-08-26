@@ -15,7 +15,11 @@ internal class HidlVhalGateway(
     private var vehicleClass: Class<*>? = null
     private var service: Any? = null
     private var callback: IVehicleCallback? = null
-    private val subscribedIds = linkedSetOf<Int>()
+    private val subscribedIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
+    @Volatile private var closed = false
+    private val eventConsumers = java.util.concurrent.ConcurrentHashMap<Int, (VhalPropertyValue) -> Unit>()
+
+    override fun obd2Gateway(): Obd2Gateway = HidlObd2Gateway(this)
 
     override fun connect() {
         val type = Class.forName(VEHICLE_CLASS)
@@ -67,11 +71,27 @@ internal class HidlVhalGateway(
     }
 
     override fun read(propertyId: Int, areaId: Int): VhalPropertyValue {
+        require(propertyId !in listOf(Obd2Properties.FREEZE, Obd2Properties.CLEAR)) {
+            "OBD2 freeze requires an INFO timestamp; CLEAR is prohibited"
+        }
+        return readRequest(propertyId, areaId, null)
+    }
+
+    internal fun readFreezeFrame(timestamp: Long): VhalPropertyValue =
+        readRequest(Obd2Properties.FREEZE, 0, timestamp)
+
+    private fun readRequest(propertyId: Int, areaId: Int, freezeTimestamp: Long?): VhalPropertyValue {
         val (type, connected) = requireConnected()
         val valueClass = Class.forName(VALUE_CLASS)
         val request = valueClass.getDeclaredConstructor().newInstance().also { value ->
             valueClass.getField("prop").setInt(value, propertyId)
             valueClass.getField("areaId").setInt(value, areaId)
+            if (freezeTimestamp != null) {
+                val payload = valueClass.getField("value").get(value)
+                @Suppress("UNCHECKED_CAST")
+                val timestamps = payload.javaClass.getField("int64Values").get(payload) as MutableList<Long>
+                timestamps.add(freezeTimestamp)
+            }
         }
         val method = (type.methods.asSequence() + connected.javaClass.methods.asSequence())
             .firstOrNull {
@@ -95,10 +115,12 @@ internal class HidlVhalGateway(
         return parseValue(returned)
     }
 
+    @Synchronized
     override fun subscribe(
         configs: List<VhalPropertyConfig>,
         onValue: (VhalPropertyValue) -> Unit,
     ): Set<Int> {
+        if (closed) return emptySet()
         val (type, connected) = requireConnected()
         val dynamicConfigs = configs.asSequence()
             .filter(VhalPropertyConfig::dynamic)
@@ -106,12 +128,13 @@ internal class HidlVhalGateway(
             .distinctBy(VhalPropertyConfig::propertyId)
             .toList()
         if (dynamicConfigs.isEmpty()) return emptySet()
+        dynamicConfigs.forEach { eventConsumers[it.propertyId] = onValue }
 
         val vehicleCallback = callback ?: object : IVehicleCallback.Stub() {
             override fun onPropertyEvent(values: ArrayList<VehiclePropValue>) {
                 values.forEach { value ->
                     runCatching { parseValue(value) }
-                        .onSuccess(onValue)
+                        .onSuccess { eventConsumers[it.propertyId]?.invoke(it) }
                         .onFailure { log("VHAL event skipped: ${describe(it)}", it) }
                 }
             }
@@ -161,6 +184,13 @@ internal class HidlVhalGateway(
         }
         callback = vehicleCallback
         subscribedIds += successful
+        if (closed) {
+            val unsubscribe = connected.javaClass.methods.firstOrNull { it.name == "unsubscribe" && it.parameterCount == 2 }
+            successful.forEach { runCatching { unsubscribe?.invoke(connected, vehicleCallback, it) } }
+            subscribedIds.removeAll(successful.toSet())
+            callback = null
+            return emptySet()
+        }
         log("VHAL subscriptions: ${successful.size}/${dynamicConfigs.size}", null)
         return successful.toSet()
     }
@@ -199,10 +229,20 @@ internal class HidlVhalGateway(
             areaId = areaId,
             raw = extractRaw(rawContainer, propertyId),
             sourceTimestampNanos = timestamp,
+            obd2Payload = if (propertyId in Obd2Properties.readable) extractObd2Payload(rawContainer) else null,
         )
     }
 
+    private fun extractObd2Payload(container: Any) = com.geelydiagnostics.app.model.Obd2RawPayload(
+        int32Values = numberList(container, "int32Values").map(Number::toInt),
+        floatValues = numberList(container, "floatValues").map(Number::toStableVhalDouble),
+        int64Values = numberList(container, "int64Values").map(Number::toLong),
+        bytes = numberList(container, "bytes").map { it.toInt() and 0xff },
+        stringValue = container.javaClass.getField("stringValue").get(container) as? String ?: "",
+    )
+
     private fun extractRaw(container: Any, propertyId: Int): RawVehicleValue {
+        if (propertyId in Obd2Properties.readable) return RawVehicleValue(extractObd2Payload(container).toString())
         val int32 = numberList(container, "int32Values")
         val floats = numberList(container, "floatValues")
         val int64 = numberList(container, "int64Values")
@@ -285,6 +325,7 @@ internal class HidlVhalGateway(
         (invoke(receiver, callback, options) as? Number)?.toInt() ?: STATUS_OK
 
     override fun close() {
+        closed = true
         val connected = service
         val vehicleCallback = callback
         if (connected != null && vehicleCallback != null) {
@@ -301,6 +342,7 @@ internal class HidlVhalGateway(
             }
         }
         subscribedIds.clear()
+        eventConsumers.clear()
         callback = null
         service = null
         vehicleClass = null

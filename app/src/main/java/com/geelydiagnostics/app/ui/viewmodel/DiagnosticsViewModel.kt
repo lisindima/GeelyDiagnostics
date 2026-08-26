@@ -101,6 +101,8 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             functionStatus = repositoryState.functionStatus,
             functionDetail = repositoryState.functionDetail,
             dtcs = repositoryState.diagnostics.dtcs,
+            ecarxDiagnosticDetails = repositoryState.diagnostics.ecarxDetails,
+            obd2 = repositoryState.diagnostics.obd2,
             logLines = repositoryState.logLines,
             scanStartedAtMillis = repositoryState.scanStartedAtMillis,
         )

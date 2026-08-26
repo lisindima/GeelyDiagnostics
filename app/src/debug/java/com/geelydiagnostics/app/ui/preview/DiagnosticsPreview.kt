@@ -66,6 +66,22 @@ private fun DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS)
 
 @HeadUnitPreviews
 @Composable
+private fun Obd2DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS, previewState().copy(
+    dtcs = emptyList(),
+    obd2 = Obd2Snapshot(
+        backend = "HIDL",
+        capabilities = com.geelydiagnostics.app.vehicle.vhal.Obd2Properties.readable.map {
+            Obd2Capability(it, true, ReadStatus.AVAILABLE, "Данные получены")
+        },
+        live = Obd2Frame(120_000_000_000, floats = mapOf(8 to 748.5, 9 to 0.0, 1 to 91.5)),
+        freezeTimestamps = listOf(100_000_000_000),
+        freezeFrames = listOf(Obd2Frame(100_000_000_000, "P0123", floats = mapOf(8 to 2450.0, 9 to 62.0))),
+        autoUpdates = true,
+    ),
+))
+
+@HeadUnitPreviews
+@Composable
 private fun DataParametersPreview() = PreviewApp(AppTab.DATA)
 
 @Preview(
@@ -231,6 +247,13 @@ private fun PreviewApp(
 }
 
 private fun previewState() = AppUiState(
+    ecarxDiagnosticDetails = EcarxDiagnosticDetails(
+        partInfoStatus = ReadStatus.AVAILABLE,
+        partInfoDetail = "Пример · 2 поля заполнено",
+        parts = listOf(PartInfoValue(1, "PART_INFO_ECU_CORE_ASSEMBLY_NO", "Номер основной сборки", "EXAMPLE-001"),
+            PartInfoValue(4, "PART_INFO_IHU_AP_LOAD_MODULE_NO", "Модуль AP", "EXAMPLE-AP-2026")),
+        apis = listOf(DiagnosticApiInfo("getPartInfoManager", true), DiagnosticApiInfo("diagReadInfoFromHal", false)),
+    ),
     carStatus = ReadStatus.AVAILABLE,
     carDetail = "CONNECTED",
     diagnosticsStatus = ReadStatus.AVAILABLE,

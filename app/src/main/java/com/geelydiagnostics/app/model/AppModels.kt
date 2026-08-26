@@ -51,6 +51,8 @@ data class AppUiState(
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val functionDetail: String = "",
     val dtcs: List<DtcRecord> = emptyList(),
+    val ecarxDiagnosticDetails: EcarxDiagnosticDetails = EcarxDiagnosticDetails(),
+    val obd2: Obd2Snapshot = Obd2Snapshot(),
     val parameters: List<VehicleParameter> = emptyList(),
     val parameterHistory: Map<String, List<VehicleParameterSample>> = emptyMap(),
     val vehicleInfo: List<VehicleParameter> = emptyList(),

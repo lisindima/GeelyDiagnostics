@@ -35,6 +35,7 @@ internal class VhalDataSource private constructor(
         Thread(task, "VhalEvents").apply { isDaemon = true }
     }
     private val reads = VhalReadScheduler(::read, ::unavailable)
+    @Volatile private var obd2Reader: Obd2Reader? = null
     @Volatile private var configsById = emptyMap<Int, VhalPropertyConfig>()
     private val lastRawByKey = mutableMapOf<Pair<Int, Int>, String>()
     private val latestByKey = linkedMapOf<Pair<Int, Int>, CarPropertySnapshot>()
@@ -85,9 +86,19 @@ internal class VhalDataSource private constructor(
             if (closed) { gateway.close(); return }
             val configs = gateway.readConfigs()
             if (closed) return
+            gateway.obd2Gateway()?.let { obdGateway ->
+                if (closed) { obdGateway.close(); return }
+                val reader = Obd2Reader(obdGateway, listener::onObd2Snapshot) {
+                    listener.onParameterLog(source, it)
+                }
+                obd2Reader = reader
+                if (closed) { reader.close(); return }
+                reader.start(configs)
+            }
             if (configs.isEmpty()) error("getAllPropConfigs() returned an empty catalog")
             configsById = configs.associateBy(VhalPropertyConfig::propertyId)
-            val (mapped, raw) = configs.partition {
+            // Freeze needs a timestamp; CLEAR must never participate in discovery reads/subscriptions.
+            val (mapped, raw) = configs.filterNot { it.propertyId in Obd2Properties.all }.partition {
                 AndroidVehiclePropertyRegistry.property(it.propertyId)?.normalizedMapping != null ||
                     mapping.forSignal(it.propertyId) != null
             }
@@ -316,6 +327,7 @@ internal class VhalDataSource private constructor(
 
     override fun close() {
         closed = true
+        obd2Reader?.close()
         reads.close()
         events.shutdownNow()
         executor.shutdownNow()

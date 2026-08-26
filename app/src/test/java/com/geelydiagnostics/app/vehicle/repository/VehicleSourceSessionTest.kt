@@ -27,6 +27,8 @@ class VehicleSourceSessionTest {
         previous.onParameterDiscovery(VehiclePropertySource.VHAL, VehicleDiscoveryProgress())
         previous.onCarStatus(ReadStatus.ERROR, "old")
         previous.onLog("old", null)
+        previous.onObd2Snapshot(com.geelydiagnostics.app.model.Obd2Snapshot())
+        previous.onDiagnosticDetails(com.geelydiagnostics.app.model.EcarxDiagnosticDetails())
         current.onParameterValue(value.copy(displayValue = "new"))
         assertEquals(listOf("onParameterValue", "onParameterValue"), delivered)
     }

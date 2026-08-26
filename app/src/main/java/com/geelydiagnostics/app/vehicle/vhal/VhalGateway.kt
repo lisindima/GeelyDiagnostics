@@ -32,9 +32,11 @@ internal data class VhalPropertyValue(
     val raw: RawVehicleValue,
     val sourceTimestampNanos: Long?,
     val error: String? = null,
+    val obd2Payload: com.geelydiagnostics.app.model.Obd2RawPayload? = null,
 )
 
 internal interface VhalGateway : Closeable {
+    fun obd2Gateway(): Obd2Gateway? = null
     fun connect()
     fun readConfigs(): List<VhalPropertyConfig>
     fun read(propertyId: Int, areaId: Int): VhalPropertyValue

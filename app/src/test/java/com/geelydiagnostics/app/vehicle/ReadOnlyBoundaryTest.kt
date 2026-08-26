@@ -10,6 +10,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReadOnlyBoundaryTest {
+    @Test fun obd2GatewayDoesNotExposeVehicleMutationMethods() {
+        val names = com.geelydiagnostics.app.vehicle.vhal.Obd2Gateway::class.java.methods.map { it.name }
+        listOf("set", "write", "clear", "delete", "reset").forEach { prefix ->
+            assertFalse(names.any { it.startsWith(prefix, true) })
+        }
+    }
+
     @Test
     fun vhalGatewayDoesNotExposeVehicleMutationMethods() {
         val methodNames = VhalGateway::class.java.declaredMethods.map { it.name }

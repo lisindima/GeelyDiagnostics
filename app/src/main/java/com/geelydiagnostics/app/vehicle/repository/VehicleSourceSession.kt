@@ -18,6 +18,11 @@ internal class VehicleSourceSession(
 
     private fun deliver(action: () -> Unit) = synchronized(monitor) { if (active) action() }
 
+    override fun onDiagnosticDetails(details: com.geelydiagnostics.app.model.EcarxDiagnosticDetails) =
+        deliver { sink.onDiagnosticDetails(details) }
+    override fun onObd2Snapshot(snapshot: com.geelydiagnostics.app.model.Obd2Snapshot) =
+        deliver { sink.onObd2Snapshot(snapshot) }
+
     override fun onParameterValue(value: CarPropertySnapshot) = deliver { sink.onParameterValue(value) }
     override fun onParameterSnapshot(source: VehiclePropertySource, section: VehicleDataSection?, values: List<CarPropertySnapshot>) =
         deliver { sink.onParameterSnapshot(source, section, values) }

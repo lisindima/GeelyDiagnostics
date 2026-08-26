@@ -18,6 +18,16 @@ internal class CarPropertyManagerGateway(
     private var callback: CarPropertyManager.CarPropertyEventCallback? = null
     private val subscribedIds = linkedSetOf<Int>()
 
+    override fun obd2Gateway(): Obd2Gateway = CarDiagnosticObd2Gateway(
+        obtainManager = { requireNotNull(car) { "Car is not connected" }.getCarManager("diagnostic") },
+        requireReadPermission = {
+            val permission = "android.car.permission.CAR_DIAGNOSTICS"
+            if (appContext.checkSelfPermission(permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                throw SecurityException("Не выдано разрешение $permission")
+            }
+        },
+    )
+
     override fun connect() {
         val connectedCar = Car.createCar(appContext)
             ?: throw IllegalStateException("Car.createCar() returned null")

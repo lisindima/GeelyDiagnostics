@@ -25,11 +25,15 @@ class DiagnosticsRepositoryTest {
     fun resetStartsFreshCheckingStateAndDropsPreviousDtcs() {
         val repository = DiagnosticsRepository()
         repository.updateDtcs(listOf(DtcRecord("P0001", "1", 2, 3, 4L)))
+        repository.updateObd2(com.geelydiagnostics.app.model.Obd2Snapshot(backend = "HIDL"))
+        repository.updateDetails(com.geelydiagnostics.app.model.EcarxDiagnosticDetails(partInfoDetail = "old"))
 
         repository.reset()
 
         assertEquals(ReadStatus.CHECKING, repository.snapshot().diagnosticsStatus)
         assertEquals(ReadStatus.CHECKING, repository.snapshot().dtcManagerStatus)
         assertEquals(emptyList<DtcRecord>(), repository.snapshot().dtcs)
+        assertEquals("", repository.snapshot().obd2.backend)
+        assertEquals("", repository.snapshot().ecarxDetails.partInfoDetail)
     }
 }

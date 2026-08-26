@@ -78,6 +78,13 @@ internal object DiagnosticsTab {
             } else {
                 item { DtcTable(state.dtcs) }
             }
+            item { PartInfoCard(state.ecarxDiagnosticDetails, state.diagnosticsDetail.takeIf { state.diagnosticsStatus == ReadStatus.ERROR }.orEmpty()) }
+            item { DiagnosticApiCard(state.ecarxDiagnosticDetails) }
+            item { Obd2OverviewCard(state.obd2, state.vhalDetail.takeIf { state.vhalStatus == ReadStatus.ERROR }.orEmpty()) }
+            state.obd2.live?.let { frame -> item("obd2-live") { Obd2FrameCard(frame, freeze = false) } }
+            state.obd2.freezeFrames.forEachIndexed { index, frame ->
+                item("obd2-freeze-$index") { Obd2FrameCard(frame, freeze = true) }
+            }
         }
     }
 
@@ -137,7 +144,7 @@ internal object DiagnosticsTab {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "Блок $ecuType",
+                            text = "${EcarxEcuNames.name(ecuType)} · ECU $ecuType",
                             modifier = Modifier.weight(1f),
                             fontSize = AppType.CardTitle,
                             fontWeight = FontWeight.Bold,

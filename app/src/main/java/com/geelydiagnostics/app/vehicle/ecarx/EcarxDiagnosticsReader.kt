@@ -11,9 +11,12 @@ import com.geelydiagnostics.app.model.ReadStatus
 internal class EcarxDiagnosticsReader(
     private val sink: EcarxDataListener,
 ) : EcarxReader {
+    private val detailExecutor = java.util.concurrent.Executors.newSingleThreadExecutor {
+        Thread(it, "EcarxDiagnosticDetails").apply { isDaemon = true }
+    }
     private var manager: IDtcManager? = null
     private var watcherRegistered = false
-    private var closed = false
+    @Volatile private var closed = false
 
     private val watcher = object : IDtcManager.IDtcInfoWatcher {
         override fun onDtcInfosChanged(list: MutableList<IDtcManager.IDtcInfo>?) {
@@ -38,10 +41,22 @@ internal class EcarxDiagnosticsReader(
             return
         }
         sink.onDiagnosticsStatus(ReadStatus.AVAILABLE, "AVAILABLE")
-        val current = try {
+        val dtcResult = runCatching {
             diagnostics.getDtcManager()
                 ?: throw IllegalStateException("getDtcManager() returned null")
-        } catch (error: Throwable) {
+        }
+        // Optional PartInfo calls cannot hold up DTC, sensor reads, or their subscriptions.
+        if (!closed) runCatching { detailExecutor.execute {
+            if (!closed) {
+                val details = EcarxDiagnosticDetailsReader.read(diagnostics, dtcResult.getOrNull())
+                if (!closed) {
+                    sink.onDiagnosticDetails(details)
+                    sink.onLog("PartInfo: ${details.partInfoStatus}; ${details.partInfoDetail}")
+                    details.apis.forEach { sink.onLog("Diagnostic API ${it.name}: present=${it.present}") }
+                }
+            }
+        } }
+        val current = dtcResult.getOrElse { error ->
             sink.onDtcManagerStatus(ReadStatus.ERROR, describe(error))
             sink.onLog("getDtcManager(): ${describe(error)}", error)
             return
@@ -83,6 +98,7 @@ internal class EcarxDiagnosticsReader(
 
     override fun close() {
         closed = true
+        detailExecutor.shutdownNow()
         if (watcherRegistered) {
             runCatching { manager?.unregisterWatcher(watcher) }
                 .onFailure { sink.onLog("DTC watcher cleanup: ${describe(it)}", it) }

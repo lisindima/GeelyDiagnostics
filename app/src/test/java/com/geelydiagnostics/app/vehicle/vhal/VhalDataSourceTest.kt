@@ -26,6 +26,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VhalDataSourceTest {
+    @Test fun obd2PropertiesNeverEnterGenericReadsOrSubscriptions() {
+        val reads = java.util.concurrent.CopyOnWriteArrayList<Int>()
+        val gateway = FakeGateway(Obd2Properties.all.map { config(it, dynamic = true) }, emptyMap(), reads::add)
+        val listener = RecordingListener()
+        val source = mappedSource(listener, gateway)
+        try {
+            source.start()
+            assertTrue(listener.snapshotLatch.await(2, TimeUnit.SECONDS))
+            assertTrue(reads.isEmpty())
+            assertTrue(gateway.subscribedIds.isEmpty())
+        } finally { source.close() }
+    }
+
     @Test
     fun knownAospPropertyWithoutNormalizedMappingUsesProfile() {
         val ignitionId = 289_475_088 // HW_KEY_INPUT

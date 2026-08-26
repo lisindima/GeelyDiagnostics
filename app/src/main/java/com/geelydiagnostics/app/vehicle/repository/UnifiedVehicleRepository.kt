@@ -145,6 +145,18 @@ internal class UnifiedVehicleRepository(
     }
 
     @Synchronized
+    override fun onDiagnosticDetails(details: com.geelydiagnostics.app.model.EcarxDiagnosticDetails) {
+        diagnostics.updateDetails(details)
+        update { copy(diagnostics = this@UnifiedVehicleRepository.diagnostics.snapshot()) }
+    }
+
+    @Synchronized
+    override fun onObd2Snapshot(snapshot: com.geelydiagnostics.app.model.Obd2Snapshot) {
+        diagnostics.updateObd2(snapshot)
+        update { copy(diagnostics = this@UnifiedVehicleRepository.diagnostics.snapshot()) }
+    }
+
+    @Synchronized
     override fun onCarInfoStatus(status: ReadStatus, detail: String) = update {
         copy(carInfoStatus = status, carInfoDetail = detail)
     }

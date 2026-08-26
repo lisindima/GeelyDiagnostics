@@ -11,6 +11,8 @@ internal data class DiagnosticsState(
     val dtcManagerStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val dtcManagerDetail: String = "",
     val dtcs: List<DtcRecord> = emptyList(),
+    val ecarxDetails: EcarxDiagnosticDetails = EcarxDiagnosticDetails(),
+    val obd2: Obd2Snapshot = Obd2Snapshot(),
 )
 
 /** DTC state is intentionally outside the normalized vehicle-property cache. */
@@ -18,6 +20,9 @@ internal class DiagnosticsRepository {
     private var state = DiagnosticsState()
 
     fun snapshot(): DiagnosticsState = state
+
+    fun updateDetails(details: EcarxDiagnosticDetails) { state = state.copy(ecarxDetails = details) }
+    fun updateObd2(snapshot: Obd2Snapshot) { state = state.copy(obd2 = snapshot) }
 
     fun reset() {
         state = DiagnosticsState(

@@ -15,6 +15,7 @@ internal interface VehicleParameterDataSource : Closeable {
 
 /** Source events are raw snapshots; normalization and source selection belong to the repository. */
 internal interface VehicleParameterSink {
+    fun onObd2Snapshot(snapshot: com.geelydiagnostics.app.model.Obd2Snapshot) = Unit
     fun onParameterDiscovery(source: VehiclePropertySource, progress: VehicleDiscoveryProgress) = Unit
 
     fun onParameterStatus(source: VehiclePropertySource, status: ReadStatus, detail: String = "")
