@@ -3,6 +3,9 @@ package com.geelydiagnostics.app.ui
 import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.tabs.*
 import com.geelydiagnostics.app.ui.theme.*
+import com.geelydiagnostics.app.ui.settings.VhalSettingsDialog
+import com.geelydiagnostics.app.ui.diagnostics.diagnosticsUiState
+import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,8 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +69,7 @@ internal fun GeelyDiagnosticsApp(
     onClearLog: () -> Unit,
     initialTab: AppTab = AppTab.DIAGNOSTICS,
     initialDataCategory: DataCategory = DataCategory.PARAMETERS,
+    initialDiagnosticsCategory: DiagnosticsCategory = DiagnosticsCategory.ECU,
 ) {
     val systemDensity = LocalDensity.current
     val readableDensity = Density(
@@ -81,6 +87,8 @@ internal fun GeelyDiagnosticsApp(
             shapes = GeelyDiagnosticsShapes,
         ) {
             var selectedTabIndex by rememberSaveable { mutableIntStateOf(initialTab.ordinal) }
+            var showVhalSettings by rememberSaveable { mutableStateOf(false) }
+            val tabStateHolder = rememberSaveableStateHolder()
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background,
@@ -93,6 +101,7 @@ internal fun GeelyDiagnosticsApp(
                     AppHeader(
                         onRefresh = onRefresh,
                         onExport = onExport,
+                        onVhalSettings = { showVhalSettings = true },
                         isRefreshInProgress = state.isScanInProgress,
                     )
                     PrimaryTabRow(
@@ -103,17 +112,32 @@ internal fun GeelyDiagnosticsApp(
                         AppTabs(selectedTabIndex) { selectedTabIndex = it }
                     }
                     val selectedTab = AppTab.entries[selectedTabIndex]
-                    AppTabContent(
-                        tab = selectedTab,
-                        state = state,
-                        initialDataCategory = initialDataCategory,
-                        onVhalProfileSelected = onVhalProfileSelected,
-                        onVhalBackendSelected = onVhalBackendSelected,
-                        onFavoriteToggle = onFavoriteToggle,
-                        onObserveParameter = onObserveParameter,
-                        onClearLog = onClearLog,
-                    )
+                    tabStateHolder.SaveableStateProvider(selectedTab.name) {
+                        AppTabContent(
+                            tab = selectedTab,
+                            state = state,
+                            initialDataCategory = initialDataCategory,
+                            initialDiagnosticsCategory = initialDiagnosticsCategory,
+                            onFavoriteToggle = onFavoriteToggle,
+                            onObserveParameter = onObserveParameter,
+                            onClearLog = onClearLog,
+                        )
+                    }
                 }
+            }
+            if (showVhalSettings) {
+                val vhalReadings = (state.parameters + state.vehicleInfo + state.functions)
+                    .flatMap(VehicleParameter::sourceReadings)
+                    .filter { it.source == VehiclePropertySource.VHAL }
+                VhalSettingsDialog(
+                    selectedProfile = state.selectedVhalProfile,
+                    selectedBackend = state.selectedVhalBackend,
+                    decodedCount = vhalReadings.count { it.decoded },
+                    totalCount = vhalReadings.size,
+                    onProfileSelected = onVhalProfileSelected,
+                    onBackendSelected = onVhalBackendSelected,
+                    onDismiss = { showVhalSettings = false },
+                )
             }
         }
     }
@@ -143,30 +167,20 @@ private fun AppTabContent(
     tab: AppTab,
     state: AppUiState,
     initialDataCategory: DataCategory,
-    onVhalProfileSelected: (VehicleProfile) -> Unit,
-    onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
+    initialDiagnosticsCategory: DiagnosticsCategory,
     onFavoriteToggle: (String) -> Unit,
     onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
     onClearLog: () -> Unit,
 ) {
     when (tab) {
         AppTab.DIAGNOSTICS -> {
-            val tabState = remember(
-                state.carStatus,
-                state.carDetail,
-                state.diagnosticsStatus,
-                state.diagnosticsDetail,
-                state.dtcManagerStatus,
-                state.dtcManagerDetail,
-                state.dtcs,
-            ) { state }
-            DiagnosticsTab.Content(tabState)
+            val diagnosticState = state.diagnosticsUiState()
+            val tabState = remember(diagnosticState) { diagnosticState }
+            DiagnosticsTab.Content(tabState, initialDiagnosticsCategory)
         }
         AppTab.DATA -> DataTab.Content(
             state = state,
             initialCategory = initialDataCategory,
-            onVhalProfileSelected = onVhalProfileSelected,
-            onVhalBackendSelected = onVhalBackendSelected,
             onFavoriteToggle = onFavoriteToggle,
             onObserveParameter = onObserveParameter,
         )
@@ -189,6 +203,7 @@ private val AppUiState.isScanInProgress: Boolean
 private fun AppHeader(
     onRefresh: () -> Unit,
     onExport: () -> Unit,
+    onVhalSettings: () -> Unit,
     isRefreshInProgress: Boolean,
 ) {
     Surface(
@@ -200,7 +215,9 @@ private fun AppHeader(
         shape = MaterialTheme.shapes.large,
     ) {
         BoxWithConstraints {
-            if (maxWidth < AppBreakpoints.TwoColumns) {
+            val inlineActionsMinWidth = AppBreakpoints.HeaderInlineActions *
+                (LocalDensity.current.fontScale / MIN_HEAD_UNIT_FONT_SCALE)
+            if (maxWidth < inlineActionsMinWidth) {
                 Column(
                     modifier = Modifier.padding(
                         horizontal = AppSpacing.Large,
@@ -218,6 +235,7 @@ private fun AppHeader(
                     HeaderActions(
                         onRefresh = onRefresh,
                         onExport = onExport,
+                        onVhalSettings = onVhalSettings,
                         isRefreshInProgress = isRefreshInProgress,
                         modifier = Modifier.fillMaxWidth(),
                         expandButtons = true,
@@ -237,6 +255,7 @@ private fun AppHeader(
                     HeaderActions(
                         onRefresh = onRefresh,
                         onExport = onExport,
+                        onVhalSettings = onVhalSettings,
                         isRefreshInProgress = isRefreshInProgress,
                     )
                 }
@@ -289,6 +308,7 @@ private fun ReadOnlyBadge() {
 private fun HeaderActions(
     onRefresh: () -> Unit,
     onExport: () -> Unit,
+    onVhalSettings: () -> Unit,
     isRefreshInProgress: Boolean,
     modifier: Modifier = Modifier,
     expandButtons: Boolean = false,
@@ -308,6 +328,19 @@ private fun HeaderActions(
             AppSizes.Border,
             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.58f),
         )
+        OutlinedButton(
+            onClick = onVhalSettings,
+            modifier = buttonModifier,
+            shape = MaterialTheme.shapes.medium,
+            colors = buttonColors,
+            border = buttonBorder,
+        ) {
+            Text(
+                text = "Настройки VHAL",
+                fontSize = AppType.Supporting,
+                fontWeight = FontWeight.Bold,
+            )
+        }
         OutlinedButton(
             onClick = onRefresh,
             enabled = !isRefreshInProgress,

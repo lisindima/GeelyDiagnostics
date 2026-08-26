@@ -4,6 +4,7 @@ import com.geelydiagnostics.app.model.*
 import com.geelydiagnostics.app.ui.*
 import com.geelydiagnostics.app.ui.components.*
 import com.geelydiagnostics.app.ui.tabs.DataCategory
+import com.geelydiagnostics.app.ui.tabs.DiagnosticsCategory
 import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsDarkColors
 import com.geelydiagnostics.app.ui.theme.GeelyDiagnosticsShapes
 import com.geelydiagnostics.app.vehicle.ecarx.VendorValueDecoder
@@ -78,7 +79,27 @@ private fun Obd2DiagnosticsPreview() = PreviewApp(AppTab.DIAGNOSTICS, previewSta
         freezeFrames = listOf(Obd2Frame(100_000_000_000, "P0123", floats = mapOf(8 to 2450.0, 9 to 62.0))),
         autoUpdates = true,
     ),
-))
+), diagnosticsCategory = DiagnosticsCategory.OBD2)
+
+@HeadUnitPreviews
+@Composable
+private fun DiagnosticInfoPreview() = PreviewApp(
+    AppTab.DIAGNOSTICS,
+    diagnosticsCategory = DiagnosticsCategory.INFO,
+)
+
+@HeadUnitPreviews
+@Composable
+private fun Obd2PermissionErrorPreview() = PreviewApp(
+    AppTab.DIAGNOSTICS,
+    state = previewState().copy(obd2 = Obd2Snapshot(
+        backend = "CAR_DIAGNOSTIC_MANAGER",
+        capabilities = com.geelydiagnostics.app.vehicle.vhal.Obd2Properties.readable.map {
+            Obd2Capability(it, true, ReadStatus.ERROR, "Не выдано разрешение android.car.permission.CAR_DIAGNOSTICS")
+        },
+    )),
+    diagnosticsCategory = DiagnosticsCategory.OBD2,
+)
 
 @HeadUnitPreviews
 @Composable
@@ -231,6 +252,7 @@ private fun PreviewApp(
     tab: AppTab,
     state: AppUiState = previewState(),
     dataCategory: DataCategory = DataCategory.PARAMETERS,
+    diagnosticsCategory: DiagnosticsCategory = DiagnosticsCategory.ECU,
 ) {
     GeelyDiagnosticsApp(
         state = state,
@@ -243,6 +265,7 @@ private fun PreviewApp(
         onClearLog = {},
         initialTab = tab,
         initialDataCategory = dataCategory,
+        initialDiagnosticsCategory = diagnosticsCategory,
     )
 }
 

@@ -1,6 +1,8 @@
-package com.geelydiagnostics.app.ui.tabs
+package com.geelydiagnostics.app.ui.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,9 +58,9 @@ internal fun VhalSettingsDialog(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(AppSpacing.XLarge)
-                .widthIn(max = AppSizes.SettingsDialogMaxWidth),
+                .widthIn(max = AppSizes.SettingsDialogMaxWidth)
+                .fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = MaterialTheme.shapes.extraLarge,
@@ -66,7 +68,7 @@ internal fun VhalSettingsDialog(
             shadowElevation = AppSizes.DialogElevation,
         ) {
             Column(
-                modifier = Modifier.padding(AppSpacing.XLarge),
+                modifier = Modifier.verticalScroll(rememberScrollState()).padding(AppSpacing.XLarge),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Large),
             ) {
                 Row(
@@ -80,7 +82,7 @@ internal fun VhalSettingsDialog(
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "Расшифровка и транспорт применяются ко всему каталогу данных",
+                            text = "Транспорт используется в данных и диагностике OBD2. Профиль задаёт расшифровку каталога данных.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = AppType.Supporting,
                         )

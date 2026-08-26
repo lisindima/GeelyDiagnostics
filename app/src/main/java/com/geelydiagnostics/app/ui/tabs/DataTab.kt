@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -50,13 +49,10 @@ import com.geelydiagnostics.app.ui.parameters.sourceLabels
 import com.geelydiagnostics.app.ui.theme.AppSizes
 import com.geelydiagnostics.app.ui.theme.AppSpacing
 import com.geelydiagnostics.app.ui.theme.AppType
-import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleDataSection
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
-import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.property.primaryReading
-import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 import kotlinx.coroutines.flow.Flow
 
 internal enum class DataCategory(val title: String) {
@@ -72,8 +68,6 @@ internal object DataTab {
     fun Content(
         state: AppUiState,
         initialCategory: DataCategory,
-        onVhalProfileSelected: (VehicleProfile) -> Unit,
-        onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
         onFavoriteToggle: (String) -> Unit,
         onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
     ) {
@@ -86,7 +80,6 @@ internal object DataTab {
         var query by rememberSaveable { mutableStateOf("") }
         var expandedKey by rememberSaveable { mutableStateOf<String?>(null) }
         var expandedSectionName by rememberSaveable { mutableStateOf<String?>(null) }
-        var showVhalSettings by rememberSaveable { mutableStateOf(false) }
 
         val category = DataCategory.entries[selectedCategoryIndex]
         val valueFilter = ParameterValueFilter.entries[selectedValueFilterIndex]
@@ -113,7 +106,6 @@ internal object DataTab {
             filtered = filtered,
             autoUpdating = autoUpdating,
             manuallyUpdated = manuallyUpdated,
-            onOpenVhalSettings = { showVhalSettings = true },
             onFavoriteToggle = onFavoriteToggle,
             onParameterSelected = {
                 expandedKey = it.selectionKey
@@ -140,17 +132,6 @@ internal object DataTab {
             )
         }
 
-        if (showVhalSettings) {
-            VhalSettingsDialog(
-                selectedProfile = state.selectedVhalProfile,
-                selectedBackend = state.selectedVhalBackend,
-                decodedCount = state.decodedVhalCount,
-                totalCount = state.totalVhalCount,
-                onProfileSelected = onVhalProfileSelected,
-                onBackendSelected = onVhalBackendSelected,
-                onDismiss = { showVhalSettings = false },
-            )
-        }
     }
 
     @Composable
@@ -166,7 +147,6 @@ internal object DataTab {
         filtered: List<VehicleParameter>,
         autoUpdating: List<VehicleParameter>,
         manuallyUpdated: List<VehicleParameter>,
-        onOpenVhalSettings: () -> Unit,
         onFavoriteToggle: (String) -> Unit,
         onParameterSelected: (VehicleParameter) -> Unit,
         nowMillis: Long,
@@ -201,7 +181,6 @@ internal object DataTab {
                     status = combinedStatus,
                     detail = combinedDetail,
                     ecarxStatus = ecarxStatus,
-                    onOpenSettings = onOpenVhalSettings,
                 )
             }
             item {
@@ -271,7 +250,6 @@ internal object DataTab {
         status: ReadStatus,
         detail: String,
         ecarxStatus: ReadStatus,
-        onOpenSettings: () -> Unit,
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -298,16 +276,6 @@ internal object DataTab {
                                 state.selectedVhalBackend.title,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = AppType.Supporting,
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = onOpenSettings,
-                        shape = MaterialTheme.shapes.medium,
-                    ) {
-                        Text(
-                            text = "Настройки VHAL",
-                            fontSize = AppType.Supporting,
-                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -400,14 +368,6 @@ internal object DataTab {
 
 private val AppUiState.allVehicleData: List<VehicleParameter>
     get() = parameters + vehicleInfo + functions
-
-private val AppUiState.totalVhalCount: Int
-    get() = allVehicleData.flatMap(VehicleParameter::sourceReadings)
-        .count { it.source == VehiclePropertySource.VHAL }
-
-private val AppUiState.decodedVhalCount: Int
-    get() = allVehicleData.flatMap(VehicleParameter::sourceReadings)
-        .count { it.source == VehiclePropertySource.VHAL && it.decoded }
 
 private fun DataCategory.values(state: AppUiState): List<VehicleParameter> = when (this) {
     DataCategory.ALL -> state.allVehicleData

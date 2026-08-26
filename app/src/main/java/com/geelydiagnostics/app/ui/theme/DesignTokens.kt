@@ -106,6 +106,7 @@ internal object AppSizes {
 
 internal object AppBreakpoints {
     val TwoColumns = 900.dp
+    val HeaderInlineActions = 1200.dp
 }
 
 /** Semantic type scale. Font sizes are independent from the 4 dp layout grid. */
