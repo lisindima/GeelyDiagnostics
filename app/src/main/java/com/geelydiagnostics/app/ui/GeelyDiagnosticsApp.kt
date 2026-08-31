@@ -5,9 +5,15 @@ import com.geelydiagnostics.app.ui.tabs.*
 import com.geelydiagnostics.app.ui.theme.*
 import com.geelydiagnostics.app.ui.settings.VhalSettingsDialog
 import com.geelydiagnostics.app.ui.diagnostics.diagnosticsUiState
+import com.geelydiagnostics.app.ui.display.DisplayInsetsDebugDialog
+import com.geelydiagnostics.app.ui.display.DisplaySafeAreaMode
+import com.geelydiagnostics.app.ui.display.DisplaySafeAreaOverlay
+import com.geelydiagnostics.app.ui.display.MutableDisplaySafeAreaProvider
+import com.geelydiagnostics.app.ui.display.ObserveDisplaySafeArea
 import com.geelydiagnostics.app.vehicle.property.VehiclePropertySource
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +35,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -60,10 +67,14 @@ internal enum class AppTab(val title: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun GeelyDiagnosticsApp(
     state: AppUiState,
+    displaySafeAreaProvider: MutableDisplaySafeAreaProvider? = null,
     onRefresh: () -> Unit,
     onExport: () -> Unit,
     onVhalProfileSelected: (VehicleProfile) -> Unit,
     onVhalBackendSelected: (VhalGatewayBackend) -> Unit,
+    onDisplaySafeAreaModeSelected: (DisplaySafeAreaMode) -> Unit = {},
+    onDisplaySafeAreaManualBottomChanged: (Int) -> Unit = {},
+    onDisplaySafeAreaOverlayChanged: (Boolean) -> Unit = {},
     onFavoriteToggle: (String) -> Unit,
     onObserveParameter: (VehicleParameter) -> Flow<VehicleParameter?>,
     onClearLog: () -> Unit,
@@ -88,40 +99,69 @@ internal fun GeelyDiagnosticsApp(
         ) {
             var selectedTabIndex by rememberSaveable { mutableIntStateOf(initialTab.ordinal) }
             var showVhalSettings by rememberSaveable { mutableStateOf(false) }
+            var showDisplayDebug by rememberSaveable { mutableStateOf(false) }
             val tabStateHolder = rememberSaveableStateHolder()
+            val activeSafeAreaProvider = displaySafeAreaProvider ?: remember {
+                MutableDisplaySafeAreaProvider()
+            }
+            if (displaySafeAreaProvider != null) {
+                ObserveDisplaySafeArea(
+                    provider = displaySafeAreaProvider,
+                    mode = state.displaySafeAreaMode,
+                    manualBottomPx = state.displaySafeAreaManualBottomPx,
+                    oemProfile = state.selectedVhalProfile.key,
+                )
+            }
+            val displaySafeAreaState by activeSafeAreaProvider.safeArea.collectAsState()
+            val safeArea = displaySafeAreaState.safeArea
+            val safeAreaPadding = with(LocalDensity.current) {
+                androidx.compose.foundation.layout.PaddingValues(
+                    start = safeArea.leftPx.toDp(),
+                    top = safeArea.topPx.toDp(),
+                    end = safeArea.rightPx.toDp(),
+                    bottom = safeArea.bottomPx.toDp(),
+                )
+            }
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background,
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = AppSpacing.ScreenHorizontal),
-                ) {
-                    AppHeader(
-                        onRefresh = onRefresh,
-                        onExport = onExport,
-                        onVhalSettings = { showVhalSettings = true },
-                        isRefreshInProgress = state.isScanInProgress,
-                    )
-                    PrimaryTabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
+                Box(Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(safeAreaPadding)
+                            .padding(horizontal = AppSpacing.ScreenHorizontal),
                     ) {
-                        AppTabs(selectedTabIndex) { selectedTabIndex = it }
-                    }
-                    val selectedTab = AppTab.entries[selectedTabIndex]
-                    tabStateHolder.SaveableStateProvider(selectedTab.name) {
-                        AppTabContent(
-                            tab = selectedTab,
-                            state = state,
-                            initialDataCategory = initialDataCategory,
-                            initialDiagnosticsCategory = initialDiagnosticsCategory,
-                            onFavoriteToggle = onFavoriteToggle,
-                            onObserveParameter = onObserveParameter,
-                            onClearLog = onClearLog,
+                        AppHeader(
+                            onRefresh = onRefresh,
+                            onExport = onExport,
+                            onVhalSettings = { showVhalSettings = true },
+                            onDisplayDebug = { showDisplayDebug = true },
+                            isRefreshInProgress = state.isScanInProgress,
                         )
+                        PrimaryTabRow(
+                            selectedTabIndex = selectedTabIndex,
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ) {
+                            AppTabs(selectedTabIndex) { selectedTabIndex = it }
+                        }
+                        val selectedTab = AppTab.entries[selectedTabIndex]
+                        tabStateHolder.SaveableStateProvider(selectedTab.name) {
+                            AppTabContent(
+                                tab = selectedTab,
+                                state = state,
+                                initialDataCategory = initialDataCategory,
+                                initialDiagnosticsCategory = initialDiagnosticsCategory,
+                                onFavoriteToggle = onFavoriteToggle,
+                                onObserveParameter = onObserveParameter,
+                                onClearLog = onClearLog,
+                            )
+                        }
+                    }
+                    if (state.showDisplaySafeAreaOverlay) {
+                        DisplaySafeAreaOverlay(displaySafeAreaState)
                     }
                 }
             }
@@ -137,6 +177,17 @@ internal fun GeelyDiagnosticsApp(
                     onProfileSelected = onVhalProfileSelected,
                     onBackendSelected = onVhalBackendSelected,
                     onDismiss = { showVhalSettings = false },
+                )
+            }
+            if (showDisplayDebug) {
+                DisplayInsetsDebugDialog(
+                    state = displaySafeAreaState,
+                    manualBottomPx = state.displaySafeAreaManualBottomPx,
+                    showOverlay = state.showDisplaySafeAreaOverlay,
+                    onModeSelected = onDisplaySafeAreaModeSelected,
+                    onManualBottomChanged = onDisplaySafeAreaManualBottomChanged,
+                    onOverlayChanged = onDisplaySafeAreaOverlayChanged,
+                    onDismiss = { showDisplayDebug = false },
                 )
             }
         }
@@ -204,6 +255,7 @@ private fun AppHeader(
     onRefresh: () -> Unit,
     onExport: () -> Unit,
     onVhalSettings: () -> Unit,
+    onDisplayDebug: () -> Unit,
     isRefreshInProgress: Boolean,
 ) {
     Surface(
@@ -236,6 +288,7 @@ private fun AppHeader(
                         onRefresh = onRefresh,
                         onExport = onExport,
                         onVhalSettings = onVhalSettings,
+                        onDisplayDebug = onDisplayDebug,
                         isRefreshInProgress = isRefreshInProgress,
                         modifier = Modifier.fillMaxWidth(),
                         expandButtons = true,
@@ -256,6 +309,7 @@ private fun AppHeader(
                         onRefresh = onRefresh,
                         onExport = onExport,
                         onVhalSettings = onVhalSettings,
+                        onDisplayDebug = onDisplayDebug,
                         isRefreshInProgress = isRefreshInProgress,
                     )
                 }
@@ -309,6 +363,7 @@ private fun HeaderActions(
     onRefresh: () -> Unit,
     onExport: () -> Unit,
     onVhalSettings: () -> Unit,
+    onDisplayDebug: () -> Unit,
     isRefreshInProgress: Boolean,
     modifier: Modifier = Modifier,
     expandButtons: Boolean = false,
@@ -337,6 +392,19 @@ private fun HeaderActions(
         ) {
             Text(
                 text = "Настройки VHAL",
+                fontSize = AppType.Supporting,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        OutlinedButton(
+            onClick = onDisplayDebug,
+            modifier = buttonModifier,
+            shape = MaterialTheme.shapes.medium,
+            colors = buttonColors,
+            border = buttonBorder,
+        ) {
+            Text(
+                text = "Экран / Insets",
                 fontSize = AppType.Supporting,
                 fontWeight = FontWeight.Bold,
             )

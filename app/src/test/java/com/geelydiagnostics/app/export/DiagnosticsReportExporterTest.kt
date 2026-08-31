@@ -11,6 +11,13 @@ import com.geelydiagnostics.app.vehicle.property.VehiclePropertyStatus
 import com.geelydiagnostics.app.vehicle.property.VehicleSourceReading
 import com.geelydiagnostics.app.vehicle.property.favoriteKey
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
+import com.geelydiagnostics.app.ui.display.DisplayMetricsSnapshot
+import com.geelydiagnostics.app.ui.display.DisplaySafeArea
+import com.geelydiagnostics.app.ui.display.DisplaySafeAreaMode
+import com.geelydiagnostics.app.ui.display.DisplaySafeAreaState
+import com.geelydiagnostics.app.ui.display.EdgeInsetsPx
+import com.geelydiagnostics.app.ui.display.SafeAreaSource
+import com.geelydiagnostics.app.ui.display.WindowInsetsSnapshot
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -56,13 +63,49 @@ class DiagnosticsReportExporterTest {
             scanStartedAtMillis = 1_700_000_000_000L,
         )
 
-        val report = JSONObject(
-            DiagnosticsReportExporter.create(state, 1_700_000_001_000L, "0.11.0"),
+        val displayState = DisplaySafeAreaState(
+            safeArea = DisplaySafeArea(bottomPx = 120),
+            bottomSource = SafeAreaSource.TAPPABLE_ELEMENT,
+            mode = DisplaySafeAreaMode.AUTO,
+            systemBottomPx = 120,
+            oemProfile = "G426",
+            insets = WindowInsetsSnapshot(tappableElement = EdgeInsetsPx(bottom = 120)),
+            display = DisplayMetricsSnapshot(
+                displayId = 0,
+                physicalWidthPx = 1440,
+                physicalHeightPx = 1920,
+                windowWidthPx = 1440,
+                windowHeightPx = 1920,
+                density = 2f,
+                densityDpi = 320,
+            ),
         )
+        val report = JSONObject(DiagnosticsReportExporter.create(
+            state = state,
+            generatedAtMillis = 1_700_000_001_000L,
+            appVersion = "0.11.0",
+            displaySafeAreaState = displayState,
+        ))
         val exported = report.getJSONArray("parameters").getJSONObject(0)
 
         assertTrue(report.getBoolean("readOnly"))
-        assertEquals(8, report.getInt("schemaVersion"))
+        assertEquals(9, report.getInt("schemaVersion"))
+        assertTrue(report.has("display"))
+        assertTrue(report.getJSONObject("display").has("insets"))
+        assertEquals(
+            "TAPPABLE_ELEMENT",
+            report.getJSONObject("display")
+                .getJSONObject("calculatedSafeArea")
+                .getString("bottomSource"),
+        )
+        assertEquals(
+            60.0,
+            report.getJSONObject("display")
+                .getJSONObject("insets")
+                .getJSONObject("tappableElement")
+                .getDouble("bottomDp"),
+            0.0,
+        )
         assertEquals("0.11.0", report.getString("appVersion"))
         assertEquals("G426", report.getString("vhalProfile"))
         assertEquals("HIDL", report.getString("vhalBackend"))

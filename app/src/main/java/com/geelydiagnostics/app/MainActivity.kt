@@ -2,6 +2,7 @@ package com.geelydiagnostics.app
 
 import com.geelydiagnostics.app.export.DiagnosticsReportExporter
 import com.geelydiagnostics.app.ui.GeelyDiagnosticsApp
+import com.geelydiagnostics.app.ui.display.MutableDisplaySafeAreaProvider
 import com.geelydiagnostics.app.ui.viewmodel.DiagnosticsViewModel
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
 
@@ -13,6 +14,7 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
@@ -23,6 +25,7 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
 
     private lateinit var viewModel: DiagnosticsViewModel
+    private lateinit var displaySafeAreaProvider: MutableDisplaySafeAreaProvider
     private var pendingExportFileName: String? = null
 
     private val requestCarPermissions = registerForActivityResult(
@@ -51,10 +54,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Root content owns all system/OEM safe-area padding consistently on Android 11+.
+        enableEdgeToEdge()
         viewModel = ViewModelProvider(this)[DiagnosticsViewModel::class.java]
+        displaySafeAreaProvider = MutableDisplaySafeAreaProvider(viewModel::onLog)
         setContent {
             GeelyDiagnosticsApp(
                 state = viewModel.uiState,
+                displaySafeAreaProvider = displaySafeAreaProvider,
                 onRefresh = viewModel::refresh,
                 onExport = ::exportReport,
                 onVhalProfileSelected = viewModel::selectVhalProfile,
@@ -64,6 +71,10 @@ class MainActivity : ComponentActivity() {
                         requestMissingCarPermissions()
                     }
                 },
+                onDisplaySafeAreaModeSelected = viewModel::selectDisplaySafeAreaMode,
+                onDisplaySafeAreaManualBottomChanged =
+                    viewModel::setDisplaySafeAreaManualBottomPx,
+                onDisplaySafeAreaOverlayChanged = viewModel::setShowDisplaySafeAreaOverlay,
                 onFavoriteToggle = viewModel::toggleFavorite,
                 onObserveParameter = viewModel::observeParameter,
                 onClearLog = viewModel::clearLog,
@@ -106,6 +117,7 @@ class MainActivity : ComponentActivity() {
         state = viewModel.uiState,
         generatedAtMillis = System.currentTimeMillis(),
         appVersion = BuildConfig.VERSION_NAME,
+        displaySafeAreaState = displaySafeAreaProvider.safeArea.value,
     )
 
     private fun saveReportLocally(fileName: String, pickerError: Throwable? = null) {

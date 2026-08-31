@@ -3,6 +3,7 @@ package com.geelydiagnostics.app.export
 import com.geelydiagnostics.app.model.AppUiState
 import com.geelydiagnostics.app.model.ReadStatus
 import com.geelydiagnostics.app.ui.catalog.matchesFavorite
+import com.geelydiagnostics.app.ui.display.DisplaySafeAreaState
 
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.CarValue
@@ -21,12 +22,14 @@ internal object DiagnosticsReportExporter {
         state: AppUiState,
         generatedAtMillis: Long,
         appVersion: String,
+        displaySafeAreaState: DisplaySafeAreaState = DisplaySafeAreaState(),
     ): String = JSONObject().apply {
-        put("schemaVersion", 8)
+        put("schemaVersion", 9)
         put("application", "Geely Diagnostics")
         put("appVersion", appVersion)
         put("generatedAt", isoTime(generatedAtMillis))
         put("readOnly", true)
+        put("display", displaySafeAreaState.toJson())
         put("vhalProfile", state.selectedVhalProfile.key)
         put("vhalBackend", state.selectedVhalBackend.name)
         put("vhalDiscovery", JSONObject().apply {

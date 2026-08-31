@@ -6,6 +6,7 @@ import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.VehicleDiscoveryProgress
 import com.geelydiagnostics.app.vehicle.property.VehicleParameterSample
 import com.geelydiagnostics.app.vehicle.vhal.VhalGatewayBackend
+import com.geelydiagnostics.app.ui.display.DisplaySafeAreaMode
 
 enum class ReadStatus {
     NOT_CHECKED,
@@ -46,6 +47,9 @@ data class AppUiState(
     val vhalDiscovery: VehicleDiscoveryProgress = VehicleDiscoveryProgress(),
     val selectedVhalProfile: VehicleProfile = VehicleProfile.RAW,
     val selectedVhalBackend: VhalGatewayBackend = VhalGatewayBackend.CAR_PROPERTY_MANAGER,
+    val displaySafeAreaMode: DisplaySafeAreaMode = DisplaySafeAreaMode.AUTO,
+    val displaySafeAreaManualBottomPx: Int = 0,
+    val showDisplaySafeAreaOverlay: Boolean = false,
     val carInfoStatus: ReadStatus = ReadStatus.NOT_CHECKED,
     val carInfoDetail: String = "",
     val functionStatus: ReadStatus = ReadStatus.NOT_CHECKED,

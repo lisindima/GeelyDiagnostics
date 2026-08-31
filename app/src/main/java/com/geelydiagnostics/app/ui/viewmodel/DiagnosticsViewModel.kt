@@ -2,6 +2,7 @@ package com.geelydiagnostics.app.ui.viewmodel
 
 import com.geelydiagnostics.app.model.AppUiState
 import com.geelydiagnostics.app.ui.components.chartNumber
+import com.geelydiagnostics.app.ui.display.DisplaySafeAreaMode
 
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -9,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.content.edit
 import com.geelydiagnostics.app.vehicle.mapping.VehicleProfile
 import com.geelydiagnostics.app.vehicle.property.VehicleParameter
 import com.geelydiagnostics.app.vehicle.property.numericValue
@@ -27,6 +29,9 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         AppUiState(
             selectedVhalProfile = loadVhalProfile(application),
             selectedVhalBackend = loadVhalBackend(application),
+            displaySafeAreaMode = loadDisplaySafeAreaMode(application),
+            displaySafeAreaManualBottomPx = loadDisplaySafeAreaManualBottomPx(application),
+            showDisplaySafeAreaOverlay = loadDisplaySafeAreaOverlay(application),
             favoriteKeys = loadFavorites(application),
         ),
     )
@@ -50,23 +55,42 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
 
     fun selectVhalProfile(profile: VehicleProfile) {
         if (profile == uiState.selectedVhalProfile) return
-        preferences().edit().putString(KEY_VHAL_PROFILE, profile.name).apply()
+        preferences().edit { putString(KEY_VHAL_PROFILE, profile.name) }
         uiState = uiState.copy(selectedVhalProfile = profile)
         startScan()
     }
 
     fun selectVhalBackend(backend: VhalGatewayBackend) {
         if (backend == uiState.selectedVhalBackend) return
-        preferences().edit().putString(KEY_VHAL_BACKEND, backend.name).apply()
+        preferences().edit { putString(KEY_VHAL_BACKEND, backend.name) }
         uiState = uiState.copy(selectedVhalBackend = backend)
         startScan()
+    }
+
+    fun selectDisplaySafeAreaMode(mode: DisplaySafeAreaMode) {
+        if (mode == uiState.displaySafeAreaMode) return
+        preferences().edit { putString(KEY_DISPLAY_SAFE_AREA_MODE, mode.name) }
+        uiState = uiState.copy(displaySafeAreaMode = mode)
+    }
+
+    fun setDisplaySafeAreaManualBottomPx(bottomPx: Int) {
+        val safeBottomPx = bottomPx.coerceAtLeast(0)
+        if (safeBottomPx == uiState.displaySafeAreaManualBottomPx) return
+        preferences().edit { putInt(KEY_DISPLAY_SAFE_AREA_BOTTOM_PX, safeBottomPx) }
+        uiState = uiState.copy(displaySafeAreaManualBottomPx = safeBottomPx)
+    }
+
+    fun setShowDisplaySafeAreaOverlay(show: Boolean) {
+        if (show == uiState.showDisplaySafeAreaOverlay) return
+        preferences().edit { putBoolean(KEY_DISPLAY_SAFE_AREA_OVERLAY, show) }
+        uiState = uiState.copy(showDisplaySafeAreaOverlay = show)
     }
 
     fun toggleFavorite(key: String) {
         val favorites = uiState.favoriteKeys.toMutableSet().apply {
             if (!add(key)) remove(key)
         }.toSet()
-        preferences().edit().putStringSet(KEY_FAVORITES, favorites).apply()
+        preferences().edit { putStringSet(KEY_FAVORITES, favorites) }
         uiState = uiState.copy(favoriteKeys = favorites)
     }
 
@@ -126,7 +150,7 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         }
         val favoriteKeys = migrateParameterFavorites(uiState.favoriteKeys, allParameters)
         if (favoriteKeys != uiState.favoriteKeys) {
-            preferences().edit().putStringSet(KEY_FAVORITES, favoriteKeys).apply()
+            preferences().edit { putStringSet(KEY_FAVORITES, favoriteKeys) }
         }
         uiState = uiState.copy(
             parameters = parameters,
@@ -187,6 +211,9 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
         private const val KEY_VHAL_PROFILE = "vhal_profile"
         private const val KEY_VHAL_BACKEND = "vhal_backend"
         private const val KEY_FAVORITES = "favorite_keys"
+        private const val KEY_DISPLAY_SAFE_AREA_MODE = "display_safe_area_mode"
+        private const val KEY_DISPLAY_SAFE_AREA_BOTTOM_PX = "display_safe_area_bottom_px"
+        private const val KEY_DISPLAY_SAFE_AREA_OVERLAY = "display_safe_area_overlay"
 
         private fun loadVhalProfile(application: Application): VehicleProfile {
             val saved = application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
@@ -200,6 +227,22 @@ internal class DiagnosticsViewModel(application: Application) : AndroidViewModel
             return VhalGatewayBackend.entries.firstOrNull { it.name == saved }
                 ?: VhalGatewayBackend.CAR_PROPERTY_MANAGER
         }
+
+        private fun loadDisplaySafeAreaMode(application: Application): DisplaySafeAreaMode {
+            val saved = application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
+                .getString(KEY_DISPLAY_SAFE_AREA_MODE, null)
+            return DisplaySafeAreaMode.entries.firstOrNull { it.name == saved }
+                ?: DisplaySafeAreaMode.AUTO
+        }
+
+        private fun loadDisplaySafeAreaManualBottomPx(application: Application): Int =
+            application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
+                .getInt(KEY_DISPLAY_SAFE_AREA_BOTTOM_PX, 0)
+                .coerceAtLeast(0)
+
+        private fun loadDisplaySafeAreaOverlay(application: Application): Boolean =
+            application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
+                .getBoolean(KEY_DISPLAY_SAFE_AREA_OVERLAY, false)
 
         private fun loadFavorites(application: Application): Set<String> =
             application.getSharedPreferences(PREFERENCES, Application.MODE_PRIVATE)
